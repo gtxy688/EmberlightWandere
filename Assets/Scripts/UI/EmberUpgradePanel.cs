@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -130,6 +130,7 @@ namespace Emberlight
                 EmberOffer captured = offer;
                 button.onClick.AddListener(() =>
                 {
+                    EmberAudio.Ensure().PlayUiClick();
                     if (choosing) return;
                     choosing = true;
                     foreach (var b in root.GetComponentsInChildren<Button>()) b.interactable = false;

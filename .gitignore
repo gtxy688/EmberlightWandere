@@ -112,3 +112,7 @@ InitTestScene*.unity*
 
 # Auto-generated cache in Assets folder
 /[Aa]ssets/[Ss]ceneDependencyCache*
+
+# Audio source packs (keep renamed clips only)
+Assets/Audio/_download/
+

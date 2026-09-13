@@ -127,7 +127,7 @@ namespace Emberlight
             var r = g.GetComponent<RectTransform>();
             r.anchorMin = min; r.anchorMax = max; r.offsetMin = r.offsetMax = Vector2.zero;
             g.GetComponent<Image>().color = new Color(.18f, .26f, .32f);
-            g.GetComponent<Button>().onClick.AddListener(action);
+            g.GetComponent<Button>().onClick.AddListener(() => { EmberAudio.Ensure().PlayUiClick(); if (action != null) action(); });
             Label("Label", g.transform, label, 23, new Vector2(.035f, .05f), new Vector2(.965f, .95f));
         }
     }

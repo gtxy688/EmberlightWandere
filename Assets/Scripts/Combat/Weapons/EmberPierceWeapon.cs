@@ -93,6 +93,7 @@ namespace Emberlight
             if (limit < 1) limit = 1;
             float size = isSplit ? .18f : .28f;
             float speed = isSplit ? 10f : 12f;
+            if (!isSplit) EmberAudio.Ensure().PlayFire();
             for (int i = 0; i < count; i++)
             {
                 Vector2 v = Quaternion.Euler(0, 0, (i - (count - 1) * .5f) * 12f) * dir;

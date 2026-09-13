@@ -414,6 +414,7 @@ namespace Emberlight
             if (!e.Targetable || !EmberWorld.Visible(cam, e.view.position)) return;
             if (e.kind == 7) amount *= ShieldBehavior.DamageMultiplier(e.facing, source - (Vector2)e.view.position, config.ShieldFrontMultiplier);
             e.hp = Mathf.Max(0, e.hp - amount);
+            EmberAudio.Ensure().PlayHit();
             e.bar.Set(e.hp / e.maxHp);
             if (e.flash <= 0) { effects.Impact(e.view.position, false); e.flash = .10f; }
             if (amount >= 1) e.view.position += (e.view.position - player.position).normalized * (e.kind == 3 ? .015f : .06f);

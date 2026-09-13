@@ -80,7 +80,7 @@ namespace Emberlight
                 int captured = n;
                 var btn = card.gameObject.AddComponent<Button>();
                 btn.targetGraphic = card;
-                btn.onClick.AddListener(() => { selectedSlots = captured; RefreshSlotHighlight(); });
+                btn.onClick.AddListener(() => { EmberAudio.Ensure().PlayUiClick(); selectedSlots = captured; RefreshSlotHighlight(); });
             }
             RefreshSlotHighlight();
             ConfirmRow(root.transform, () => { Hide(); onConfirm(selectedSlots); });
@@ -120,7 +120,7 @@ namespace Emberlight
                 int captured = id;
                 var btn = card.gameObject.AddComponent<Button>();
                 btn.targetGraphic = card;
-                btn.onClick.AddListener(() => ToggleRoster(captured, onConfirm));
+                btn.onClick.AddListener(() => { EmberAudio.Ensure().PlayUiClick(); ToggleRoster(captured, onConfirm); });
             }
 
             // Page controls
@@ -130,7 +130,7 @@ namespace Emberlight
                 TextAt(prev.transform, "\u4e0a\u9875", 16, Vector2.zero, Vector2.one, Gold);
                 var pb = prev.gameObject.AddComponent<Button>();
                 pb.targetGraphic = prev;
-                pb.onClick.AddListener(() => { rosterPage--; BuildRosterUi(onConfirm); });
+                pb.onClick.AddListener(() => { EmberAudio.Ensure().PlayUiClick(); rosterPage--; BuildRosterUi(onConfirm); });
             }
             if (start + PageSize < Roster.Length)
             {
@@ -138,7 +138,7 @@ namespace Emberlight
                 TextAt(next.transform, "\u4e0b\u9875", 16, Vector2.zero, Vector2.one, Gold);
                 var nb = next.gameObject.AddComponent<Button>();
                 nb.targetGraphic = next;
-                nb.onClick.AddListener(() => { rosterPage++; BuildRosterUi(onConfirm); });
+                nb.onClick.AddListener(() => { EmberAudio.Ensure().PlayUiClick(); rosterPage++; BuildRosterUi(onConfirm); });
             }
 
         }
@@ -165,7 +165,7 @@ namespace Emberlight
             TextAt(ok.transform, "\u786e\u8ba4", 22, Vector2.zero, Vector2.one, Gold);
             var okBtn = ok.gameObject.AddComponent<Button>();
             okBtn.targetGraphic = ok;
-            okBtn.onClick.AddListener(() => confirm());
+            okBtn.onClick.AddListener(() => { EmberAudio.Ensure().PlayUiClick(); confirm(); });
 
         }
 

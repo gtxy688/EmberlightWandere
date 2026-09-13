@@ -53,9 +53,8 @@ namespace Emberlight
                 for (int j = ctx.EnemyCount() - 1; j >= 0; j--)
                 {
                     var e = ctx.GetEnemy(j);
-                    if (e == null || !e.Targetable) continue;
                     if (Vector2.Distance(s.point, e.view.position) < s.radius)
-                        ctx.DealDamage(j, s.damage, s.point);
+                        ctx.Damage(j, s.damage);
                 }
                 pending.RemoveAt(i);
             }
@@ -75,6 +74,7 @@ namespace Emberlight
             if (skyfire) dmg *= 1.54f; // was 1.4; +10% Weapon-Balance-v1
             var warn = ctx.Pool != null ? ctx.Pool.RentShape("warn", ctx.World, point, Vector2.one * (radius * 2f), new Color(1f, .3f, .05f, .35f), 1) : EmberVisuals.Shape("Meteor warn", ctx.World, point, Vector2.one * (radius * 2f), new Color(1f, .3f, .05f, .35f), 1);
             warn.sprite = EmberArt.Ring;
+            EmberAudio.Ensure().PlayFire();
             pending.Add(new Strike { point = point, timer = 0.6f, damage = dmg, radius = radius, warn = warn });
         }
     }

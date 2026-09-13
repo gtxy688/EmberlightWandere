@@ -75,6 +75,7 @@ namespace Emberlight
 
         void Fire(EmberWeaponContext ctx, bool wildfire)
         {
+            EmberAudio.Ensure().PlayFire();
             int nearest = ctx.FindNearestVisibleEnemy();
             if (nearest < 0) return;
             var target = ctx.GetEnemy(nearest);

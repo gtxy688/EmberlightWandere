@@ -112,6 +112,7 @@ namespace Emberlight
 
         void Start()
         {
+            EmberAudio.Ensure();
             State = Mode.Loading;
             combat = new EmberCombat(this);
             ui = new EmberMenuUi();
@@ -139,6 +140,7 @@ namespace Emberlight
         public void ShowMainMenu()
         {
             State = Mode.Menu;
+            EmberAudio.Ensure().PlayMenuMusic();
             if (world != null) world.gameObject.SetActive(false);
             ui.Show("烬灯行者", "25 波标准征程 · 50 波漫长征程\n自由选择难度，每局从相同的基础属性出发。\n清波选卡，击败最终守卫。",
                 new[] { "提灯出发" }, new UnityEngine.Events.UnityAction[] { BeginRun });
@@ -236,6 +238,7 @@ namespace Emberlight
             if (ui.UpgradePanel != null) ui.UpgradePanel.Hide();
             if (ui.GodsSelect != null) ui.GodsSelect.Hide();
             State = Mode.Playing;
+            EmberAudio.Ensure().PlayCombatMusic();
             ui.Overlay.SetActive(false);
             ui.BattleHud.Show(true);
             UpdateHud();
@@ -297,6 +300,7 @@ namespace Emberlight
             if (Health < MaxHealth)
                 Health = HealedHealth(Health, MaxHealth, amount);
             UpdateHud();
+            EmberAudio.Ensure().PlayPickupHeal();
             return true;
         }
 
@@ -304,6 +308,7 @@ namespace Emberlight
         {
             if (State != Mode.Playing || hurtTimer > 0 || damage <= 0) return;
             Health = Mathf.Max(0, Health - Progress.AbsorbDamage(damage * runLevel.DamageMultiplier));
+            EmberAudio.Ensure().PlayHurt();
             hurtTimer = .65f;
             UpdateHud();
             if (Health <= 0) EndRun(false);
@@ -330,6 +335,7 @@ namespace Emberlight
         public void OfferUpgrade(int clearedWave)
         {
             State = Mode.Upgrade;
+            EmberAudio.Ensure().PlayCardOpen();
             ui.BattleHud.Show(false);
             stick = Vector2.zero;
             lastClearedWave = clearedWave;
@@ -359,6 +365,7 @@ namespace Emberlight
             if (!ok) return;
             bool grantedNew;
             if (!Progress.Choose(offer, out grantedNew)) return;
+            EmberAudio.Ensure().PlayCardPick();
 
             if (!compensationPick) pendingWavePicks = Mathf.Max(0, pendingWavePicks - 1);
             // New weapon → one immediate compensation per scheduled choice.
@@ -391,6 +398,7 @@ namespace Emberlight
         {
             if (State == Mode.Won || State == Mode.Lost || Progress == null) return;
             State = won ? Mode.Won : Mode.Lost;
+            EmberAudio.Ensure().PlayMenuMusic();
             ui.Show(won ? "长夜破晓" : "灯火暂熄",
                 LevelConfig.DifficultyName(runLevel.Difficulty) + " · " + runLevel.BossWave + " 波征程"
                 + "\n到达第 " + combat.Wave + " 波 · 生存 " + Elapsed.ToString("0") + " 秒"
