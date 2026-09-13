@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Linq;
 using UnityEditor;
 
@@ -40,7 +40,7 @@ namespace Emberlight
                 && MathfApprox(p.DamageBonus, 0.50f), "Stack diamond ATK");
             Require(MathfApprox(p.AttackSpeedBonus, 0f), "No global AS from generics");
             p.OfferChoices();
-            Require(!p.Choose(new EmberOffer(RunProgress.StatAS, EmberRarity.Bronze)), "G-AS retired");
+            Require(!p.Choose(new EmberOffer(RunProgress.StatAs, EmberRarity.Bronze)), "G-AS retired");
 
             // Luck + Amp
             p.OfferChoices();
