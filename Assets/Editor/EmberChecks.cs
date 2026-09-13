@@ -40,7 +40,7 @@ namespace Emberlight
                 && MathfApprox(p.DamageBonus, 0.50f), "Stack diamond ATK");
             Require(MathfApprox(p.AttackSpeedBonus, 0f), "No global AS from generics");
             p.OfferChoices();
-            Require(!p.Choose(new EmberOffer(RunProgress.StatAs, EmberRarity.Bronze)), "G-AS retired");
+            Require(p.Choose(new EmberOffer(RunProgress.StatAs, EmberRarity.Bronze)), "G-AS choose"); Require(p.AttackSpeedBonus >= 0.09f, "G-AS applies");
 
             // Luck + Amp
             p.OfferChoices();
