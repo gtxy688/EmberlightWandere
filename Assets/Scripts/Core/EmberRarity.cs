@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace Emberlight
 {
@@ -10,8 +10,17 @@ namespace Emberlight
         Diamond = 3
     }
 
+    public enum EmberOfferKind
+    {
+        Generic = 0,
+        Weapon = 1,
+        Exclusive = 2,
+        Metamorph = 3
+    }
+
     public static class EmberRarityUtil
     {
+        // Legacy Magnitude retained for non-generic systems / Validate continuity.
         public static float Magnitude(EmberRarity rarity)
         {
             switch (rarity)
@@ -25,7 +34,6 @@ namespace Emberlight
 
         public static int CountBonus(EmberRarity rarity)
         {
-            // Planner lock: 1 / 2 / 2 / 3
             switch (rarity)
             {
                 case EmberRarity.Silver: return 2;
@@ -42,7 +50,6 @@ namespace Emberlight
 
         public static string Name(EmberRarity rarity)
         {
-            // Unicode escapes keep source encoding-safe across tools.
             switch (rarity)
             {
                 case EmberRarity.Silver: return "\u767d\u94f6";
@@ -63,9 +70,55 @@ namespace Emberlight
             }
         }
 
+        /// <summary>Legacy wave gate (not used for Gods-Select-v3 generics).</summary>
         public static EmberRarity Roll(System.Random random, int wave)
         {
             int[] weights = WeightsForWave(wave);
+            return RollWeighted(random, weights);
+        }
+
+        /// <summary>Luck-driven rarity for G-ATK/AS/LUCK/AMP. Luck 0..120.</summary>
+        public static EmberRarity RollByLuck(System.Random random, float luck)
+        {
+            return RollWeighted(random, WeightsForLuck(luck));
+        }
+
+        public static int[] WeightsForLuck(float luck)
+        {
+            if (luck < 0f) luck = 0f;
+            if (luck > 120f) luck = 120f;
+            float t;
+            float[] a, b;
+            if (luck <= 60f)
+            {
+                t = luck / 60f;
+                a = new[] { 72f, 22f, 5f, 1f }; // rarity nerf 2026-09-13
+                b = new[] { 58f, 28f, 11f, 3f };
+            }
+            else
+            {
+                t = (luck - 60f) / 60f;
+                a = new[] { 58f, 28f, 11f, 3f };
+                b = new[] { 45f, 32f, 18f, 5f };
+            }
+            return new[]
+            {
+                Mathf.Max(0, Mathf.RoundToInt(Mathf.Lerp(a[0], b[0], t))),
+                Mathf.Max(0, Mathf.RoundToInt(Mathf.Lerp(a[1], b[1], t))),
+                Mathf.Max(0, Mathf.RoundToInt(Mathf.Lerp(a[2], b[2], t))),
+                Mathf.Max(0, Mathf.RoundToInt(Mathf.Lerp(a[3], b[3], t)))
+            };
+        }
+
+        static int[] WeightsForWave(int wave)
+        {
+            if (wave <= 2) return new[] { 70, 25, 5, 0 };
+            if (wave <= 4) return new[] { 55, 30, 12, 3 };
+            return new[] { 50, 28, 15, 7 };
+        }
+
+        static EmberRarity RollWeighted(System.Random random, int[] weights)
+        {
             int total = 0;
             for (int i = 0; i < weights.Length; i++) total += weights[i];
             if (total <= 0) return EmberRarity.Bronze;
@@ -79,19 +132,64 @@ namespace Emberlight
             return EmberRarity.Bronze;
         }
 
-        static int[] WeightsForWave(int wave)
+        // Gods-Select-v3 generic magnitudes (ATK/AS as additive fractions).
+        public static float GenericAtkAs(EmberRarity rarity)
         {
-            // Wave 1-2: 70/25/5/0; 3-4: 55/30/12/3; 5+: 50/28/15/7
-            if (wave <= 2) return new[] { 70, 25, 5, 0 };
-            if (wave <= 4) return new[] { 55, 30, 12, 3 };
-            return new[] { 50, 28, 15, 7 };
+            switch (rarity)
+            {
+                case EmberRarity.Silver: return 0.20f;
+                case EmberRarity.Gold: return 0.30f;
+                case EmberRarity.Diamond: return 0.40f;
+                default: return 0.10f;
+            }
         }
+
+        public static int GenericLuck(EmberRarity rarity)
+        {
+            switch (rarity)
+            {
+                case EmberRarity.Silver: return 50;
+                case EmberRarity.Gold: return 75;
+                case EmberRarity.Diamond: return 125;
+                default: return 25;
+            }
+        }
+
+        public static float GenericAmp(EmberRarity rarity)
+        {
+            switch (rarity)
+            {
+                case EmberRarity.Silver: return 0.10f;
+                case EmberRarity.Gold: return 0.15f;
+                case EmberRarity.Diamond: return 0.25f;
+                default: return 0.05f;
+            }
+        }
+
+        public static EmberOfferKind KindOf(int id)
+        {
+            if (id >= 30 && id <= 39) return EmberOfferKind.Exclusive;
+            if (id >= 20 && id <= 29) return EmberOfferKind.Metamorph;
+            if (id >= 10 && id <= 19) return EmberOfferKind.Weapon;
+            return EmberOfferKind.Generic;
+        }
+
+        public static float ShieldAmount(EmberRarity rarity)
+        { switch (rarity) { case EmberRarity.Silver: return 500; case EmberRarity.Gold: return 750; case EmberRarity.Diamond: return 1250; default: return 250; } }
+
+        public static bool IsGenericId(int id) { return id == 0 || id == 2 || id == 3 || id == 4; } // ATK/Luck/Amp; AS retired
     }
 
     public struct EmberOffer
     {
         public int Id;
         public EmberRarity Rarity;
-        public EmberOffer(int id, EmberRarity rarity) { Id = id; Rarity = rarity; }
+        public EmberOfferKind Kind;
+        public EmberOffer(int id, EmberRarity rarity)
+        {
+            Id = id;
+            Rarity = rarity;
+            Kind = EmberRarityUtil.KindOf(id);
+        }
     }
 }

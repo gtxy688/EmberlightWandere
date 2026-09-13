@@ -1,3 +1,5 @@
+> 已被 Difficulty-Waves-v3.md 取代：现行局长为 25/50 波，难度独立选择。以下为历史规则。
+
 # 难度与节奏 · 波次制（v2）
 
 > 终稿：xiaoPlanner · v2 取代 v1（清波强制三选一；移除 XP）
@@ -69,3 +71,6 @@
 - `LevelConfig` 配额 12/18/24/30/36、BossHp 2200、MapLimit 22；无 WaveRestSeconds。
 - Validate：Pending=1 门控、Score、配额、BossHp、反射确认无 Level/Experience/Required/AddExperience。
 - HUD：波次条替代 XP 条；结算含余烬 Score。
+
+## 实现备注（无死亡掉落）
+- **死亡掉落已删除**：击杀直接 AddScore（小怪 1 / Boss 30），不再生成小余烬拾取物；PickupBonus 停用。

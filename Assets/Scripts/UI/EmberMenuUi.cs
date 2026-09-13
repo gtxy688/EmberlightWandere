@@ -12,6 +12,7 @@ namespace Emberlight
         public RectTransform StickBase { get; private set; }
         public RectTransform StickKnob { get; private set; }
         public EmberUpgradePanel UpgradePanel { get; private set; }
+        public EmberGodsSelectPanel GodsSelect { get; private set; }
         public EmberHud BattleHud { get; private set; }
 
         TMP_FontAsset font;
@@ -37,6 +38,8 @@ namespace Emberlight
             UpdateSafeArea();
             UpgradePanel = Safe.gameObject.AddComponent<EmberUpgradePanel>();
             UpgradePanel.Initialize(font);
+            GodsSelect = Safe.gameObject.AddComponent<EmberGodsSelectPanel>();
+            GodsSelect.Initialize(font);
             BattleHud = new EmberHud(Safe, font, pause);
 
             StickBase = new GameObject("Joystick", typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();
@@ -58,13 +61,13 @@ namespace Emberlight
             var r = Overlay.GetComponent<RectTransform>();
             r.anchorMin = Vector2.zero; r.anchorMax = Vector2.one; r.offsetMin = r.offsetMax = Vector2.zero;
             Overlay.GetComponent<Image>().color = new Color(.025f, .045f, .075f, .95f);
-            heading = Label("Title", Overlay.transform, "", 38, new Vector2(.06f, .71f), new Vector2(.94f, .88f));
-            summary = Label("Description", Overlay.transform, "", 21, new Vector2(.06f, .58f), new Vector2(.94f, .72f));
+            heading = Label("Title", Overlay.transform, "", 38, new Vector2(.06f, .76f), new Vector2(.94f, .91f));
+            summary = Label("Description", Overlay.transform, "", 19, new Vector2(.06f, .56f), new Vector2(.94f, .76f));
             buttons = new GameObject("Choices", typeof(RectTransform)).transform;
             buttons.SetParent(Overlay.transform, false);
             var b = (RectTransform)buttons;
             b.anchorMin = Vector2.zero; b.anchorMax = Vector2.one; b.offsetMin = b.offsetMax = Vector2.zero;
-            Label("Footer", Overlay.transform, "烬灯行者\n拖动屏幕移动，拾取金色余烬升级", 16, new Vector2(.05f, .025f), new Vector2(.95f, .12f));
+            Label("Footer", Overlay.transform, "\u70ec\u706f\u884c\u8005\n拖动屏幕移动，清波选择强化", 16, new Vector2(.05f, .025f), new Vector2(.95f, .12f));
         }
 
         public void UpdateSafeArea()
@@ -87,6 +90,7 @@ namespace Emberlight
         public void Show(string title, string desc, string[] labels, UnityEngine.Events.UnityAction[] actions)
         {
             if (UpgradePanel != null) UpgradePanel.Hide();
+            if (GodsSelect != null) GodsSelect.Hide();
             BattleHud.Show(false);
             Overlay.SetActive(true);
             heading.text = title;

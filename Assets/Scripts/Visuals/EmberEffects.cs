@@ -12,7 +12,7 @@ namespace Emberlight
         public void Initialize(EmberGame owner){game=owner;}
         public void Emit(Vector2 p,Vector2 velocity,float size,float life,Color color,bool ring=false,float growth=0)
         {
-            if(active.Count>=180)return;
+            if(active.Count>=120)return; // mobile particle cap
             Particle s;
             if(pool.Count>0)s=pool.Pop();else s=new Particle{sprite=EmberVisuals.Shape("Ember particle",transform,p,Vector2.one,color,10)};
             s.sprite.gameObject.SetActive(true);s.sprite.sprite=ring?EmberArt.Ring:EmberVisuals.Disc;s.sprite.transform.position=p;
@@ -22,13 +22,13 @@ namespace Emberlight
         public void Impact(Vector2 p,bool death)
         {
             Emit(p,Vector2.zero,death?.3f:.18f,.22f,new Color(1,.76f,.3f,.7f),true,death?1.5f:.7f);
-            for(int i=0;i<(death?8:3);i++)Emit(p,Random.insideUnitCircle*(death?2.3f:1.4f),Random.Range(.07f,.15f),Random.Range(.2f,.45f),i%3==0&&death?new Color(.18f,.22f,.32f,.65f):new Color(1,.57f,.15f,.9f));
+            for(int i=0;i<(death?5:3);i++)Emit(p,Random.insideUnitCircle*(death?2.3f:1.4f),Random.Range(.07f,.15f),Random.Range(.2f,.45f),i%3==0&&death?new Color(.18f,.22f,.32f,.65f):new Color(1,.57f,.15f,.9f));
         }
         public void Nova(Vector2 p,float radius)
         {
             Emit(p,Vector2.zero,.2f,.48f,new Color(1,.65f,.16f,.75f),true,radius*2/.86f);
             Emit(p,Vector2.zero,.3f,.35f,new Color(1,.91f,.6f,.55f),true,radius*1.7f);
-            for(int i=0;i<20;i++){float a=i*Mathf.PI*.1f;Emit(p,new Vector2(Mathf.Cos(a),Mathf.Sin(a))*radius*2,.12f,.42f,new Color(1,.55f,.1f,.8f));}
+            for(int i=0;i<12;i++){float a=i*Mathf.PI*.1f;Emit(p,new Vector2(Mathf.Cos(a),Mathf.Sin(a))*radius*2,.12f,.42f,new Color(1,.55f,.1f,.8f));}
         }
         void Update()
         {

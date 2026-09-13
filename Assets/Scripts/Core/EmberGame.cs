@@ -1,38 +1,79 @@
-using UnityEngine;
+﻿using UnityEngine;
 using TMPro;
 
 namespace Emberlight
 {
-    /// <summary>Run director: state machine, start, input, upgrades, results.</summary>
+    /// <summary>Run director: Gods-Select-v3 pre-run (N + roster), wave offers, compensation, refreshes.</summary>
     public sealed class EmberGame : MonoBehaviour
     {
-        public enum Mode { Loading, Menu, Playing, Upgrade, Paused, Lost, Won }
+        public enum Mode { Loading, Menu, SelectLength, SelectDifficulty, SelectSlots, SelectRoster, Playing, Upgrade, Paused, Lost, Won }
 
         public static readonly string[] UpgradeNames =
         {
-            "\u53cc\u751f\u706b",
-            "\u75be\u901f\u71c3\u70e7",
-            "\u70bd\u70ed\u4e4b\u7130",
-            "\u73af\u7ed5\u706b\u79cd",
-            "\u8e0f\u706b\u800c\u884c",
-            "\u706f\u57df\u6269\u5f20",
-            "\u8f7b\u76c8\u6b65\u4f10",
-            "\u6696\u706f\u5e87\u62a4",
-            "\u4f59\u70ec\u706b\u6d6a",
-            "\u706f\u706b\u56de\u6625"
+            "\u653b\u51fb\u529b",
+            "\u653b\u901f\uff08\u5df2\u9000\u51fa\uff09",
+            "\u5e78\u8fd0",
+            "\u4f24\u5bb3\u589e\u5e45",
+            "护盾", "", "", "", "", "",
+            "\u7a7f\u900f\u706b\u77e2",
+            "\u56de\u65cb\u70ec\u8776",
+            "\u5929\u964d\u706b\u96e8",
+            "\u706b\u7403",
+            "\u73af\u706b",
+            "\u71c3\u5730",
+            "", "", "", "",
+            "\u71ce\u539f",
+            "\u65e5\u5195",
+            "\u706b\u6d77",
+            "\u7a7f\u6768",
+            "\u6298\u8fd4\u4e0d\u5c3d",
+            "\u5929\u706b",
+            "", "", "", "",
+            "\u8fde\u53d1",
+            "\u6dfb\u85aa",
+            "\u5ef6\u71c3",
+            "\u8d2f\u7a7f",
+            "\u56de\u9a6c",
+            "\u591a\u843d\u70b9"
         };
-        public static readonly string[] UpgradeDetails =
+                public static readonly string[] UpgradeDetails =
         {
-            "\u6bcf\u6b21\u653b\u51fb\u989d\u5916\u53d1\u5c04\u706b\u7403",
-            "\u63d0\u9ad8\u653b\u51fb\u901f\u5ea6",
-            "\u63d0\u9ad8\u706b\u7403\u4f24\u5bb3",
-            "\u589e\u52a0\u73af\u7ed5\u706b\u79cd",
-            "\u7559\u4e0b\u706b\u7130\u8def\u5f84\uff0c\u9020\u6210\u6301\u7eed\u4f24\u5bb3",
-            "\u6269\u5927\u4f59\u70ec\u62fe\u53d6\u8303\u56f4",
-            "\u63d0\u9ad8\u79fb\u52a8\u901f\u5ea6",
-            "\u63d0\u9ad8\u751f\u547d\u4e0a\u9650\uff0c\u5e76\u6062\u590d\u751f\u547d",
-            "\u5468\u671f\u91ca\u653e\u706b\u6d6a",
-            "\u6062\u590d\u751f\u547d"
+            "\u6253\u5f97\u66f4\u75bc",
+            "\u5df2\u4e0d\u7528",
+            "\u66f4\u5bb9\u6613\u5237\u51fa\u597d\u5361",
+            "\u6240\u6709\u6b66\u5668\u4f24\u5bb3\u518d\u4e58\u4e00\u622a",
+            "立即获得护盾，受伤时优先消耗；可叠加，仅本局有效",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "\u7ad9\u4f4f\u5f00\u706b\uff0c\u4e00\u7bad\u7a7f\u8fc7\u53bb",
+            "\u4e22\u51fa\u53bb\u518d\u98de\u56de\u6765\u6253\u602a",
+            "\u5148\u4eae\u5708\uff0c\u518d\u7838\u4e0b\u4e00\u7247\u706b",
+            "\u81ea\u52a8\u6254\u706b\u7403",
+            "\u706b\u56e2\u56f4\u7740\u4f60\u8f6c",
+            "\u8d70\u8fc7\u7684\u5730\u65b9\u7740\u706b",
+            "",
+            "",
+            "",
+            "",
+            "\u706b\u7403\u66f4\u5927\u66f4\u70eb\uff0c\u6253\u4e2d\u4f1a\u70e7\u5730",
+            "\u706b\u56e2\u8f6c\u5f97\u66f4\u5927\u66f4\u5feb\u66f4\u70eb",
+            "\u8eab\u8fb9\u4e00\u76f4\u6709\u4e00\u5708\u706b",
+            "\u5c04\u4e2d\u540e\u6e85\u51fa\u4e00\u5c0f\u7bad",
+            "\u591a\u98de\u4e00\u4e2a\u6765\u56de",
+            "\u706b\u5708\u66f4\u5927\uff0c\u7838\u5f97\u66f4\u75bc",
+            "",
+            "",
+            "",
+            "",
+            "\u591a\u6253\u51fa\u4e00\u4e2a\u706b\u7403",
+            "\u591a\u4e00\u9897\u56f4\u7740\u8f6c\u7684\u706b",
+            "\u706b\u70e7\u5f97\u66f4\u4e45\u66f4\u70eb",
+            "\u80fd\u591a\u7a7f\u51e0\u4e2a\u602a",
+            "\u53bb\u548c\u56de\u591a\u6253\u4e00\u4e0b",
+            "\u591a\u7838\u4e00\u5904"
         };
 
         public Mode State { get; private set; }
@@ -43,8 +84,18 @@ namespace Emberlight
         public bool HurtReady { get { return hurtTimer <= 0; } }
         public int EnemyCount { get { return combat != null ? combat.EnemyCount : 0; } }
 
+        /// <summary>UI API: refreshes left this run.</summary>
+        public int RefreshRemaining { get { return Progress != null ? Progress.RefreshesRemaining : 0; } }
+        /// <summary>UI API: current luck.</summary>
+        public float LuckValue { get { return Progress != null ? Progress.Luck : 0f; } }
+        /// <summary>UI API: last offered cards.</summary>
+        public EmberOffer[] CurrentOffers { get { return offered; } }
+
         EmberCombat combat;
         EmberMenuUi ui;
+        int selectedWaves = 25, pendingWavePicks;
+        EmberDifficulty selectedDifficulty = EmberDifficulty.Standard;
+        LevelConfig runLevel = LevelConfig.Default;
         Transform world, player;
         Camera cam;
         float hurtTimer;
@@ -52,8 +103,12 @@ namespace Emberlight
         Vector2 origin, stick;
         EmberOffer[] offered = new EmberOffer[0];
         readonly System.Random random = new System.Random();
+        int pendingSlots = 2;
+        int[] pendingRoster = new int[0];
+        int lastClearedWave;
+        bool compensationPick;
 
-        float MaxHealth { get { return 100 + Progress.BonusMaxHealth; } }
+        float MaxHealth { get { return 100 + (Progress != null ? Progress.BonusMaxHealth : 0); } }
 
         void Start()
         {
@@ -76,14 +131,74 @@ namespace Emberlight
                 State = Mode.Menu;
                 ui.Overlay.SetActive(false);
                 ui.BattleHud.Show(false);
-            }, BeginRun);
+            }, () => ShowMainMenu());
         }
 
         void OnDestroy() { Time.timeScale = 1; }
 
+        public void ShowMainMenu()
+        {
+            State = Mode.Menu;
+            if (world != null) world.gameObject.SetActive(false);
+            ui.Show("烬灯行者", "25 波标准征程 · 50 波漫长征程\n自由选择难度，每局从相同的基础属性出发。\n清波选卡，击败最终守卫。",
+                new[] { "提灯出发" }, new UnityEngine.Events.UnityAction[] { BeginRun });
+        }
+
+        /// <summary>Entry: pick N then single starter weapon (no skip).</summary>
         public void BeginRun()
         {
+            if (ui == null || ui.BattleHud == null || ui.GodsSelect == null) return;
+            if (ui.UpgradePanel != null) ui.UpgradePanel.Hide();
+            ui.Overlay.SetActive(false);
+            ui.BattleHud.Show(false);
+            ui.StickBase.gameObject.SetActive(false);
+            pendingSlots = 2;
+            pendingRoster = new int[0];
+            compensationPick = false;
+            State = Mode.SelectLength;
+            ui.Show("选择征程", "局长与难度独立选择。\n前 10 波每波选卡，之后每 2 波选卡；阶段 Boss 额外奖励一次。",
+                new[] { "标准征程 · 25 波（推荐）", "漫长征程 · 50 波", "返回营地" },
+                new UnityEngine.Events.UnityAction[] { () => ChooseLength(25), () => ChooseLength(50), ShowMainMenu });
+        }
+
+        void ChooseLength(int waves)
+        {
+            selectedWaves = waves;
+            State = Mode.SelectDifficulty;
+            ui.Show("选择难度", selectedWaves + " 波征程\n休闲适合轻松构筑，标准体验完整挑战，困难面对更多精英。",
+                new[] { "休闲 · 怪物更少，伤害更低", "标准 · 均衡挑战", "困难 · 更多怪物与精英" },
+                new UnityEngine.Events.UnityAction[] { () => ChooseDifficulty(EmberDifficulty.Casual),
+                    () => ChooseDifficulty(EmberDifficulty.Standard), () => ChooseDifficulty(EmberDifficulty.Hard) });
+        }
+
+        void ChooseDifficulty(EmberDifficulty difficulty)
+        {
+            selectedDifficulty = difficulty;
+            ui.Overlay.SetActive(false);
+            State = Mode.SelectSlots;
+            ui.GodsSelect.ShowSlots(OnSlotsChosen);
+        }
+
+        void OnSlotsChosen(int slots)
+        {
+            pendingSlots = slots;
+            State = Mode.SelectRoster;
+            ui.GodsSelect.ShowRoster(slots, OnRosterChosen);
+        }
+
+        void OnRosterChosen(int[] weapons)
+        {
+            pendingRoster = weapons ?? new[] { RunProgress.WeaponBasic };
+            StartRunWith(pendingRoster, pendingSlots);
+        }
+
+
+        void StartRunWith(int[] weapons, int slots)
+        {
             if (ui == null || ui.BattleHud == null) return;
+            runLevel = LevelConfig.Create(selectedDifficulty, selectedWaves);
+            pendingWavePicks = 0;
+            if (ui.GodsSelect != null) ui.GodsSelect.Hide();
             if (world != null)
             {
                 world.gameObject.SetActive(false);
@@ -94,10 +209,12 @@ namespace Emberlight
             var effects = world.gameObject.AddComponent<EmberEffects>();
             effects.Initialize(this);
             Progress = new RunProgress();
-            Health = 100;
+            Progress.ConfigureRun(weapons, slots);
+            Health = MaxHealth;
             Elapsed = 0;
             Kills = 0;
             hurtTimer = 0;
+            compensationPick = false;
             player = EmberVisuals.Character("Keeper", world, new Color(.22f, .40f, .63f), true);
             var deco = new System.Random(73);
             for (int i = 0; i < 160; i++)
@@ -105,9 +222,10 @@ namespace Emberlight
                 Vector2 p = new Vector2((float)deco.NextDouble() * 46 - 23, (float)deco.NextDouble() * 46 - 23);
                 EmberVisuals.Shape("Ruin stone", world, p, new Vector2(.3f + (float)deco.NextDouble(), .18f), new Color(.10f, .15f, .19f), 0);
             }
-            var level = LevelConfig.Default;
+            var level = runLevel;
             level.ApplyWorld();
             EmberWorld.BuildBoundary(world);
+            // Begin activates only weapons in slots (OwnsWeapon gate).
             combat.Begin(world, player, cam, effects, level);
             UpdateCamera();
             SetPlaying();
@@ -116,6 +234,7 @@ namespace Emberlight
         void SetPlaying()
         {
             if (ui.UpgradePanel != null) ui.UpgradePanel.Hide();
+            if (ui.GodsSelect != null) ui.GodsSelect.Hide();
             State = Mode.Playing;
             ui.Overlay.SetActive(false);
             ui.BattleHud.Show(true);
@@ -142,7 +261,6 @@ namespace Emberlight
 
             combat.Tick(dt);
             if (State != Mode.Playing) return;
-            // Upgrades open only via OnWaveCleared (no XP Pending path).
             UpdateHud();
         }
 
@@ -153,6 +271,8 @@ namespace Emberlight
             int remaining = combat != null ? combat.WaveRemaining : 0;
             int quota = combat != null ? combat.WaveQuota : 0;
             ui.BattleHud.Set(Health, MaxHealth, Progress, Elapsed, Kills, wave, remaining, quota);
+            ui.BattleHud.Stage(wave, runLevel.BossWave, LevelConfig.DifficultyName(runLevel.Difficulty), runLevel.WaveName(wave));
+            ui.BattleHud.Encounter(combat.EncounterText);
             var boss = combat.Boss;
             ui.BattleHud.Boss(
                 boss == null ? 0 : boss.hp / boss.maxHp,
@@ -160,10 +280,21 @@ namespace Emberlight
                 boss != null && State == Mode.Playing);
         }
 
+        public bool NeedsHealing { get { return State == Mode.Playing && Health < MaxHealth; } }
+        public static float HealedHealth(float current, float maximum, float amount)
+        { return Mathf.Min(maximum, current + Mathf.Max(0, amount)); }
+        public bool HealPlayer(float amount)
+        {
+            if (!NeedsHealing || amount <= 0) return false;
+            Health = HealedHealth(Health, MaxHealth, amount);
+            UpdateHud();
+            return true;
+        }
+
         public void HurtPlayer(float damage)
         {
-            if (State != Mode.Playing || hurtTimer > 0) return;
-            Health = Mathf.Max(0, Health - damage);
+            if (State != Mode.Playing || hurtTimer > 0 || damage <= 0) return;
+            Health = Mathf.Max(0, Health - Progress.AbsorbDamage(damage * runLevel.DamageMultiplier));
             hurtTimer = .65f;
             UpdateHud();
             if (Health <= 0) EndRun(false);
@@ -176,10 +307,13 @@ namespace Emberlight
 
         void UpdateCamera() { cam.transform.position = new Vector3(player.position.x, player.position.y, -10); }
 
-        /// <summary>Wave 1-5 clear: forced 3-choice card, then AdvanceAfterUpgrade on Choose.</summary>
         public void OnWaveCleared(int clearedWave)
         {
             if (State != Mode.Playing || Progress == null) return;
+            lastClearedWave = clearedWave;
+            compensationPick = false;
+            pendingWavePicks = runLevel.PicksAfterWave(clearedWave);
+            if (pendingWavePicks == 0) { combat.AdvanceAfterUpgrade(); SetPlaying(); return; }
             Progress.OfferChoices();
             OfferUpgrade(clearedWave);
         }
@@ -189,10 +323,22 @@ namespace Emberlight
             State = Mode.Upgrade;
             ui.BattleHud.Show(false);
             stick = Vector2.zero;
+            lastClearedWave = clearedWave;
             offered = Progress.Choices(random, clearedWave);
             ui.Overlay.SetActive(false);
             ui.StickBase.gameObject.SetActive(false);
-            ui.UpgradePanel.Show(offered, Progress, UpgradeNames, UpgradeDetails, SelectUpgrade);
+            ui.UpgradePanel.Show(offered, Progress, UpgradeNames, UpgradeDetails, SelectUpgrade, TryRefreshOffer);
+        }
+
+        /// <summary>UI API: spend a free refresh and rebuild the offer panel.</summary>
+        public bool TryRefreshOffer()
+        {
+            if (State != Mode.Upgrade || Progress == null) return false;
+            EmberOffer[] next;
+            if (!Progress.TryRefresh(random, lastClearedWave, out next) || next == null) return false;
+            offered = next;
+            ui.UpgradePanel.Show(offered, Progress, UpgradeNames, UpgradeDetails, SelectUpgrade, TryRefreshOffer);
+            return true;
         }
 
         public void SelectUpgrade(EmberOffer offer)
@@ -201,9 +347,22 @@ namespace Emberlight
             bool ok = false;
             for (int i = 0; i < offered.Length; i++)
                 if (offered[i].Id == offer.Id && offered[i].Rarity == offer.Rarity) { ok = true; break; }
-            if (!ok || !Progress.Choose(offer)) return;
-            if (offer.Id == 7) Health = Mathf.Min(MaxHealth, Health + Progress.HealAmount(offer.Rarity));
-            if (offer.Id == 9) Health = Mathf.Min(MaxHealth, Health + Progress.HealAmount(offer.Rarity));
+            if (!ok) return;
+            bool grantedNew;
+            if (!Progress.Choose(offer, out grantedNew)) return;
+
+            if (!compensationPick) pendingWavePicks = Mathf.Max(0, pendingWavePicks - 1);
+            // New weapon → one immediate compensation per scheduled choice.
+            if (grantedNew && !compensationPick)
+            {
+                compensationPick = true;
+                Progress.OfferChoices();
+                OfferUpgrade(lastClearedWave);
+                return;
+            }
+
+            compensationPick = false;
+            if (pendingWavePicks > 0) { Progress.OfferChoices(); OfferUpgrade(lastClearedWave); return; }
             combat.AdvanceAfterUpgrade();
             SetPlaying();
         }
@@ -221,20 +380,13 @@ namespace Emberlight
 
         void End(bool won)
         {
+            if (State == Mode.Won || State == Mode.Lost || Progress == null) return;
             State = won ? Mode.Won : Mode.Lost;
-            int best = PlayerPrefs.GetInt("Emberlight.BestKills", 0);
-            if (Kills > best)
-            {
-                best = Kills;
-                PlayerPrefs.SetInt("Emberlight.BestKills", best);
-                PlayerPrefs.Save();
-            }
-            int score = Progress != null ? Progress.Score : 0;
-            ui.Show(
-                won ? "\u957f\u591c\u7834\u6653" : "\u706f\u706b\u6682\u7184",
-                string.Format("\u751f\u5b58\u0020\u007b\u0030\u003a\u0030\u007d\u0020\u79d2\u0020\u00b7\u0020\u51fb\u6740\u0020\u007b\u0031\u007d\u000a\u4f59\u70ec\u0020\u007b\u0032\u007d\u000a\u6700\u9ad8\u7eaa\u5f55\uff1a\u51fb\u6740\u0020\u007b\u0033\u007d", Elapsed, Kills, score, best),
-                new[] { "\u518d\u6218\u4e00\u6b21" },
-                new UnityEngine.Events.UnityAction[] { BeginRun });
+            ui.Show(won ? "长夜破晓" : "灯火暂熄",
+                LevelConfig.DifficultyName(runLevel.Difficulty) + " · " + runLevel.BossWave + " 波征程"
+                + "\n到达第 " + combat.Wave + " 波 · 生存 " + Elapsed.ToString("0") + " 秒"
+                + "\n击杀 " + Kills + " · 余烬 " + Progress.FinalScore(),
+                new[] { "再战一次", "返回营地" }, new UnityEngine.Events.UnityAction[] { BeginRun, ShowMainMenu });
         }
 
         void ReadInput()

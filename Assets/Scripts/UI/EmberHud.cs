@@ -7,9 +7,11 @@ namespace Emberlight
     public sealed class EmberHud
     {
         public readonly GameObject Root;
-        readonly Image health, waveFill, bossFill;
+        readonly Image health, waveFill, bossFill, shield;
+        readonly TextMeshProUGUI shieldText;
         readonly TextMeshProUGUI healthText, waveText, clock, bossText;
-        readonly GameObject bossRoot;
+        readonly GameObject bossRoot, encounterRoot;
+        readonly TextMeshProUGUI encounterLabel;
         readonly TMP_FontAsset font;
 
         public EmberHud(Transform parent, TMP_FontAsset fontAsset, System.Action pause)
@@ -17,9 +19,11 @@ namespace Emberlight
             font = fontAsset;
             Root = Box(parent, "Battle HUD", new Vector2(.04f, .83f), new Vector2(.96f, .995f), new Color(.02f, .035f, .055f, .9f)).gameObject;
             clock = Text(Root.transform, font, "", 19, new Vector2(.03f, .77f), new Vector2(.80f, .98f));
-            health = Bar(Root.transform, "Life", new Vector2(.035f, .48f), new Vector2(.79f, .73f), new Color(.88f, .29f, .27f));
+            health = Bar(Root.transform, "Life", new Vector2(.035f, .53f), new Vector2(.79f, .75f), new Color(.88f, .29f, .27f));
             healthText = Text(health.transform.parent, font, "", 16, Vector2.zero, Vector2.one);
-            waveFill = Bar(Root.transform, "Wave", new Vector2(.035f, .18f), new Vector2(.79f, .41f), new Color(.94f, .66f, .22f));
+            shield = Bar(Root.transform, "Shield", new Vector2(.035f, .30f), new Vector2(.79f, .50f), new Color(.20f, .72f, .96f));
+            shieldText = Text(shield.transform.parent, font, "", 14, Vector2.zero, Vector2.one);
+            waveFill = Bar(Root.transform, "Wave", new Vector2(.035f, .06f), new Vector2(.79f, .27f), new Color(.94f, .66f, .22f));
             waveText = Text(waveFill.transform.parent, font, "", 15, Vector2.zero, Vector2.one);
             var b = Box(Root.transform, "Pause", new Vector2(.83f, .24f), new Vector2(.98f, .86f), new Color(.12f, .19f, .25f));
             Text(b.transform, font, "\u6682\u505c", 17, Vector2.zero, Vector2.one);
@@ -28,10 +32,16 @@ namespace Emberlight
             bossText = Text(bossRoot.transform, font, "", 16, new Vector2(.02f, .47f), new Vector2(.98f, 1));
             bossFill = Bar(bossRoot.transform, "Boss life", new Vector2(.04f, .13f), new Vector2(.96f, .42f), new Color(.83f, .27f, .58f));
             bossRoot.SetActive(false);
+            encounterRoot = Box(Root.transform, "Encounter banner", new Vector2(.06f, -.40f), new Vector2(.94f, -.06f), new Color(.12f, .04f, .10f, .92f)).gameObject;
+            encounterRoot.GetComponent<Image>().raycastTarget = false;
+            encounterLabel = Text(encounterRoot.transform, font, "", 21, Vector2.zero, Vector2.one);
+            encounterRoot.SetActive(false);
         }
 
         public void Set(float hp, float max, RunProgress progress, float seconds, int kills, int wave, int waveRemaining, int waveQuota)
         {
+            shield.fillAmount = progress.ShieldCapacity > 0 ? progress.Shield / progress.ShieldCapacity : 0;
+            shieldText.text = "护盾 " + progress.Shield.ToString("0");
             health.fillAmount = Mathf.Clamp01(hp / max);
             healthText.text = "\u751f\u547d\u0020\u0020" + Mathf.Max(0, hp).ToString("0") + " / " + max.ToString("0");
             float progress01 = waveQuota > 0 ? 1f - Mathf.Clamp01((float)waveRemaining / waveQuota) : 1f;
@@ -41,9 +51,26 @@ namespace Emberlight
                 waveText.text = "\u7b2c\u0020" + wave + "\u0020\u6ce2\u0020\u0020\u00b7\u0020\u0020\u5269\u4f59\u0020" + waveRemaining + "\u0020/\u0020" + waveQuota;
             else
                 waveText.text = "\u7b2c\u0020" + wave + "\u0020\u6ce2\u0020\u0020\u00b7\u0020\u0020Boss";
+            string slots = progress != null
+                ? ("     \u6b66\u5668 " + progress.OwnedWeaponCount + "/" + progress.WeaponSlots
+                   + "     \u5e78\u8fd0 " + Mathf.RoundToInt(progress.Luck))
+                : "";
             clock.text = ((int)seconds / 60).ToString("00") + ":" + ((int)seconds % 60).ToString("00")
                 + "     \u51fb\u6740 " + kills
-                + "     \u4f59\u70ec " + (progress != null ? progress.Score : 0);
+                + "     \u4f59\u70ec " + (progress != null ? progress.Score : 0)
+                + slots;
+        }
+
+        public void Stage(int wave, int total, string difficulty, string name)
+        {
+            waveText.text = difficulty + " · " + wave + "/" + total + " 波 · " + name;
+        }
+
+        public void Encounter(string message)
+        {
+            bool show = !string.IsNullOrEmpty(message);
+            encounterRoot.SetActive(show);
+            if (show && encounterLabel.text != message) encounterLabel.text = message;
         }
 
         public void Show(bool visible) { Root.SetActive(visible); if (!visible) bossRoot.SetActive(false); }
