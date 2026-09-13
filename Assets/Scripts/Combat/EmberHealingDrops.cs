@@ -39,7 +39,7 @@ namespace Emberlight
                 float pulse = 1f + .08f * Mathf.Sin(d.life * 5f);
                 d.view.transform.localScale = Vector3.one * (.48f * pulse);
                 d.view.color = new Color(.16f, .8f, .46f, d.life < 5f ? .55f + .45f * Mathf.Sin(d.life * 10f) : 1f);
-                // Always attract/pick while playing (残血/满血都能吃; 满血多余转护盾)
+                // Always attract/pick while playing; overflow heal discarded (no shield)
                 if (game.State != EmberGame.Mode.Playing) continue;
                 float attract = game.NeedsHealing ? 2.2f : 1.5f; // 残血吸得更远
                 float speed = game.NeedsHealing ? 7f : 5f;
