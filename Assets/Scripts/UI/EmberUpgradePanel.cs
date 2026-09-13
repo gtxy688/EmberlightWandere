@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -24,7 +24,7 @@ namespace Emberlight
                     return "护盾 +" + EmberRarityUtil.ShieldAmount(rarity).ToString("0") + " · 当前 " + progress.Shield.ToString("0");
                 case RunProgress.StatAtk:
                     return "\u653b\u51fb\u0020\u002b" + Mathf.RoundToInt(EmberRarityUtil.GenericAtkAs(rarity) * 100) + "%  (\u5408\u8ba1 +" + Mathf.RoundToInt(progress.DamageBonus * 100) + "%)";
-                case RunProgress.StatAS:
+                case RunProgress.StatAs:
                     return "\u653b\u901f\u5df2\u9000\u51fa\u901a\u7528\u6c60";
                 case RunProgress.StatLuck:
                     return "\u5e78\u8fd0\u0020\u002b" + EmberRarityUtil.GenericLuck(rarity) + "  (\u5f53\u524d " + Mathf.RoundToInt(progress.Luck) + "/" + RunProgress.MaxLuck + ")";
@@ -161,7 +161,7 @@ namespace Emberlight
         {
             var seal = Box("Seal", parent, new Vector2(.15f, .40f), new Vector2(.85f, .96f), new Color(c.r, c.g, c.b, .12f));
             seal.sprite = EmberVisuals.Disc; seal.preserveAspect = true;
-            if (id == RunProgress.StatShield || id == RunProgress.StatAS || id == RunProgress.MetaOrbit || id == RunProgress.ExclOrbit || id == RunProgress.WeaponOrbit)
+            if (id == RunProgress.StatShield || id == RunProgress.StatAs || id == RunProgress.MetaOrbit || id == RunProgress.ExclOrbit || id == RunProgress.WeaponOrbit)
             {
                 var ring = Box("Orbit glyph", parent, new Vector2(.18f, .32f), new Vector2(.82f, .84f), c);
                 ring.sprite = EmberArt.Ring; ring.preserveAspect = true;
