@@ -290,6 +290,21 @@ namespace Emberlight
             UpdateHud();
             return true;
         }
+        /// <summary>Monster heal drop: pickable at any HP. Heals first; leftover fills shield.</summary>
+        public bool PickHealingDrop(float amount)
+        {
+            if (State != Mode.Playing || amount <= 0 || Progress == null) return false;
+            float room = MaxHealth - Health;
+            if (room > 0f)
+            {
+                float healed = Mathf.Min(room, amount);
+                Health = HealedHealth(Health, MaxHealth, healed);
+                amount -= healed;
+            }
+            if (amount > 0f) Progress.AddShield(amount);
+            UpdateHud();
+            return true;
+        }
 
         public void HurtPlayer(float damage)
         {
