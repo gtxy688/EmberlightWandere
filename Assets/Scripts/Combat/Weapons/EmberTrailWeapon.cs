@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 namespace Emberlight
@@ -15,11 +15,15 @@ namespace Emberlight
 
         readonly List<Flame> flames = new List<Flame>();
         float trailTimer;
+        SpriteRenderer ringView;
+        float seaPatchTimer;
 
         public override void Reset()
         {
             flames.Clear();
             trailTimer = 0;
+            if (ringView != null) { Object.Destroy(ringView.gameObject); ringView = null; }
+            seaPatchTimer = 0;
         }
 
         EmberPool pool;
@@ -83,11 +87,23 @@ namespace Emberlight
                 SpawnPatch(ctx.PlayerPos, ctx.World, extend ? 1.25f : 1f);
             }
 
-            // Metamorph \u706b\u6d77: persistent ring around player
+            // Metamorph 火海: visible persistent ring + DoT
             if (ctx.Progress != null && ctx.Progress.TrailRing && ownsTrail)
             {
-                float ringR = 1.8f;
-                float ringDps = 55f * ctx.Progress.DamageMul * (ctx.Progress.TrailPower > 0 ? ctx.Progress.TrailPower : 0.4f);
+                float ringR = 2.1f;
+                float ringDps = 70f * ctx.Progress.DamageMul * (ctx.Progress.TrailPower > 0 ? ctx.Progress.TrailPower : 0.4f);
+                if (ringView == null)
+                {
+                    ringView = EmberVisuals.Shape("Fire sea ring", ctx.World, ctx.PlayerPos, Vector2.one * (ringR * 2.05f), new Color(1f, .35f, .05f, .38f), 3);
+                    ringView.sprite = EmberArt.Ring;
+                }
+                else
+                {
+                    ringView.transform.position = ctx.PlayerPos;
+                    float pulse = 1f + .06f * Mathf.Sin(ctx.Elapsed * 6f);
+                    ringView.transform.localScale = Vector3.one * (ringR * 2.05f * pulse);
+                    ringView.color = new Color(1f, .4f + .15f * Mathf.Sin(ctx.Elapsed * 8f), .05f, .42f);
+                }
                 for (int j = ctx.EnemyCount() - 1; j >= 0; j--)
                 {
                     var e = ctx.GetEnemy(j);
@@ -95,8 +111,17 @@ namespace Emberlight
                     if (Vector2.Distance(ctx.PlayerPos, e.view.position) < ringR + e.radius)
                         ctx.DealDamage(j, ringDps * dt, ctx.PlayerPos);
                 }
-                if ((int)(ctx.Elapsed * 8) != (int)((ctx.Elapsed - dt) * 8))
-                    ctx.Effects.Trail(ctx.PlayerPos + new Vector2(Mathf.Cos(ctx.Elapsed * 3f), Mathf.Sin(ctx.Elapsed * 3f)) * ringR);
+                seaPatchTimer -= dt;
+                if (seaPatchTimer <= 0f)
+                {
+                    seaPatchTimer = 0.35f;
+                    SpawnPatch(ctx.PlayerPos, ctx.World, 1.1f);
+                }
+            }
+            else if (ringView != null)
+            {
+                Object.Destroy(ringView.gameObject);
+                ringView = null;
             }
 
             for (int i = flames.Count - 1; i >= 0; i--)

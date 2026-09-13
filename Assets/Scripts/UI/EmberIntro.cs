@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
@@ -33,15 +33,18 @@ namespace Emberlight
             var bg = EmberHud.Box(screen.transform, "Night sky", Vector2.zero, Vector2.one, new Color(.025f, .045f, .07f));
 
             TMP_FontAsset fallback = TMP_Settings.defaultFontAsset;
-            var title = EmberHud.Text(bg.transform, fallback, "EmberlightWandere", 27, new Vector2(.03f, .49f), new Vector2(.97f, .60f));
-            prompt = EmberHud.Text(bg.transform, fallback, "Loading...", 20, new Vector2(.1f, .24f), new Vector2(.9f, .32f));
+            // Show CN + EN together the whole time
+            var titleCn = EmberHud.Text(bg.transform, fallback, "\u70ec\u706f\u884c\u8005", 40, new Vector2(.03f, .50f), new Vector2(.97f, .62f));
+            var titleEn = EmberHud.Text(bg.transform, fallback, "EmberlightWanderer", 22, new Vector2(.04f, .44f), new Vector2(.96f, .51f));
+            prompt = EmberHud.Text(bg.transform, fallback, "Loading...", 20, new Vector2(.1f, .26f), new Vector2(.9f, .34f));
             var progress = EmberHud.Bar(bg.transform, "Loading", new Vector2(.16f, .20f), new Vector2(.84f, .214f), new Color(.95f, .67f, .27f));
             progress.fillAmount = 0;
             float began = Time.unscaledTime;
+            const float minShow = 1.75f;
 
-            // Empty static SDF is unusable — bake a dynamic TMP font and pre-add every UI glyph.
-            progress.fillAmount = .4f;
+            progress.fillAmount = .15f;
             yield return null;
+
             var font = EmberFonts.CreateChinese();
             if (font == null)
             {
@@ -49,25 +52,34 @@ namespace Emberlight
                 yield break;
             }
 
-            title.font = font;
+            titleCn.font = font;
+            titleEn.font = font;
             prompt.font = font;
             prompt.text = "\u70b9\u4eae\u706f\u706b\u2026";
-            progress.fillAmount = .7f;
+            progress.fillAmount = .45f;
+            yield return null;
 
-            var mark = EmberHud.Box(bg.transform, "Flame emblem", new Vector2(.43f, .63f), new Vector2(.57f, .76f), new Color(1, .61f, .19f));
+            var mark = EmberHud.Box(bg.transform, "Flame emblem", new Vector2(.43f, .65f), new Vector2(.57f, .78f), new Color(1, .61f, .19f));
             mark.sprite = EmberArt.Flame; mark.type = Image.Type.Simple; mark.preserveAspect = true;
             var core = EmberHud.Box(mark.transform, "Flame heart", new Vector2(.28f, .10f), new Vector2(.72f, .64f), new Color(1, .92f, .63f));
             core.sprite = EmberArt.Flame; core.type = Image.Type.Simple;
 
-            var warm = new[] { EmberArt.Glow, EmberArt.Panel, EmberArt.Ring, EmberVisuals.Disc };
+            progress.fillAmount = .7f;
             yield return null;
             prepared(font);
-            progress.fillAmount = 1;
-            while (Time.unscaledTime - began < 1.4f) yield return null;
 
-            title.text = "\u70ec\u0020\u706f\u0020\u884c\u0020\u8005";
-            title.fontSize = 40;
-            EmberHud.Text(bg.transform, font, "EmberlightWandere", 23, new Vector2(.04f, .435f), new Vector2(.96f, .50f));
+            // Ease bar to full over remaining time so it never pops in instantly
+            while (true)
+            {
+                float t = (Time.unscaledTime - began) / minShow;
+                progress.fillAmount = Mathf.Clamp01(Mathf.Lerp(.7f, 1f, Mathf.InverseLerp(.7f, 1f, Mathf.Max(t, .7f))));
+                if (t >= 1f) break;
+                progress.fillAmount = Mathf.Clamp01(Mathf.Lerp(0.15f, 1f, t));
+                yield return null;
+            }
+            progress.fillAmount = 1f;
+            yield return null;
+
             EmberHud.Text(bg.transform, font, "\u63d0\u706f\u5165\u591c\uff0c\u4ee5\u706b\u7834\u6653\u3002", 21, new Vector2(.08f, .35f), new Vector2(.92f, .41f));
             progress.transform.parent.gameObject.SetActive(false);
             prompt.text = "\u6309\u4efb\u610f\u952e\u7ee7\u7eed\u0020\u00b7\u0020\u70b9\u51fb\u5c4f\u5e55\u5f00\u59cb";
