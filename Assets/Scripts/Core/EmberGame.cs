@@ -11,7 +11,7 @@ namespace Emberlight
         public static readonly string[] UpgradeNames =
         {
             "\u653b\u51fb\u529b",
-            "\u653b\u901f\uff08\u5df2\u9000\u51fa\uff09",
+            "\u653b\u901f",
             "\u5e78\u8fd0",
             "\u4f24\u5bb3\u589e\u5e45",
             "护盾", "", "", "", "", "",

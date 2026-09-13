@@ -144,6 +144,17 @@ namespace Emberlight
             }
         }
 
+        public static float GenericAttackSpeed(EmberRarity rarity)
+        {
+            switch (rarity)
+            {
+                case EmberRarity.Silver: return 0.20f;
+                case EmberRarity.Gold: return 0.30f;
+                case EmberRarity.Diamond: return 0.50f;
+                default: return 0.10f;
+            }
+        }
+
         public static int GenericLuck(EmberRarity rarity)
         {
             switch (rarity)
@@ -177,7 +188,7 @@ namespace Emberlight
         public static float ShieldAmount(EmberRarity rarity)
         { switch (rarity) { case EmberRarity.Silver: return 500; case EmberRarity.Gold: return 750; case EmberRarity.Diamond: return 1250; default: return 250; } }
 
-        public static bool IsGenericId(int id) { return id == 0 || id == 2 || id == 3 || id == 4; } // ATK/Luck/Amp; AS retired
+        public static bool IsGenericId(int id) { return id == 0 || id == 1 || id == 2 || id == 3 || id == 4; } // ATK/AS/Luck/Amp/Shield
     }
 
     public struct EmberOffer

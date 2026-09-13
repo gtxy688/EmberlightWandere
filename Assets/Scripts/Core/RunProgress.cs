@@ -7,7 +7,7 @@ namespace Emberlight
     public sealed class RunProgress
     {
         public const int StatAtk = 0;
-        public const int StatAS = 1;
+        public const int StatAs = 1;
         public const int StatLuck = 2;
         public const int StatAmp = 3;
         public const int StatShield = 4;
@@ -78,7 +78,7 @@ namespace Emberlight
         readonly Dictionary<int, float> weaponMagnitude = new Dictionary<int, float>();
 
         static readonly int[] RosterIds = { WeaponBasic, WeaponOrbit, WeaponTrail, WeaponPierce, WeaponBoom, WeaponMeteor };
-        static readonly int[] GenericIds = { StatAtk, StatLuck, StatAmp, StatShield }; // no global AS (jack)
+        static readonly int[] GenericIds = { StatAtk, StatAs, StatLuck, StatAmp, StatShield };
 
         static readonly int[] MetaIds = { MetaBasic, MetaOrbit, MetaTrail, MetaPierce, MetaBoom, MetaMeteor };
         static readonly int[] ExclIds = { ExclBasic, ExclOrbit, ExclTrail, ExclPierce, ExclBoom, ExclMeteor };
@@ -282,12 +282,16 @@ namespace Emberlight
                     candW.Add(specialW);
                 }
             }
-            for (int i = 0; i < MetaIds.Length; i++)
+            // 质变进池：整次选卡仅 0.5% 概率放入候选（jack）
+            if (random.NextDouble() < 0.005)
             {
-                if (CanMetamorph(MetaIds[i]))
+                for (int i = 0; i < MetaIds.Length; i++)
                 {
-                    candIds.Add(MetaIds[i]);
-                    candW.Add(Math.Max(1, specialW - 1)); // metamorph rarer than exclusive (locked diamond)
+                    if (CanMetamorph(MetaIds[i]))
+                    {
+                        candIds.Add(MetaIds[i]);
+                        candW.Add(10); // once gated in, compete like a generic
+                    }
                 }
             }
 
@@ -393,8 +397,7 @@ namespace Emberlight
                     case StatAtk:
                         DamageBonus += EmberRarityUtil.GenericAtkAs(offer.Rarity);
                         break;
-                    case StatAS:
-                        return false; // retired from generic pool
+                    case StatAs: AttackSpeedBonus += EmberRarityUtil.GenericAttackSpeed(offer.Rarity); break;
                     case StatLuck:
                         Luck += EmberRarityUtil.GenericLuck(offer.Rarity);
                         if (Luck > MaxLuck) Luck = MaxLuck;
