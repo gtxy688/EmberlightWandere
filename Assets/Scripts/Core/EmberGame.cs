@@ -112,6 +112,10 @@ namespace Emberlight
 
         void Start()
         {
+            // Mobile defaults to a 30 fps cap; this is a 2D sprite game with a light
+            // per-frame budget, so ask for 60 and keep VSync out of the way.
+            QualitySettings.vSyncCount = 0;
+            Application.targetFrameRate = 60;
             EmberAudio.Ensure();
             State = Mode.Loading;
             combat = new EmberCombat(this);

@@ -2,7 +2,7 @@
 
 ## 旧任务核对
 - Boss「长夜守卫」：已实现（EmberBoss；自然出场 Wave6）
-- 加载页 EmberIntro：已实现；字体 TMP 用 `Fonts/NotoSansCJKsc-Regular SDF`
+- 加载页 EmberIntro：已实现；字体由 `EmberFonts.CreateChinese()` 从 `Fonts/NotoSansCJKsc-Regular.otf` 运行时烘焙动态 SDF 图集（原预烘 `... SDF` 资产已删除）
 
 ## 通用词条稀有度（Gods-Select-v3 · 幸运权重）
 | 稀有度 | G-ATK / G-AS | G-LUCK | G-AMP |
