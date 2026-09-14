@@ -343,11 +343,36 @@ namespace Emberlight
                 return;
             }
             Debug.Log("[Probe] state=" + State + " :: " + combat.DebugState());
+            ProbeDumpKeeper();
+        }
+
+        /// <summary>
+        /// Lists every SpriteRenderer under the keeper with its sprite, colour and sorting
+        /// order, plus the world bounds of each. Answers "is the shadow object there at all"
+        /// and "is it drawing somewhere off-screen" without needing a screenshot.
+        /// </summary>
+        public void ProbeDumpKeeper()
+        {
+            if (player == null) { Debug.LogError("[Probe] no player transform"); return; }
+            var parts = player.GetComponentsInChildren<SpriteRenderer>(true);
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("[Probe] keeper hierarchy: " + parts.Length + " renderers, root=" + player.position);
+            foreach (var r in parts)
+            {
+                var b = r.bounds;
+                sb.AppendLine(string.Format("  {0,-22} order={1,3} enabled={2,-5} sprite={3,-16} color=({4:F2},{5:F2},{6:F2},{7:F2}) world=({8:F2},{9:F2}) size=({10:F2},{11:F2})",
+                    r.gameObject.name, r.sortingOrder, r.enabled,
+                    r.sprite != null ? r.sprite.name : "NULL",
+                    r.color.r, r.color.g, r.color.b, r.color.a,
+                    b.center.x, b.center.y, b.size.x, b.size.y));
+            }
+            Debug.Log(sb.ToString());
         }
 #endif
 
         void UpdateHud()
-        {            if (ui == null || ui.BattleHud == null || Progress == null) return;
+        {
+            if (ui == null || ui.BattleHud == null || Progress == null) return;
             int wave = combat != null ? combat.Wave : 1;
             int remaining = combat != null ? combat.WaveRemaining : 0;
             int quota = combat != null ? combat.WaveQuota : 0;
