@@ -98,7 +98,7 @@ namespace Emberlight
         public Transform RentEnemy(string key, Transform parent, Color body)
         {
             bool boss = key == "boss";
-            var go = Rent(key, parent, p => EmberVisuals.Character(boss ? "Nightwarden" : "Shade", p, body, false).gameObject);
+            var go = Rent(key, parent, p => EmberVisuals.Character(boss ? "Nightwarden" : "Shade", p, body).gameObject);
             go.transform.SetParent(parent, false);
             go.transform.rotation = Quaternion.identity;
             // Recolor cloak/hood if present (children Shape nodes).

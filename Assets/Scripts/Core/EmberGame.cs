@@ -240,7 +240,11 @@ namespace Emberlight
             Kills = 0;
             hurtTimer = 0;
             compensationPick = false;
-            player = EmberVisuals.Character("Keeper", world, new Color(.22f, .40f, .63f), true);
+            // The keeper rig belongs to EmberKeeperAnimation (hood rim, narrow eyes, swinging
+            // lantern); EmberVisuals.Character only builds the plain shade silhouette.
+            player = new GameObject("Keeper").transform;
+            player.SetParent(world, false);
+            player.gameObject.AddComponent<EmberKeeperAnimation>().Initialize();
             var deco = new System.Random(73);
             for (int i = 0; i < 160; i++)
             {

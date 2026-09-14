@@ -30,16 +30,19 @@ namespace Emberlight
             g.transform.localPosition=position; g.transform.localScale=scale;
             var r=g.AddComponent<SpriteRenderer>(); r.sprite=Disc; r.color=color; r.sortingOrder=order; return r;
         }
-        public static Transform Character(string name, Transform parent, Color body, bool keeper)
+        /// <summary>
+        /// Builds a hooded shade silhouette. This is the enemy/plain path only: the player
+        /// keeper is not built here, because EmberKeeperAnimation.Initialize owns that
+        /// shape (hood rim, narrow glowing eyes, swinging lantern).
+        /// </summary>
+        public static Transform Character(string name, Transform parent, Color body)
         {
             var root=new GameObject(name).transform; root.SetParent(parent,false);
             Shape("Shadow",root,new Vector2(0,-.25f),new Vector2(.8f,.25f),new Color(0,0,0,.25f),1);
-            if(keeper) { root.gameObject.AddComponent<EmberKeeperAnimation>().Initialize(); return root; }
             Shape("Cloak",root,Vector2.zero,new Vector2(.65f,.8f),body,3);
             Shape("Hood",root,new Vector2(0,.25f),new Vector2(.65f,.6f),body*1.2f,4);
             Shape("Face",root,new Vector2(0,.24f),new Vector2(.43f,.3f),new Color(.07f,.10f,.16f),5);
-            for(int i=-1;i<=1;i+=2) Shape("Eye",root,new Vector2(i*.1f,.25f),new Vector2(.06f,.08f),keeper?new Color(1,.85f,.4f):new Color(1,.35f,.4f),6);
-            if(keeper) { Shape("LanternGlow",root,new Vector2(.4f,0),Vector2.one*.65f,new Color(1,.6f,.1f,.16f),2); Shape("Lantern",root,new Vector2(.4f,0),new Vector2(.2f,.3f),new Color(1,.72f,.22f),7); }
+            for(int i=-1;i<=1;i+=2) Shape("Eye",root,new Vector2(i*.1f,.25f),new Vector2(.06f,.08f),new Color(1,.35f,.4f),6);
             return root;
         }
     }
