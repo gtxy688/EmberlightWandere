@@ -236,11 +236,15 @@ namespace Emberlight
             if (config.IsBossWave(wave))
             {
                 waveQuota = 0;
-                // Announce the Boss before it exists. Previously the Boss appeared on this very
-                // frame with no banner at all, which read as a bug on the final wave and gave
-                // the player no chance to reposition.
+                // bossSpawned means "this wave is a Boss wave", not "the Boss object exists".
+                // WaveRemaining and the wave-clear check both key off it, so leaving it false
+                // through the lead-in let them read the empty Boss wave as already cleared and
+                // advance the wave: the Boss was skipped before it could spawn and the advance
+                // cascaded through every following wave. Set it here; bossWarning alone gates
+                // when SpawnEnemy(true) actually runs.
                 if (!bossSpawned)
                 {
+                    bossSpawned = true;
                     bossWarning = BossWarningSeconds;
                     bool final = wave >= config.BossWave;
                     encounterText = final
@@ -298,15 +302,14 @@ namespace Emberlight
             healingDrops.Tick(dt, player.position);
             encounterTimer = Mathf.Max(0, encounterTimer - dt);
 
-            // Boss lead-in: hold the banner, then bring the Boss in. Deliberately placed before
-            // the horde spawner above could restart, and it never runs while a Boss is out.
+            // Boss lead-in: StartWave has already marked the wave as a Boss wave (bossSpawned),
+            // so nothing else will clear it while this counts down. Only the actual spawn waits.
             if (bossWarning > 0)
             {
                 bossWarning -= dt;
                 if (bossWarning <= 0)
                 {
                     bossWarning = 0;
-                    bossSpawned = true;
                     SpawnEnemy(true);
                 }
             }
