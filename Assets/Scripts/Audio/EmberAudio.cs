@@ -2,12 +2,14 @@ using UnityEngine;
 
 namespace Emberlight
 {
-    /// <summary>Audio-v1 minimal bus: one music loop + one-shot SFX. Missing clips are silent no-ops.</summary>
+    /// <summary>Audio-v1 bus: 2D music + SFX, PlayerPrefs volumes, silent-with-warn missing clips.</summary>
     public sealed class EmberAudio : MonoBehaviour
     {
         public static EmberAudio Instance { get; private set; }
 
         const float FireHitMinInterval = 0.05f;
+        const string PrefMusic = "ember_vol_music";
+        const string PrefSfx = "ember_vol_sfx";
 
         [Header("Volumes")]
         [SerializeField] float musicVolume = 0.7f;
@@ -33,10 +35,38 @@ namespace Emberlight
         float nextHitTime;
         AudioClip currentMusic;
 
+        public float MusicVolume
+        {
+            get { return musicVolume; }
+            set
+            {
+                musicVolume = Mathf.Clamp01(value);
+                if (music != null) music.volume = musicVolume;
+                PlayerPrefs.SetFloat(PrefMusic, musicVolume);
+                PlayerPrefs.Save();
+            }
+        }
+
+        public float SfxVolume
+        {
+            get { return sfxVolume; }
+            set
+            {
+                sfxVolume = Mathf.Clamp01(value);
+                if (sfx != null) sfx.volume = sfxVolume;
+                PlayerPrefs.SetFloat(PrefSfx, sfxVolume);
+                PlayerPrefs.Save();
+            }
+        }
+
         public static EmberAudio Ensure()
         {
-            if (Instance != null) return Instance;
-            var existing = FindObjectOfType<EmberAudio>();
+            if (Instance != null)
+            {
+                Instance.EnsureListener();
+                return Instance;
+            }
+            var existing = Object.FindObjectOfType<EmberAudio>();
             if (existing != null)
             {
                 Instance = existing;
@@ -44,7 +74,7 @@ namespace Emberlight
                 return existing;
             }
             var go = new GameObject("EmberAudio");
-            DontDestroyOnLoad(go);
+            Object.DontDestroyOnLoad(go);
             var audio = go.AddComponent<EmberAudio>();
             audio.Bootstrap();
             return audio;
@@ -63,6 +93,11 @@ namespace Emberlight
 
         void Bootstrap()
         {
+            if (PlayerPrefs.HasKey(PrefMusic)) musicVolume = Mathf.Clamp01(PlayerPrefs.GetFloat(PrefMusic, 0.7f));
+            else musicVolume = 0.7f;
+            if (PlayerPrefs.HasKey(PrefSfx)) sfxVolume = Mathf.Clamp01(PlayerPrefs.GetFloat(PrefSfx, 1f));
+            else sfxVolume = 1f;
+
             if (music == null)
             {
                 music = gameObject.AddComponent<AudioSource>();
@@ -75,29 +110,58 @@ namespace Emberlight
                 sfx.playOnAwake = false;
                 sfx.loop = false;
             }
+
+            music.spatialBlend = 0f;
+            sfx.spatialBlend = 0f;
+            music.ignoreListenerPause = true;
+            sfx.ignoreListenerPause = true;
             music.volume = musicVolume;
             sfx.volume = sfxVolume;
+
+            EnsureListener();
             TryLoadFromResources();
+        }
+
+        void EnsureListener()
+        {
+            if (Object.FindObjectOfType<AudioListener>() != null) return;
+            var cam = Camera.main;
+            if (cam != null)
+            {
+                cam.gameObject.AddComponent<AudioListener>();
+                return;
+            }
+            var go = new GameObject("EmberAudioListener");
+            Object.DontDestroyOnLoad(go);
+            go.AddComponent<AudioListener>();
+        }
+
+        AudioClip LoadClip(string path)
+        {
+            var clip = Resources.Load<AudioClip>(path);
+            if (clip == null)
+                Debug.LogWarning("[EmberAudio] missing clip Resources.Load(\"" + path + "\")");
+            return clip;
         }
 
         void TryLoadFromResources()
         {
-            // Prefer Assets/Resources/Audio/... (mirrors Docs/Audio-v1 names).
-            if (menuAmbient == null) menuAmbient = Resources.Load<AudioClip>("Audio/Music/menu_ambient");
-            if (combatLoop == null) combatLoop = Resources.Load<AudioClip>("Audio/Music/combat_loop");
-            if (uiClick == null) uiClick = Resources.Load<AudioClip>("Audio/Sfx/ui_click");
-            if (uiConfirm == null) uiConfirm = Resources.Load<AudioClip>("Audio/Sfx/ui_confirm");
-            if (fire == null) fire = Resources.Load<AudioClip>("Audio/Sfx/fire");
-            if (hit == null) hit = Resources.Load<AudioClip>("Audio/Sfx/hit");
-            if (hurt == null) hurt = Resources.Load<AudioClip>("Audio/Sfx/hurt");
-            if (pickupHeal == null) pickupHeal = Resources.Load<AudioClip>("Audio/Sfx/pickup_heal");
-            if (cardOpen == null) cardOpen = Resources.Load<AudioClip>("Audio/Sfx/card_open");
-            if (cardPick == null) cardPick = Resources.Load<AudioClip>("Audio/Sfx/card_pick");
+            if (menuAmbient == null) menuAmbient = LoadClip("Audio/Music/menu_ambient");
+            if (combatLoop == null) combatLoop = LoadClip("Audio/Music/combat_loop");
+            if (uiClick == null) uiClick = LoadClip("Audio/Sfx/ui_click");
+            if (uiConfirm == null) uiConfirm = LoadClip("Audio/Sfx/ui_confirm");
+            if (fire == null) fire = LoadClip("Audio/Sfx/fire");
+            if (hit == null) hit = LoadClip("Audio/Sfx/hit");
+            if (hurt == null) hurt = LoadClip("Audio/Sfx/hurt");
+            if (pickupHeal == null) pickupHeal = LoadClip("Audio/Sfx/pickup_heal");
+            if (cardOpen == null) cardOpen = LoadClip("Audio/Sfx/card_open");
+            if (cardPick == null) cardPick = LoadClip("Audio/Sfx/card_pick");
         }
 
         public void PlayMusic(AudioClip clip)
         {
             if (music == null) Bootstrap();
+            EnsureListener();
             if (clip == null)
             {
                 music.Stop();
@@ -107,13 +171,23 @@ namespace Emberlight
             if (currentMusic == clip && music.isPlaying) return;
             currentMusic = clip;
             music.clip = clip;
+            music.spatialBlend = 0f;
             music.volume = musicVolume;
             music.loop = true;
             music.Play();
         }
 
-        public void PlayMenuMusic() { PlayMusic(menuAmbient); }
-        public void PlayCombatMusic() { PlayMusic(combatLoop); }
+        public void PlayMenuMusic()
+        {
+            if (menuAmbient == null) menuAmbient = LoadClip("Audio/Music/menu_ambient");
+            PlayMusic(menuAmbient);
+        }
+
+        public void PlayCombatMusic()
+        {
+            if (combatLoop == null) combatLoop = LoadClip("Audio/Music/combat_loop");
+            PlayMusic(combatLoop);
+        }
 
         public void StopMusic()
         {
@@ -123,21 +197,54 @@ namespace Emberlight
 
         public void PlaySfx(AudioClip clip)
         {
-            if (clip == null || sfx == null) return;
+            if (sfx == null) Bootstrap();
+            EnsureListener();
+            if (clip == null) return;
+            sfx.spatialBlend = 0f;
             sfx.PlayOneShot(clip, sfxVolume);
         }
 
-        public void PlayUiClick() { PlaySfx(uiClick); }
-        public void PlayUiConfirm() { PlaySfx(uiConfirm); }
-        public void PlayCardOpen() { PlaySfx(cardOpen); }
-        public void PlayCardPick() { PlaySfx(cardPick != null ? cardPick : uiConfirm); }
-        public void PlayHurt() { PlaySfx(hurt); }
-        public void PlayPickupHeal() { PlaySfx(pickupHeal); }
+        public void PlayUiClick()
+        {
+            if (uiClick == null) uiClick = LoadClip("Audio/Sfx/ui_click");
+            PlaySfx(uiClick);
+        }
+
+        public void PlayUiConfirm()
+        {
+            if (uiConfirm == null) uiConfirm = LoadClip("Audio/Sfx/ui_confirm");
+            PlaySfx(uiConfirm);
+        }
+
+        public void PlayCardOpen()
+        {
+            if (cardOpen == null) cardOpen = LoadClip("Audio/Sfx/card_open");
+            PlaySfx(cardOpen);
+        }
+
+        public void PlayCardPick()
+        {
+            if (cardPick == null) cardPick = LoadClip("Audio/Sfx/card_pick");
+            PlaySfx(cardPick != null ? cardPick : uiConfirm);
+        }
+
+        public void PlayHurt()
+        {
+            if (hurt == null) hurt = LoadClip("Audio/Sfx/hurt");
+            PlaySfx(hurt);
+        }
+
+        public void PlayPickupHeal()
+        {
+            if (pickupHeal == null) pickupHeal = LoadClip("Audio/Sfx/pickup_heal");
+            PlaySfx(pickupHeal);
+        }
 
         public void PlayFire()
         {
             if (Time.unscaledTime < nextFireTime) return;
             nextFireTime = Time.unscaledTime + FireHitMinInterval;
+            if (fire == null) fire = LoadClip("Audio/Sfx/fire");
             PlaySfx(fire);
         }
 
@@ -145,6 +252,7 @@ namespace Emberlight
         {
             if (Time.unscaledTime < nextHitTime) return;
             nextHitTime = Time.unscaledTime + FireHitMinInterval;
+            if (hit == null) hit = LoadClip("Audio/Sfx/hit");
             PlaySfx(hit);
         }
     }

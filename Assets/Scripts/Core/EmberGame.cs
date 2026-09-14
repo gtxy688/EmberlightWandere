@@ -143,7 +143,19 @@ namespace Emberlight
             EmberAudio.Ensure().PlayMenuMusic();
             if (world != null) world.gameObject.SetActive(false);
             ui.Show("烬灯行者", "25 波标准征程 · 50 波漫长征程\n自由选择难度，每局从相同的基础属性出发。\n清波选卡，击败最终守卫。",
-                new[] { "提灯出发" }, new UnityEngine.Events.UnityAction[] { BeginRun });
+                new[] { "提灯出发", "\u8bbe\u7f6e" }, new UnityEngine.Events.UnityAction[] { BeginRun, OpenSettingsFromMenu });
+        }
+
+
+        void OpenSettingsFromMenu()
+        {
+            if (ui == null || ui.SettingsPanel == null)
+            {
+                ShowMainMenu();
+                return;
+            }
+            ui.Overlay.SetActive(false);
+            ui.SettingsPanel.Show(ShowMainMenu, false);
         }
 
         /// <summary>Entry: pick N then single starter weapon (no skip).</summary>
@@ -237,6 +249,7 @@ namespace Emberlight
         {
             if (ui.UpgradePanel != null) ui.UpgradePanel.Hide();
             if (ui.GodsSelect != null) ui.GodsSelect.Hide();
+            if (ui.SettingsPanel != null) ui.SettingsPanel.Hide();
             State = Mode.Playing;
             EmberAudio.Ensure().PlayCombatMusic();
             ui.Overlay.SetActive(false);
@@ -388,7 +401,14 @@ namespace Emberlight
             if (State != Mode.Playing) return;
             State = Mode.Paused;
             stick = Vector2.zero;
-            ui.Show("\u6682\u6b47\u706f\u7554", "\u7a0d\u4f5c\u4f11\u606f\uff0c\u518d\u8d74\u957f\u591c\u3002", new[] { "\u7ee7\u7eed\u6218\u6597" }, new UnityEngine.Events.UnityAction[] { SetPlaying });
+            ui.BattleHud.Show(false);
+            ui.StickBase.gameObject.SetActive(false);
+            if (ui.UpgradePanel != null) ui.UpgradePanel.Hide();
+            if (ui.GodsSelect != null) ui.GodsSelect.Hide();
+            if (ui.SettingsPanel != null)
+                ui.SettingsPanel.Show(SetPlaying, true);
+            else
+                ui.Show("\u6682\u6b47\u706f\u7554", "\u7a0d\u4f5c\u4f11\u606f\uff0c\u518d\u8d74\u957f\u591c\u3002", new[] { "\u7ee7\u7eed\u6218\u6597" }, new UnityEngine.Events.UnityAction[] { SetPlaying });
         }
 
         void OnApplicationPause(bool paused) { if (paused) Pause(); }

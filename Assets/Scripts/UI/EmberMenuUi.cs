@@ -14,6 +14,7 @@ namespace Emberlight
         public EmberUpgradePanel UpgradePanel { get; private set; }
         public EmberGodsSelectPanel GodsSelect { get; private set; }
         public EmberHud BattleHud { get; private set; }
+        public EmberSettingsPanel SettingsPanel { get; private set; }
 
         TMP_FontAsset font;
         TextMeshProUGUI heading, summary;
@@ -41,6 +42,8 @@ namespace Emberlight
             GodsSelect = Safe.gameObject.AddComponent<EmberGodsSelectPanel>();
             GodsSelect.Initialize(font);
             BattleHud = new EmberHud(Safe, font, pause);
+            SettingsPanel = Safe.gameObject.AddComponent<EmberSettingsPanel>();
+            SettingsPanel.Initialize(font);
 
             StickBase = new GameObject("Joystick", typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();
             StickBase.SetParent(Safe, false);
@@ -91,6 +94,7 @@ namespace Emberlight
         {
             if (UpgradePanel != null) UpgradePanel.Hide();
             if (GodsSelect != null) GodsSelect.Hide();
+            if (SettingsPanel != null) SettingsPanel.Hide();
             BattleHud.Show(false);
             Overlay.SetActive(true);
             heading.text = title;
