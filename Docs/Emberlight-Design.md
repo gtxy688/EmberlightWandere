@@ -1,4 +1,4 @@
-# Emberlight 设计（策划与开发记录，同步 2026-09-13）
+﻿# Emberlight 设计（策划与开发记录，同步 2026-09-13）
 
 目标：Unity 2022.3.62f3 可打安卓包；先把**游戏闭环**做完，再谈资源与上架。
 项目路径：`E:/Unity/Projects/DemoProjects/EmberlightWandere`（文件夹名少一个 r）。GitHub：`gtxy688/EmberlightWandere`。
@@ -90,3 +90,5 @@ Docs/
 
 通用护盾词条现已加入：青铜/白银/黄金/钻石分别为 250/500/750/1250。新增概率掉落回血补给（每个 20 HP），不恢复护盾，不带入下一局。详见 Docs/Survival-v1.md。原先无死亡掉落的说明仅适用于余烬，回血道具为本次新增。
 
+## 2026-09-14
+- 攻击力/攻速=单武器；伤害增幅=全体；同屏唯一按 (Id,WeaponId)。详见 `Hotfix-Weapon-AtkAs-v1.md`。
