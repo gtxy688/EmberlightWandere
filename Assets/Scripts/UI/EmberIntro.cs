@@ -41,6 +41,8 @@ namespace Emberlight
             var pct = EmberHud.Text(bg.transform, fallback, "0%", 18, new Vector2(.74f, .19f), new Vector2(.92f, .24f));
             pct.alignment = TextAlignmentOptions.Left;
 
+            // Progress is stage-driven only (no wall-clock Max). Font bake is sync and can
+            // stall several seconds — the old `Max(visual, elapsed/5*0.95)` snapped to 95% after that.
             const float minShow = 5f;
             float began = Time.unscaledTime;
             float visual = 0f;
@@ -48,6 +50,7 @@ namespace Emberlight
             void SetProgress(float amount)
             {
                 amount = Mathf.Clamp01(amount);
+                visual = amount;
                 progress.fillAmount = amount;
                 pct.text = Mathf.RoundToInt(amount * 100f) + "%";
             }
@@ -55,22 +58,29 @@ namespace Emberlight
             IEnumerator SpinBar(float target, float holdSeconds)
             {
                 float start = visual;
+                target = Mathf.Clamp01(target);
                 float t0 = Time.unscaledTime;
+                if (holdSeconds <= 0f)
+                {
+                    SetProgress(target);
+                    yield break;
+                }
                 while (true)
                 {
-                    float u = holdSeconds <= 0f ? 1f : Mathf.Clamp01((Time.unscaledTime - t0) / holdSeconds);
-                    visual = Mathf.Lerp(start, target, u);
-                    float wall = Mathf.Clamp01((Time.unscaledTime - began) / minShow);
-                    SetProgress(Mathf.Max(visual, wall * 0.95f));
+                    float u = Mathf.Clamp01((Time.unscaledTime - t0) / holdSeconds);
+                    SetProgress(Mathf.Lerp(start, target, u));
                     if (u >= 1f) break;
                     yield return null;
                 }
-                visual = target;
-                SetProgress(Mathf.Max(visual, Mathf.Clamp01((Time.unscaledTime - began) / minShow) * 0.95f));
+                SetProgress(target);
             }
 
-            yield return SpinBar(0.2f, 0.9f);
+            SetProgress(0f);
+            yield return null;
+            yield return SpinBar(0.15f, 0.6f);
 
+            prompt.text = "Loading fonts...";
+            yield return null;
             var font = EmberFonts.CreateChinese();
             if (font == null)
             {
@@ -90,6 +100,7 @@ namespace Emberlight
             prompt.ForceMeshUpdate();
             pct.ForceMeshUpdate();
 
+            // Resume from wherever we were (often still ~15% after a long font bake).
             yield return SpinBar(0.45f, 1.0f);
 
             var mark = EmberHud.Box(bg.transform, "Flame emblem", new Vector2(.43f, .74f), new Vector2(.57f, .86f), new Color(1, .61f, .19f));
@@ -97,7 +108,7 @@ namespace Emberlight
             var core = EmberHud.Box(mark.transform, "Flame heart", new Vector2(.28f, .10f), new Vector2(.72f, .64f), new Color(1, .92f, .63f));
             core.sprite = EmberArt.Flame; core.type = Image.Type.Simple;
 
-            yield return SpinBar(0.7f, 1.0f);
+            yield return SpinBar(0.7f, 0.9f);
             prepared(font);
 
             float remain = Mathf.Max(1.2f, minShow - (Time.unscaledTime - began));
