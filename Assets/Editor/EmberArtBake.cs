@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using TMPro;
 using UnityEditor;
 using UnityEngine;
 
@@ -38,6 +39,42 @@ namespace Emberlight.Editor
             new Entry("art-glow.png",  128, 3, 128f, Vector4.zero),
             new Entry("art-disc.png",   64, -1, 64f, Vector4.zero),
         };
+
+        /// <summary>
+        /// Headless entry point for a single -executeMethod run: measures the old runtime
+        /// cost, then bakes art and font. Kept so the whole job is one Unity launch instead
+        /// of three, and so the measurement is recorded next to the bake that replaces it.
+        /// </summary>
+        public static void BakeAll()
+        {
+            UnityEngine.Debug.Log("[EmberArtBake] ===== measure runtime cost (pre-bake) =====");
+            Measure();
+            UnityEngine.Debug.Log("[EmberArtBake] ===== bake art =====");
+            Bake();
+            UnityEngine.Debug.Log("[EmberFontBake] ===== bake font =====");
+            EmberFontBake.Bake();
+            UnityEngine.Debug.Log("[EmberArtBake] ===== done =====");
+        }
+
+        /// <summary>
+        /// Headless entry point that forces a fresh font bake: removes the existing atlas
+        /// first (a Static atlas cannot be re-baked in place), then bakes and verifies.
+        /// </summary>
+        public static void RebakeAndVerify()
+        {
+            EmberGlyphSet.Report();
+
+            var existing = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(EmberFontBake.OutAssetPath);
+            if (existing != null)
+            {
+                AssetDatabase.DeleteAsset(EmberFontBake.OutAssetPath);
+                AssetDatabase.Refresh();
+                UnityEngine.Debug.Log("[EmberArtBake] removed the previous font atlas for a clean re-bake");
+            }
+
+            EmberFontBake.Bake();
+            EmberBakeVerify.Run();
+        }
 
         [MenuItem("Emberlight/Bake runtime art", false, 210)]
         public static void Bake()
@@ -133,29 +170,25 @@ namespace Emberlight.Editor
         public static void Measure()
         {
             var report = new System.Text.StringBuilder();
-            double rasterTotal = 0, applyTotal = 0;
+            double rasterTotal = 0;
 
             foreach (var e in Entries)
             {
+                // Rasterise() includes Apply(); time it as one unit and report that, rather
+                // than splitting out an Apply that the raster timer already counted.
                 var sw = Stopwatch.StartNew();
                 var tex = Rasterise(e);
                 sw.Stop();
                 var rasterMs = sw.Elapsed.TotalMilliseconds;
                 rasterTotal += rasterMs;
 
-                sw.Restart();
-                tex.Apply();
-                sw.Stop();
-                applyTotal += sw.Elapsed.TotalMilliseconds;
-
-                report.AppendLine(string.Format("  {0,-16} {1,3}x{1,-3} raster {2,7:F3} ms   Apply {3,7:F3} ms",
-                    e.File, e.Size, rasterMs, sw.Elapsed.TotalMilliseconds));
+                report.AppendLine(string.Format("  {0,-16} {1,3}x{1,-3} raster+Apply {2,7:F3} ms",
+                    e.File, e.Size, rasterMs));
                 UnityEngine.Object.DestroyImmediate(tex);
             }
 
-            report.AppendLine(string.Format("  TOTAL raster {0:F2} ms, Apply {1:F2} ms, sum {2:F2} ms",
-                rasterTotal, applyTotal, rasterTotal + applyTotal));
-            UnityEngine.Debug.Log("[EmberArtBake] MEASURE (runtime equivalent, editor timings)\n" + report);
+            report.AppendLine(string.Format("  TOTAL one-off cost removed from each session: {0:F2} ms", rasterTotal));
+            UnityEngine.Debug.Log("[EmberArtBake] MEASURE (the work each shape did once per session at runtime)\n" + report);
         }
 
         /// <summary>Verbatim port of the old runtime rasterisers.</summary>

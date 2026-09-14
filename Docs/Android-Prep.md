@@ -8,6 +8,43 @@
 - Android 模块：`PlaybackEngines/AndroidPlayer` 下 SDK / NDK / OpenJDK 齐全
 - 无需额外安装，可直接 Build
 
+## 构建期烘焙（改了美术或文案后要重跑）
+
+运行时的程序化图元和中文 SDF 图集都已改为构建期预生成，菜单在 `Emberlight` 下：
+
+| 菜单项 | 作用 |
+|---|---|
+| `Bake runtime art` | 把 5 个程序化图元（火焰/圆环/面板/辉光/圆盘）写成 `Resources/Art/Baked/*.png` |
+| `Bake Chinese font atlas` | 用完整字形集烘 2048×2048 Static SDF 到 `Resources/Fonts/` |
+| `Measure runtime art cost` | 汇报这些图元原本每局一次的光栅化开销 |
+
+**烘焙器自带的校验**
+
+- 美术烘焙结束会解码刚写出的 PNG，与现场重新光栅化的结果逐像素比对（`maxDelta` 必须为 0）。
+  像素数学存在于烘焙器与运行时兜底两处，这条防止改了一处忘了另一处导致美术漂移。
+- 字体烘焙会把**从已加载程序集里反射出来的、UI 实际能画出的全部字符**并进字形集，
+  而不是只用 `EmberFonts.GlyphSet`。原因见下。
+
+### ⚠️ 字形集曾经漏字（已修）
+
+`EmberFonts.GlyphSet` 是手工维护的。用反射逐个核对后发现 **54 个 UI 字符串里用到的字符不在其中**，例如：
+
+- `燎` `原` `日` `冕` —— 质变词条「燎原」「日冕」
+- `站` `住` —— 穿透火矢说明「站住开火」
+- `；` 以及 `A B C J K N R _` 等 ASCII
+
+**在动态图集下这只是多烘几个字；换成 Static 图集后就是永久的空白方块。**
+所以烘焙改为使用「GlyphSet ∪ 反射发现的全部字符」。当前为 462 字。
+
+注意 `EmberFonts.GlyphSet` 本身仍用于运行时兜底路径，**加新文案后请重跑烘焙**，
+烘焙日志会打印实际请求的字数与缺失数。
+
+### 重复烘焙字体
+
+Static 图集不能再加字形，所以字体烘焙器**拒绝覆盖已存在的 Static 图集**并报错，
+而不是静默产出空资产（上一个预烘字体就是这样变成空壳的）。
+重烘请先删掉 `Assets/Resources/Fonts/NotoSansCJKsc-Regular SDF.asset` 及其 `.meta`。
+
 ## 已落地的工程设置
 
 | 项 | 值 | 说明 |

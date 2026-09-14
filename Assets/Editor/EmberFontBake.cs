@@ -22,7 +22,8 @@ namespace Emberlight.Editor
     public static class EmberFontBake
     {
         const string SourcePath = "Assets/Resources/Fonts/NotoSansCJKsc-Regular.otf";
-        const string OutPath = "Assets/Resources/Fonts/NotoSansCJKsc-Regular SDF.asset";
+        public const string OutAssetPath = "Assets/Resources/Fonts/NotoSansCJKsc-Regular SDF.asset";
+        const string OutPath = OutAssetPath;
 
         [MenuItem("Emberlight/Bake Chinese font atlas", false, 212)]
         public static void Bake()
@@ -62,8 +63,12 @@ namespace Emberlight.Editor
             font.name = "NotoSansCJKsc-Regular Static";
 
             sw.Restart();
+            // EmberFonts.GlyphSet is hand-maintained and was already missing characters the
+            // UI draws (U+3000). Bake the union of that set and everything the loaded
+            // assembly can actually render, so a Static atlas cannot silently drop a glyph.
+            string glyphs = EmberGlyphSet.EffectiveGlyphSet();
             string missing;
-            font.TryAddCharacters(EmberFonts.GlyphSet, out missing, true);
+            font.TryAddCharacters(glyphs, out missing, true);
             sw.Stop();
             var bakeMs = sw.Elapsed.TotalMilliseconds;
 
@@ -91,10 +96,10 @@ namespace Emberlight.Editor
             total.Stop();
 
             UnityEngine.Debug.Log(string.Format(
-                "[EmberFontBake] baked {0} glyphs into a {1}x{2} atlas\n"
-                + "  CreateFontAsset {3,8:F1} ms\n  TryAddCharacters {4,8:F1} ms\n  total {5,8:F1} ms\n"
-                + "  missing glyphs: {6}\n  written to {7}",
-                glyphCount, atlasW, atlasH, createMs, bakeMs, total.Elapsed.TotalMilliseconds,
+                "[EmberFontBake] baked {0} glyphs into a {1}x{2} atlas (requested {3} characters)\n"
+                + "  CreateFontAsset {4,8:F1} ms\n  TryAddCharacters {5,8:F1} ms\n  total {6,8:F1} ms\n"
+                + "  missing glyphs: {7}\n  written to {8}",
+                glyphCount, atlasW, atlasH, glyphs.Length, createMs, bakeMs, total.Elapsed.TotalMilliseconds,
                 string.IsNullOrEmpty(missing) ? "none" : missing.Length + " code points",
                 OutPath));
         }

@@ -74,6 +74,10 @@ Packages/packages-lock.json linguist-generated
 *.cubemap               lfs
 *.unitypackage          lfs
 
+# Baked Chinese SDF font atlas. Serialised as a .asset but it carries a raw
+# 2048x2048 byte array (~8 MB), so it belongs in LFS, not the object store.
+Assets/Resources/Fonts/*SDF.asset       lfs
+
 # 3D models
 *.3dm                   lfs
 *.3ds                   lfs
