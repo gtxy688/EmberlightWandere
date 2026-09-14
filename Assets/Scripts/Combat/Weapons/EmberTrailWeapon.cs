@@ -72,6 +72,7 @@ namespace Emberlight
                 for (int k = 0; k < 3; k++) EmberArt.Fire(r.transform, new Vector2((k - 1) * .28f, .05f * Mathf.Sin(k)), .20f, 2);
             }
             flames.Add(new Flame { view = r, life = life, powerScale = powerScale });
+            EmberAudio.Ensure().PlayWeaponBurnGround();
         }
 
         public override void Tick(float dt, EmberWeaponContext ctx)

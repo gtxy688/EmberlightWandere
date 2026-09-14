@@ -24,7 +24,11 @@ namespace Emberlight
             float spin = (corona ? 3.6f : 2.5f) * (1f + ctx.Progress.WeaponAttackSpeed(RunProgress.WeaponOrbit));
             float dps = (corona ? 75f : 65f) * ctx.Progress.DamageMul * (1f + ctx.Progress.WeaponMagnitude(RunProgress.WeaponOrbit));
 
-            while (orbs.Count < count) orbs.Add(ctx.Pool != null ? ctx.Pool.RentFire(ctx.World, ctx.PlayerPos, .33f) : EmberArt.Fire(ctx.World, ctx.PlayerPos, .33f));
+            while (orbs.Count < count)
+            {
+                orbs.Add(ctx.Pool != null ? ctx.Pool.RentFire(ctx.World, ctx.PlayerPos, .33f) : EmberArt.Fire(ctx.World, ctx.PlayerPos, .33f));
+                EmberAudio.Ensure().PlayWeaponOrbitIgnite();
+            }
             while (orbs.Count > count)
             {
                 var extra = orbs[orbs.Count - 1];
