@@ -14,10 +14,16 @@ namespace Emberlight
         {
             body = new GameObject("Floating keeper").transform;
             body.SetParent(transform,false);
-            // Ground shadow. EmberVisuals.Character used to draw this before its keeper branch
-            // returned early; removing that dead branch took the keeper's shadow with it. Hangs
-            // off body so it travels with the hover bob, matching the enemy silhouette.
-            EmberVisuals.Shape("Shadow",body,new Vector2(0,-.25f),new Vector2(.8f,.25f),new Color(0,0,0,.25f),1);
+            // Ground shadow. Parented to the keeper root, not to body: it is a ground shadow, so
+            // it must not bob with the hover.
+            //
+            // It also has to sit below the cloak, which is why the offset is -0.50 rather than the
+            // -0.25 the enemy shadow uses. The enemy cloak is centred on its root and spans
+            // -0.40..0.40, so a shadow at -0.25 pokes out under it. The keeper cloak hangs off
+            // body at y=-0.08 with height 0.78 and spans -0.51..0.31, so a shadow at -0.25 sat
+            // entirely inside it and was completely hidden. At -0.50 it spans -0.64..-0.36 and
+            // clears the cloak, leaving a visible band underneath.
+            EmberVisuals.Shape("Shadow",transform,new Vector2(0,-.50f),new Vector2(.90f,.28f),new Color(0,0,0,.30f),1);
             var blue = new Color(.20f,.35f,.45f);
             cloak=EmberVisuals.Shape("Cloak",body,new Vector2(0,-.08f),new Vector2(.66f,.78f),blue,3).transform;
             EmberVisuals.Shape("Hood rim",body,new Vector2(0,.23f),new Vector2(.69f,.62f),new Color(.26f,.43f,.52f),4);
