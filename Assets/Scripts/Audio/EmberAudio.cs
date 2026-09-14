@@ -29,6 +29,7 @@ namespace Emberlight
         [SerializeField] AudioClip pickupHeal;
         [SerializeField] AudioClip cardOpen;
         [SerializeField] AudioClip cardPick;
+        [SerializeField] AudioClip meteorImpact;
 
         AudioSource music;
         AudioSource sfx;
@@ -158,6 +159,7 @@ namespace Emberlight
             if (pickupHeal == null) pickupHeal = LoadClip("Audio/Sfx/pickup_heal");
             if (cardOpen == null) cardOpen = LoadClip("Audio/Sfx/card_open");
             if (cardPick == null) cardPick = LoadClip("Audio/Sfx/card_pick");
+            if (meteorImpact == null) meteorImpact = LoadClip("Audio/Sfx/meteor_impact");
         }
 
         public void PlayMusic(AudioClip clip)
@@ -258,11 +260,13 @@ namespace Emberlight
             PlaySfx(hit);
         }
 
-        /// <summary>Meteor ground impact — reuses hit clip with looser throttle so multi-drops stay audible.</summary>
+        /// <summary>Meteor ground impact — Kenney lowFrequency_explosion; looser throttle for multi-drops.</summary>
         public void PlayMeteorImpact()
         {
             if (Time.unscaledTime < nextMeteorImpactTime) return;
             nextMeteorImpactTime = Time.unscaledTime + MeteorImpactMinInterval;
+            if (meteorImpact == null) meteorImpact = LoadClip("Audio/Sfx/meteor_impact");
+            if (meteorImpact != null) { PlaySfx(meteorImpact); return; }
             if (hit == null) hit = LoadClip("Audio/Sfx/hit");
             PlaySfx(hit);
         }
