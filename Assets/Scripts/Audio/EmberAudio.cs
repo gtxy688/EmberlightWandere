@@ -8,6 +8,7 @@ namespace Emberlight
         public static EmberAudio Instance { get; private set; }
 
         const float FireHitMinInterval = 0.05f;
+        const float MeteorImpactMinInterval = 0.02f;
         const string PrefMusic = "ember_vol_music";
         const string PrefSfx = "ember_vol_sfx";
 
@@ -33,6 +34,7 @@ namespace Emberlight
         AudioSource sfx;
         float nextFireTime;
         float nextHitTime;
+        float nextMeteorImpactTime;
         AudioClip currentMusic;
 
         public float MusicVolume
@@ -252,6 +254,15 @@ namespace Emberlight
         {
             if (Time.unscaledTime < nextHitTime) return;
             nextHitTime = Time.unscaledTime + FireHitMinInterval;
+            if (hit == null) hit = LoadClip("Audio/Sfx/hit");
+            PlaySfx(hit);
+        }
+
+        /// <summary>Meteor ground impact — reuses hit clip with looser throttle so multi-drops stay audible.</summary>
+        public void PlayMeteorImpact()
+        {
+            if (Time.unscaledTime < nextMeteorImpactTime) return;
+            nextMeteorImpactTime = Time.unscaledTime + MeteorImpactMinInterval;
             if (hit == null) hit = LoadClip("Audio/Sfx/hit");
             PlaySfx(hit);
         }

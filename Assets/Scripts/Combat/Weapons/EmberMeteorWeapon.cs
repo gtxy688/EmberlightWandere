@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 namespace Emberlight
@@ -49,6 +49,7 @@ namespace Emberlight
                 }
                 if (s.timer > 0) continue;
                 if (s.warn != null) { if (ctx.Pool != null) ctx.Pool.Release("warn", s.warn); else Object.Destroy(s.warn.gameObject); }
+                EmberAudio.Ensure().PlayMeteorImpact();
                 ctx.Effects.Nova(s.point, s.radius);
                 for (int j = ctx.EnemyCount() - 1; j >= 0; j--)
                 {
@@ -74,8 +75,9 @@ namespace Emberlight
             if (skyfire) dmg *= 1.54f; // was 1.4; +10% Weapon-Balance-v1
             var warn = ctx.Pool != null ? ctx.Pool.RentShape("warn", ctx.World, point, Vector2.one * (radius * 2f), new Color(1f, .3f, .05f, .35f), 1) : EmberVisuals.Shape("Meteor warn", ctx.World, point, Vector2.one * (radius * 2f), new Color(1f, .3f, .05f, .35f), 1);
             warn.sprite = EmberArt.Ring;
-            EmberAudio.Ensure().PlayFire();
+            // Warning is silent; impact SFX plays when timer hits 0.
             pending.Add(new Strike { point = point, timer = 0.6f, damage = dmg, radius = radius, warn = warn });
         }
     }
 }
+
