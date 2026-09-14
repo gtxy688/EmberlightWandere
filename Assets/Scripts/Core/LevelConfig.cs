@@ -25,7 +25,7 @@ namespace Emberlight
             c.BossWave = waves == 50 ? 50 : 25;
             c.Difficulty = System.Enum.IsDefined(typeof(EmberDifficulty), difficulty) ? difficulty : EmberDifficulty.Standard;
             if (c.Difficulty == EmberDifficulty.Casual)
-            { c.HealthMultiplier = .75f; c.DamageMultiplier = .7f; c.CountMultiplier = .85f; c.IntervalMultiplier = 1.15f; c.AffixMultiplier = .7f; }
+            { c.HealthMultiplier = .5f; c.DamageMultiplier = .7f; c.CountMultiplier = .85f; c.IntervalMultiplier = 1.15f; c.AffixMultiplier = .7f; }
             if (c.Difficulty == EmberDifficulty.Hard)
             { c.HealthMultiplier = 1.35f; c.DamageMultiplier = 1.3f; c.CountMultiplier = 1.2f; c.IntervalMultiplier = .88f; c.AffixMultiplier = 1.25f; }
             c.BossHp = (c.BossWave == 50 ? 10000f : 6000f) * c.HealthMultiplier;

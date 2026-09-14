@@ -32,7 +32,7 @@ namespace Emberlight
             if (owned && fireTimer <= 0 && ctx.EnemyCount() > 0)
             {
                 Fire(ctx, wildfire);
-                fireTimer = .8f / (1 + progress.AttackSpeedBonus);
+                fireTimer = .8f / (1f + progress.WeaponAttackSpeed(RunProgress.WeaponBasic));
             }
 
             for (int i = shots.Count - 1; i >= 0; i--)
@@ -93,7 +93,7 @@ namespace Emberlight
                     view = r,
                     velocity = v * 9,
                     life = 1.8f,
-                    damage = 22f * ctx.Progress.DamageMul * dmgMul
+                    damage = 22f * ctx.Progress.DamageMul * (1f + ctx.Progress.WeaponMagnitude(RunProgress.WeaponBasic)) * dmgMul
                 });
             }
         }

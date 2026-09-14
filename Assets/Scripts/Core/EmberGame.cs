@@ -13,7 +13,7 @@ namespace Emberlight
             "\u653b\u51fb\u529b",
             "\u653b\u901f",
             "\u5e78\u8fd0",
-            "\u4f24\u5bb3\u589e\u5e45",
+            "\u5168\u4f53\u4f24\u5bb3\u589e\u5e45",
             "护盾", "", "", "", "", "",
             "\u7a7f\u900f\u706b\u77e2",
             "\u56de\u65cb\u70ec\u8776",
@@ -38,8 +38,8 @@ namespace Emberlight
         };
                 public static readonly string[] UpgradeDetails =
         {
-            "\u6253\u5f97\u66f4\u75bc",
-            "\u6253\u5f97\u66f4\u5feb",
+            "\u53ea\u52a0\u5f3a\u8fd9\u628a\u6b66\u5668",
+            "\u53ea\u52a0\u5f3a\u8fd9\u628a\u6b66\u5668",
             "\u66f4\u5bb9\u6613\u5237\u51fa\u597d\u5361",
             "\u6240\u6709\u6b66\u5668\u4f24\u5bb3\u518d\u4e58\u4e00\u622a",
             "立即获得护盾，受伤时优先消耗；可叠加，仅本局有效",
@@ -374,7 +374,7 @@ namespace Emberlight
             if (State != Mode.Upgrade) return;
             bool ok = false;
             for (int i = 0; i < offered.Length; i++)
-                if (offered[i].Id == offer.Id && offered[i].Rarity == offer.Rarity) { ok = true; break; }
+                if (offered[i].Id == offer.Id && offered[i].Rarity == offer.Rarity && offered[i].WeaponId == offer.WeaponId) { ok = true; break; }
             if (!ok) return;
             bool grantedNew;
             if (!Progress.Choose(offer, out grantedNew)) return;

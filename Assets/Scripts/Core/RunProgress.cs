@@ -68,14 +68,15 @@ namespace Emberlight
         /// <summary>Always 1.0 (no ScoreMult).</summary>
         public float ScoreMult { get { return 1.0f; } }
 
-        /// <summary>Combined damage multiplier: (1+ATK) * (1+AMP).</summary>
-        public float DamageMul { get { return (1f + DamageBonus) * (1f + DamageAmp); } }
+        /// <summary>Global amp only (Hotfix-Weapon-AtkAs-v1). Per-weapon ATK uses WeaponMagnitude.</summary>
+        public float DamageMul { get { return 1f + DamageAmp; } }
 
         readonly HashSet<int> ownedWeapons = new HashSet<int>();
         readonly HashSet<int> metamorphs = new HashSet<int>();
         readonly HashSet<int> exclusives = new HashSet<int>();
         readonly Dictionary<int, int> weaponCount = new Dictionary<int, int>();
         readonly Dictionary<int, float> weaponMagnitude = new Dictionary<int, float>();
+        readonly Dictionary<int, float> weaponAttackSpeed = new Dictionary<int, float>();
 
         static readonly int[] RosterIds = { WeaponBasic, WeaponOrbit, WeaponTrail, WeaponPierce, WeaponBoom, WeaponMeteor };
         static readonly int[] GenericIds = { StatAtk, StatAs, StatLuck, StatAmp, StatShield };
@@ -106,6 +107,28 @@ namespace Emberlight
             return weaponMagnitude.TryGetValue(id, out v) ? v : 0f;
         }
 
+        public float WeaponAttackSpeed(int id)
+        {
+            float v;
+            return weaponAttackSpeed.TryGetValue(id, out v) ? v : 0f;
+        }
+
+        void AddWeaponMagnitude(int id, float amount)
+        {
+            if (amount == 0f) return;
+            float v;
+            weaponMagnitude.TryGetValue(id, out v);
+            weaponMagnitude[id] = v + amount;
+        }
+
+        void AddWeaponAttackSpeed(int id, float amount)
+        {
+            if (amount == 0f) return;
+            float v;
+            weaponAttackSpeed.TryGetValue(id, out v);
+            weaponAttackSpeed[id] = v + amount;
+        }
+
         public IReadOnlyCollection<int> OwnedWeaponsView { get { return ownedWeapons; } }
 
         public static int[] FullRoster() { return (int[])RosterIds.Clone(); }
@@ -121,6 +144,7 @@ namespace Emberlight
             exclusives.Clear();
             weaponCount.Clear();
             weaponMagnitude.Clear();
+            weaponAttackSpeed.Clear();
             ExtraShots = 0;
             AttackSpeedBonus = 0;
             DamageBonus = 0;
@@ -253,32 +277,45 @@ namespace Emberlight
             return w;
         }
 
-        EmberOffer MakeGenericOffer(int id, Random random)
+        EmberOffer MakeGenericOffer(int id, Random random, int weaponId = -1)
         {
-            return new EmberOffer(id, EmberRarityUtil.RollByLuck(random, Luck));
+            return new EmberOffer(id, EmberRarityUtil.RollByLuck(random, Luck), weaponId);
+        }
+
+        static long OfferKey(int id, int weaponId)
+        {
+            return ((long)id << 32) | (uint)(weaponId + 1);
         }
 
         /// <summary>Gods-Select-v3: base 3 (generic/excl/meta, unique kinds) + empty-slot new weapons.</summary>
         public EmberOffer[] Choices(Random random, int waveCleared)
         {
             var base3 = new List<EmberOffer>();
-            var usedIds = new HashSet<int>();
-            var usedGeneric = new HashSet<int>();
+            var usedKeys = new HashSet<long>();
 
-            // Candidate bag: generics + owned exclusives/metamorphs
             var candIds = new List<int>();
+            var candWid = new List<int>();
             var candW = new List<int>();
-            for (int i = 0; i < GenericIds.Length; i++)
+
+            // Per-owned-weapon ATK/AS + global luck/amp/shield
+            for (int i = 0; i < RosterIds.Length; i++)
             {
-                candIds.Add(GenericIds[i]);
-                candW.Add(10);
+                int wid = RosterIds[i];
+                if (!ownedWeapons.Contains(wid)) continue;
+                candIds.Add(StatAtk); candWid.Add(wid); candW.Add(10);
+                candIds.Add(StatAs); candWid.Add(wid); candW.Add(10);
             }
+            candIds.Add(StatLuck); candWid.Add(-1); candW.Add(10);
+            candIds.Add(StatAmp); candWid.Add(-1); candW.Add(10);
+            candIds.Add(StatShield); candWid.Add(-1); candW.Add(10);
+
             int specialW = WeightForSpecial(random);
             for (int i = 0; i < ExclIds.Length; i++)
             {
                 if (CanExclusive(ExclIds[i]))
                 {
                     candIds.Add(ExclIds[i]);
+                    candWid.Add(-1);
                     candW.Add(specialW);
                 }
             }
@@ -290,7 +327,8 @@ namespace Emberlight
                     if (CanMetamorph(MetaIds[i]))
                     {
                         candIds.Add(MetaIds[i]);
-                        candW.Add(10); // once gated in, compete like a generic
+                        candWid.Add(-1);
+                        candW.Add(10);
                     }
                 }
             }
@@ -309,44 +347,57 @@ namespace Emberlight
                     if (roll < acc) { pick = i; break; }
                 }
                 int id = candIds[pick];
+                int wid = candWid[pick];
                 candIds.RemoveAt(pick);
+                candWid.RemoveAt(pick);
                 candW.RemoveAt(pick);
-                if (!usedIds.Add(id)) continue;
+                if (!usedKeys.Add(OfferKey(id, wid))) continue;
                 if (EmberRarityUtil.IsGenericId(id))
-                {
-                    if (!usedGeneric.Add(id)) continue;
-                    base3.Add(MakeGenericOffer(id, random));
-                }
+                    base3.Add(MakeGenericOffer(id, random, wid));
                 else if (id >= 30)
                     base3.Add(new EmberOffer(id, EmberRarity.Gold));
                 else
                     base3.Add(new EmberOffer(id, EmberRarity.Diamond));
             }
 
-            // Pad base 3 with unseen generics
+            // Pad: remaining owned-weapon ATK/AS then other globals
             if (base3.Count < 3)
             {
                 var pad = new List<int>();
-                for (int i = 0; i < GenericIds.Length; i++)
-                    if (!usedIds.Contains(GenericIds[i])) pad.Add(GenericIds[i]);
-                Shuffle(pad, random);
-                for (int i = 0; i < pad.Count && base3.Count < 3; i++)
+                var padW = new List<int>();
+                for (int i = 0; i < RosterIds.Length; i++)
                 {
+                    int wid = RosterIds[i];
+                    if (!ownedWeapons.Contains(wid)) continue;
+                    if (!usedKeys.Contains(OfferKey(StatAtk, wid))) { pad.Add(StatAtk); padW.Add(wid); }
+                    if (!usedKeys.Contains(OfferKey(StatAs, wid))) { pad.Add(StatAs); padW.Add(wid); }
+                }
+                int[] globals = { StatLuck, StatAmp, StatShield };
+                for (int i = 0; i < globals.Length; i++)
+                    if (!usedKeys.Contains(OfferKey(globals[i], -1))) { pad.Add(globals[i]); padW.Add(-1); }
+                // shuffle pad indices
+                var order = new List<int>();
+                for (int i = 0; i < pad.Count; i++) order.Add(i);
+                Shuffle(order, random);
+                for (int oi = 0; oi < order.Count && base3.Count < 3; oi++)
+                {
+                    int i = order[oi];
                     int id = pad[i];
-                    if (!usedIds.Add(id)) continue;
-                    usedGeneric.Add(id);
-                    base3.Add(MakeGenericOffer(id, random));
+                    int wid = padW[i];
+                    if (!usedKeys.Add(OfferKey(id, wid))) continue;
+                    base3.Add(MakeGenericOffer(id, random, wid));
                 }
             }
-            for (int g = 0; g < GenericIds.Length && base3.Count < 3; g++)
-            {
-                int id = GenericIds[g];
-                if (usedIds.Contains(id)) continue;
-                usedIds.Add(id);
-                base3.Add(MakeGenericOffer(id, random));
-            }
             while (base3.Count < 3)
-                base3.Add(MakeGenericOffer(StatAtk, random));
+            {
+                int wid = CoreWeaponId;
+                if (!ownedWeapons.Contains(wid))
+                {
+                    foreach (int r in RosterIds) { if (ownedWeapons.Contains(r)) { wid = r; break; } }
+                }
+                usedKeys.Add(OfferKey(StatAtk, wid));
+                base3.Add(MakeGenericOffer(StatAtk, random, wid));
+            }
 
             // Extra: unowned weapons = empty slots (do not consume base-3 kind budget)
             var result = new List<EmberOffer>(base3);
@@ -395,9 +446,23 @@ namespace Emberlight
                         ShieldCapacity += grant;
                         break;
                     case StatAtk:
-                        DamageBonus += EmberRarityUtil.GenericAtkAs(offer.Rarity);
+                    {
+                        int wid = offer.WeaponId;
+                        if (!IsRosterWeapon(wid) || !ownedWeapons.Contains(wid))
+                            wid = CoreWeaponId;
+                        if (!ownedWeapons.Contains(wid)) return false;
+                        AddWeaponMagnitude(wid, EmberRarityUtil.GenericAtkAs(offer.Rarity));
                         break;
-                    case StatAs: AttackSpeedBonus += EmberRarityUtil.GenericAttackSpeed(offer.Rarity); break;
+                    }
+                    case StatAs:
+                    {
+                        int wid = offer.WeaponId;
+                        if (!IsRosterWeapon(wid) || !ownedWeapons.Contains(wid))
+                            wid = CoreWeaponId;
+                        if (!ownedWeapons.Contains(wid)) return false;
+                        AddWeaponAttackSpeed(wid, EmberRarityUtil.GenericAttackSpeed(offer.Rarity));
+                        break;
+                    }
                     case StatLuck:
                         Luck += EmberRarityUtil.GenericLuck(offer.Rarity);
                         if (Luck > MaxLuck) Luck = MaxLuck;

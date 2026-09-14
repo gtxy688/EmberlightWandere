@@ -80,7 +80,7 @@ namespace Emberlight
             trailTimer -= dt;
             bool ownsTrail = ctx.Progress != null && ctx.Progress.OwnsWeapon(RunProgress.WeaponTrail);
             bool extend = ctx.Progress != null && ctx.Progress.TrailExtend;
-            float interval = extend ? .28f : .45f;
+            float interval = (extend ? .28f : .45f) / (1f + ctx.Progress.WeaponAttackSpeed(RunProgress.WeaponTrail));
             if (ownsTrail && ctx.Progress.TrailPower > 0 && trailTimer <= 0)
             {
                 trailTimer = interval;
@@ -91,7 +91,7 @@ namespace Emberlight
             if (ctx.Progress != null && ctx.Progress.TrailRing && ownsTrail)
             {
                 float ringR = 2.1f;
-                float ringDps = 70f * ctx.Progress.DamageMul * (ctx.Progress.TrailPower > 0 ? ctx.Progress.TrailPower : 0.4f);
+                float ringDps = 70f * ctx.Progress.DamageMul * (1f + ctx.Progress.WeaponMagnitude(RunProgress.WeaponTrail)) * (ctx.Progress.TrailPower > 0 ? ctx.Progress.TrailPower : 0.4f);
                 if (ringView == null)
                 {
                     ringView = EmberVisuals.Shape("Fire sea ring", ctx.World, ctx.PlayerPos, Vector2.one * (ringR * 2.05f), new Color(1f, .35f, .05f, .38f), 3);
@@ -145,7 +145,7 @@ namespace Emberlight
                     var e = ctx.GetEnemy(j);
                     if (e == null || !e.Targetable) continue;
                     if (Vector2.Distance(f.view.transform.position, e.view.position) < hitR)
-                        ctx.DealDamage(j, 46 * trailPow * f.powerScale * ctx.Progress.DamageMul * dt, f.view.transform.position); // +15% Weapon-Balance-v1
+                        ctx.DealDamage(j, 46 * trailPow * f.powerScale * ctx.Progress.DamageMul * (1f + ctx.Progress.WeaponMagnitude(RunProgress.WeaponTrail)) * dt, f.view.transform.position); // +15% Weapon-Balance-v1
                 }
                 if (f.life <= 0) { if (pool != null) pool.Release("burn", f.view); else Object.Destroy(f.view.gameObject); flames.RemoveAt(i); }
             }

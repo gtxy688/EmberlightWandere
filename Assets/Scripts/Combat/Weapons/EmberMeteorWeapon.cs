@@ -34,7 +34,7 @@ namespace Emberlight
                 int strikes = 1 + ctx.Progress.MeteorExtra;
                 for (int s = 0; s < strikes; s++)
                     TryLock(ctx);
-                cd = 3f;
+                cd = 3f / (1f + ctx.Progress.WeaponAttackSpeed(RunProgress.WeaponMeteor));
             }
 
             for (int i = pending.Count - 1; i >= 0; i--)

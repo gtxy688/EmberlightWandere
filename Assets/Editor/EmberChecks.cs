@@ -27,20 +27,23 @@ namespace Emberlight
                 // No old generics 4-9
                 Require(c.All(o => o.Id <= 4 || o.Id >= 10), "Old 5-9 out of pool; shield ID4 enabled");
                 // Same screen: each generic kind at most once
-                var gens = c.Where(o => EmberRarityUtil.IsGenericId(o.Id)).Select(o => o.Id).ToList();
+                var gens = c.Where(o => EmberRarityUtil.IsGenericId(o.Id)).Select(o => (o.Id, o.WeaponId)).ToList();
                 Require(gens.Count == gens.Distinct().Count(), "Generic kinds unique");
             }
 
-            // Generic ATK only (no global AS — jack)
+            // Per-weapon ATK/AS (Hotfix-Weapon-AtkAs-v1); DamageBonus global retired
             p.OfferChoices();
-            Require(p.Choose(new EmberOffer(RunProgress.StatAtk, EmberRarity.Bronze))
-                && MathfApprox(p.DamageBonus, 0.10f), "Bronze ATK +10%");
+            Require(p.Choose(new EmberOffer(RunProgress.StatAtk, EmberRarity.Bronze, RunProgress.WeaponBasic))
+                && MathfApprox(p.WeaponMagnitude(RunProgress.WeaponBasic), 0.10f), "Bronze ATK +10% on fireball");
             p.OfferChoices();
-            Require(p.Choose(new EmberOffer(RunProgress.StatAtk, EmberRarity.Diamond))
-                && MathfApprox(p.DamageBonus, 0.50f), "Stack diamond ATK");
+            Require(p.Choose(new EmberOffer(RunProgress.StatAtk, EmberRarity.Diamond, RunProgress.WeaponBasic))
+                && MathfApprox(p.WeaponMagnitude(RunProgress.WeaponBasic), 0.50f), "Stack diamond ATK on fireball");
+            Require(MathfApprox(p.DamageBonus, 0f), "Global DamageBonus stays 0");
             Require(MathfApprox(p.AttackSpeedBonus, 0f), "No global AS from generics");
             p.OfferChoices();
-            Require(p.Choose(new EmberOffer(RunProgress.StatAs, EmberRarity.Bronze)), "G-AS choose"); Require(p.AttackSpeedBonus >= 0.09f, "G-AS applies");
+            Require(p.Choose(new EmberOffer(RunProgress.StatAs, EmberRarity.Bronze, RunProgress.WeaponBasic)), "Weapon AS choose");
+            Require(p.WeaponAttackSpeed(RunProgress.WeaponBasic) >= 0.09f, "Weapon AS applies");
+            Require(MathfApprox(p.DamageMul, 1f), "DamageMul is amp-only before amp pick");
 
             // Luck + Amp
             p.OfferChoices();

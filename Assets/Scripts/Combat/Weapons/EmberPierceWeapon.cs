@@ -34,7 +34,7 @@ namespace Emberlight
             if (cd <= 0 && ctx.PlayerStanding && ctx.EnemyCount() > 0)
             {
                 Fire(ctx, ctx.PlayerPos, null, false);
-                cd = 1.1f / (1f + ctx.Progress.AttackSpeedBonus);
+                cd = 1.1f / (1f + ctx.Progress.WeaponAttackSpeed(RunProgress.WeaponPierce));
             }
 
             bool splitMeta = ctx.Progress.HasMetamorph(RunProgress.MetaPierce);
@@ -88,7 +88,7 @@ namespace Emberlight
                 dir = ((Vector2)target.view.position - origin).normalized;
             }
             int count = isSplit ? 1 : (1 + ctx.Progress.WeaponCount(RunProgress.WeaponPierce));
-            float dmg = 30f * ctx.Progress.DamageMul * (isSplit ? 0.45f : 1f);
+            float dmg = 30f * ctx.Progress.DamageMul * (1f + ctx.Progress.WeaponMagnitude(RunProgress.WeaponPierce)) * (isSplit ? 0.45f : 1f);
             int limit = ctx.Progress.PierceLimit;
             if (limit < 1) limit = 1;
             float size = isSplit ? .18f : .28f;

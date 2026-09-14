@@ -16,16 +16,22 @@ namespace Emberlight
         public void Initialize(TMP_FontAsset chineseFont) { font = chineseFont; }
         public void Hide() { if (root != null) { root.SetActive(false); Destroy(root); root = null; } }
 
-        public static string Preview(int id, EmberRarity rarity, RunProgress progress)
+        public static string Preview(int id, EmberRarity rarity, RunProgress progress, int weaponId = -1)
         {
             switch (id)
             {
                 case RunProgress.StatShield:
                     return "护盾 +" + EmberRarityUtil.ShieldAmount(rarity).ToString("0") + " · 当前 " + progress.Shield.ToString("0");
                 case RunProgress.StatAtk:
-                    return "\u653b\u51fb\u0020\u002b" + Mathf.RoundToInt(EmberRarityUtil.GenericAtkAs(rarity) * 100) + "%  (\u5408\u8ba1 +" + Mathf.RoundToInt(progress.DamageBonus * 100) + "%)";
+                {
+                    int wid = weaponId >= 0 ? weaponId : progress.CoreWeaponId;
+                    return "\u653b\u51fb\u0020\u002b" + Mathf.RoundToInt(EmberRarityUtil.GenericAtkAs(rarity) * 100) + "%  (\u5408\u8ba1 +" + Mathf.RoundToInt(progress.WeaponMagnitude(wid) * 100) + "%)";
+                }
                 case RunProgress.StatAs:
-                    return "\u653b\u901f\u0020\u002b" + Mathf.RoundToInt(EmberRarityUtil.GenericAttackSpeed(rarity) * 100) + "%  (\u5408\u8ba1 +" + Mathf.RoundToInt(progress.AttackSpeedBonus * 100) + "%)";
+                {
+                    int wid = weaponId >= 0 ? weaponId : progress.CoreWeaponId;
+                    return "\u653b\u901f\u0020\u002b" + Mathf.RoundToInt(EmberRarityUtil.GenericAttackSpeed(rarity) * 100) + "%  (\u5408\u8ba1 +" + Mathf.RoundToInt(progress.WeaponAttackSpeed(wid) * 100) + "%)";
+                }
                 case RunProgress.StatLuck:
                     return "\u5e78\u8fd0\u0020\u002b" + EmberRarityUtil.GenericLuck(rarity) + "  (\u5f53\u524d " + Mathf.RoundToInt(progress.Luck) + "/" + RunProgress.MaxLuck + ")";
                 case RunProgress.StatAmp:
@@ -104,12 +110,15 @@ namespace Emberlight
                 var shadeTop = Box("Route tint", inner.transform, new Vector2(.01f, .03f), new Vector2(.24f, .97f), new Color(accent.r * .15f, accent.g * .15f, accent.b * .15f, 1));
                 DrawIcon(shadeTop.transform, id, accent);
                 string titleText = (id >= 0 && id < names.Length && !string.IsNullOrEmpty(names[id])) ? names[id] : ("#" + id);
+                if ((id == RunProgress.StatAtk || id == RunProgress.StatAs) && offer.WeaponId >= 0
+                    && offer.WeaponId < names.Length && !string.IsNullOrEmpty(names[offer.WeaponId]))
+                    titleText = names[offer.WeaponId] + "\u00b7" + titleText;
                 string descText = (id >= 0 && id < descriptions.Length) ? descriptions[id] : "";
                 var title = TextAt(inner.transform, titleText, 22, new Vector2(.275f, .55f), new Vector2(.96f, .92f), new Color(1, .93f, .80f));
                 title.alignment = TextAlignmentOptions.Left;
                 var desc = TextAt(inner.transform, descText, 14, new Vector2(.275f, .30f), new Vector2(.97f, .55f), new Color(.65f, .73f, .78f));
                 desc.alignment = TextAlignmentOptions.Left;
-                var preview = TextAt(inner.transform, Preview(id, offer.Rarity, progress), 15, new Vector2(.275f, .05f), new Vector2(.97f, .30f), accent);
+                var preview = TextAt(inner.transform, Preview(id, offer.Rarity, progress, offer.WeaponId), 15, new Vector2(.275f, .05f), new Vector2(.97f, .30f), accent);
                 preview.alignment = TextAlignmentOptions.Left;
                 string label = RarityLabel(offer, progress);
                 var rarityLabel = TextAt(shadeTop.transform, label, 11, new Vector2(0.02f, 0.02f), new Vector2(0.98f, 0.34f), accent);

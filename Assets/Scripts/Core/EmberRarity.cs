@@ -196,11 +196,14 @@ namespace Emberlight
         public int Id;
         public EmberRarity Rarity;
         public EmberOfferKind Kind;
-        public EmberOffer(int id, EmberRarity rarity)
+        /// <summary>-1 = global (luck/amp/shield). StatAtk/StatAs target an owned weapon id.</summary>
+        public int WeaponId;
+        public EmberOffer(int id, EmberRarity rarity, int weaponId = -1)
         {
             Id = id;
             Rarity = rarity;
             Kind = EmberRarityUtil.KindOf(id);
+            WeaponId = weaponId;
         }
     }
 }

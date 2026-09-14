@@ -21,8 +21,8 @@ namespace Emberlight
             int count = ctx.Progress.Orbits;
             bool corona = ctx.Progress.HasMetamorph(RunProgress.MetaOrbit);
             float radius = corona ? 2.3f : 1.6f;
-            float spin = corona ? 3.6f : 2.5f;
-            float dps = (corona ? 75f : 65f) * ctx.Progress.DamageMul;
+            float spin = (corona ? 3.6f : 2.5f) * (1f + ctx.Progress.WeaponAttackSpeed(RunProgress.WeaponOrbit));
+            float dps = (corona ? 75f : 65f) * ctx.Progress.DamageMul * (1f + ctx.Progress.WeaponMagnitude(RunProgress.WeaponOrbit));
 
             while (orbs.Count < count) orbs.Add(ctx.Pool != null ? ctx.Pool.RentFire(ctx.World, ctx.PlayerPos, .33f) : EmberArt.Fire(ctx.World, ctx.PlayerPos, .33f));
             while (orbs.Count > count)

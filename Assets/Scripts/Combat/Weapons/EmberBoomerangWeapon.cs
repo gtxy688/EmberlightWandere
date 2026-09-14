@@ -38,7 +38,7 @@ namespace Emberlight
             if (cd <= 0 && ctx.EnemyCount() > 0)
             {
                 Fire(ctx);
-                cd = 2.0f / (1f + ctx.Progress.AttackSpeedBonus); // Weapon-Balance-v1
+                cd = 2.0f / (1f + ctx.Progress.WeaponAttackSpeed(RunProgress.WeaponBoom)); // Weapon-Balance-v1
             }
 
             bool extraLeg = ctx.Progress.BoomExtraLegHit;
