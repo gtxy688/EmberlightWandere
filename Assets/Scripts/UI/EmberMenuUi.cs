@@ -72,25 +72,12 @@ namespace Emberlight
             brandRt.anchorMax = new Vector2(.58f, .98f);
             brandRt.offsetMin = brandRt.offsetMax = Vector2.zero;
             var brandBg = brandRoot.AddComponent<Image>();
-            brandBg.color = new Color(1f, .61f, .19f, 1f);
+            brandRt.anchorMin = new Vector2(.34f, .88f);
+            brandRt.anchorMax = new Vector2(.66f, .98f);
+            brandBg.color = Color.white;
             brandBg.raycastTarget = false;
-            if (EmberArt.Flame != null)
-            {
-                brandBg.sprite = EmberArt.Flame;
-                brandBg.type = Image.Type.Simple;
-                brandBg.preserveAspect = true;
-                var coreGo = new GameObject("Flame heart", typeof(RectTransform), typeof(Image));
-                coreGo.transform.SetParent(brandRoot.transform, false);
-                var cr = coreGo.GetComponent<RectTransform>();
-                cr.anchorMin = new Vector2(.28f, .10f);
-                cr.anchorMax = new Vector2(.72f, .64f);
-                cr.offsetMin = cr.offsetMax = Vector2.zero;
-                var ci = coreGo.GetComponent<Image>();
-                ci.sprite = EmberArt.Flame;
-                ci.color = new Color(1f, .92f, .63f, 1f);
-                ci.type = Image.Type.Simple;
-                ci.raycastTarget = false;
-            }
+            brandBg.sprite = EmberWorldArt.Get(8);
+            brandBg.preserveAspect = true;
             brandRoot.SetActive(false);
 
             heading = Label("Title", Overlay.transform, "", 34, new Vector2(.06f, .72f), new Vector2(.94f, .86f));
@@ -160,9 +147,13 @@ namespace Emberlight
             g.transform.SetParent(parent, false);
             var r = g.GetComponent<RectTransform>();
             r.anchorMin = min; r.anchorMax = max; r.offsetMin = r.offsetMax = Vector2.zero;
-            g.GetComponent<Image>().color = new Color(.18f, .26f, .32f);
+            var face = g.GetComponent<Image>();
+            face.sprite = EmberUiArt.Get(parent.childCount == 1 ? EmberUiArt.Piece.Primary : EmberUiArt.Piece.Secondary);
+            face.type = Image.Type.Sliced;
+            face.pixelsPerUnitMultiplier = 2f;
+            face.color = Color.white;
             g.GetComponent<Button>().onClick.AddListener(() => { EmberAudio.Ensure().PlayUiClick(); if (action != null) action(); });
-            Label("Label", g.transform, label, 23, new Vector2(.035f, .05f), new Vector2(.965f, .95f));
+            Label("Label", g.transform, label, 23, new Vector2(.18f, .12f), new Vector2(.88f, .88f));
         }
     }
 }

@@ -27,7 +27,7 @@ namespace Emberlight
             while (orbs.Count < count)
             {
                 orbs.Add(ctx.Pool != null ? ctx.Pool.RentFire(ctx.World, ctx.PlayerPos, .33f) : EmberArt.Fire(ctx.World, ctx.PlayerPos, .33f));
-                EmberAudio.Ensure().PlayWeaponOrbitIgnite();
+
             }
             while (orbs.Count > count)
             {
@@ -45,6 +45,8 @@ namespace Emberlight
                 float a = ctx.Elapsed * spin + i * Mathf.PI * 2 / count;
                 Vector2 p = ctx.PlayerPos + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * radius;
                 orbs[i].transform.position = p;
+                float flicker=1f+.10f*Mathf.Sin(ctx.Elapsed*10+i*2);
+                orbs[i].transform.localScale=new Vector3(.28f,.46f*flicker,1);
                 orbs[i].transform.rotation = Quaternion.Euler(0, 0, a * Mathf.Rad2Deg);
                 if ((int)(ctx.Elapsed * 24) != (int)((ctx.Elapsed - dt) * 24)) ctx.Effects.Trail(p);
                 if (dropBurn && ctx.SpawnBurnPatch != null) ctx.SpawnBurnPatch(p, 0.35f);
@@ -62,7 +64,8 @@ namespace Emberlight
                     float d = Vector2.Distance(orbs[i].transform.position, e.view.position);
                     if (d < e.radius + .35f && d < best) { best = d; hit = true; source = orbs[i].transform.position; }
                 }
-                if (hit) ctx.DealDamage(j, dps * dt, source);
+                if (hit && ctx.DealContactDamage(j, dps * dt, source))
+                    EmberAudio.Ensure().PlayWeaponOrbitContact();
             }
         }
     }

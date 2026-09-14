@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Emberlight
@@ -20,13 +20,12 @@ namespace Emberlight
             if (!ShouldDrop(kind, affix, random.NextDouble(), config)) return;
             if (drops.Count >= 24) Remove(0);
             var v = pool.RentShape("healing-drop", world, position, Vector2.one * .48f, new Color(.16f, .8f, .46f), 12);
-            v.sprite = EmberArt.Panel;
-            if (v.transform.childCount == 0)
-            {
-                var h = EmberVisuals.Shape("Healing cross horizontal", v.transform, Vector2.zero, new Vector2(.65f, .20f), Color.white, 13);
-                var t = EmberVisuals.Shape("Healing cross vertical", v.transform, Vector2.zero, new Vector2(.20f, .65f), Color.white, 13);
-                h.sprite = t.sprite = EmberArt.Panel;
-            }
+            v.sprite = EmberWorldArt.Get(9);
+            v.color = Color.white;
+            // Preserve the pickup size regardless of atlas pixel dimensions.
+            v.transform.localScale = Vector3.one * (.62f / v.sprite.bounds.size.x);
+            for (int child = 0; child < v.transform.childCount; child++)
+                v.transform.GetChild(child).gameObject.SetActive(false);
             drops.Add(new Drop { view = v, life = config.HealDropLifetime });
         }
         public void Tick(float dt, Vector2 player)
@@ -37,8 +36,8 @@ namespace Emberlight
                 d.life -= dt;
                 if (d.life <= 0) { Remove(i); continue; }
                 float pulse = 1f + .08f * Mathf.Sin(d.life * 5f);
-                d.view.transform.localScale = Vector3.one * (.48f * pulse);
-                d.view.color = new Color(.16f, .8f, .46f, d.life < 5f ? .55f + .45f * Mathf.Sin(d.life * 10f) : 1f);
+                d.view.transform.localScale = Vector3.one * (.62f * pulse / d.view.sprite.bounds.size.x);
+                d.view.color = new Color(1f, 1f, 1f, d.life < 5f ? .55f + .45f * Mathf.Sin(d.life * 10f) : 1f);
                 // Always attract/pick while playing; overflow heal discarded (no shield)
                 if (game.State != EmberGame.Mode.Playing) continue;
                 float attract = game.NeedsHealing ? 2.2f : 1.5f; // 残血吸得更远

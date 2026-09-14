@@ -98,7 +98,7 @@ namespace Emberlight
             {
                 Vector2 v = Quaternion.Euler(0, 0, (i - (count - 1) * .5f) * 12f) * dir;
                 var r = ctx.Pool != null ? ctx.Pool.RentFire(ctx.World, origin, size) : EmberArt.Fire(ctx.World, origin, size);
-                r.color = isSplit ? new Color(1f, .85f, .35f) : new Color(1f, .55f, .2f);
+                EmberWorldArt.Projectile(r,11,isSplit?.25f:.40f,isSplit?.48f:.80f);
                 r.transform.rotation = Quaternion.Euler(0, 0, Mathf.Atan2(v.y, v.x) * Mathf.Rad2Deg - 90);
                 arrows.Add(new Arrow
                 {

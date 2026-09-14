@@ -148,6 +148,7 @@ namespace Emberlight
             weaponCtx.GetEnemy = i => enemies[i];
             weaponCtx.Damage = Damage;
             weaponCtx.DamageFrom = DamageFrom;
+            weaponCtx.ContactDamageFrom = (i, amount, source) => ApplyDamageFrom(i, amount, source, false);
             weaponCtx.Intercept = enemyProjectiles.Intercept;
             weaponCtx.StillPlaying = () => game.State == EmberGame.Mode.Playing;
             weaponCtx.SpawnBurnPatch = (pos, scale) =>
@@ -349,6 +350,9 @@ namespace Emberlight
             if (boss) p = EmberWorld.Clamp((Vector2)player.position + new Vector2(0, 2), 1);
             Color color = kind == 4 ? new Color(.45f, .22f, .65f) : kind == 5 ? new Color(.4f, .5f, .22f) : kind == 6 ? new Color(.55f, .7f, .22f) : kind == 7 ? new Color(.25f, .4f, .49f) : kind == 8 ? new Color(.8f, .29f, .13f) : kind == 1 ? new Color(.65f, .29f, .46f) : kind == 2 ? new Color(.39f, .31f, .57f) : new Color(.29f, .30f, .39f);
             var view = pool.RentEnemy(boss ? "boss" : "shade", world, color);
+            var silhouette = view.GetComponent<EmberEnemySilhouette>();
+            if (silhouette == null) silhouette = view.gameObject.AddComponent<EmberEnemySilhouette>();
+            silhouette.Apply(kind, color);
             view.position = p;
             float size = boss ? 2.7f : kind == 6 ? .40f : kind == 5 ? 1.25f : kind == 7 ? 1.2f : kind == 8 ? .65f : kind == 2 ? 1.3f : kind == 1 ? .65f : 1;
             view.localScale = Vector3.one * size;
@@ -371,7 +375,7 @@ namespace Emberlight
                 added.facing = Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg;
                 if (kind != 6 && (forceAffix || random.NextDouble() < config.AffixChance(wave)))
                     added.affix = (EnemyAffix)(1 + random.Next(3));
-                if (kind >= 4 || added.affix != EnemyAffix.None) added.visual = new EmberEnemyVisual(added, world);
+                added.visual = new EmberEnemyVisual(added, world);
             }
             added.bar = new EmberEnemyBar(view, boss);
             if (boss) { added.ai = new EmberBoss(game, view, world, config.BossTier(wave), FireBossVolley); bossEnemy = added; }
@@ -408,13 +412,16 @@ namespace Emberlight
         void Damage(int index, float amount) { DamageFrom(index, amount, player.position); }
 
         void DamageFrom(int index, float amount, Vector2 source)
+        { ApplyDamageFrom(index, amount, source, true); }
+
+        void ApplyDamageFrom(int index, float amount, Vector2 source, bool playHit)
         {
             if (index < 0 || index >= enemies.Count) return;
             var e = enemies[index];
             if (!e.Targetable || !EmberWorld.Visible(cam, e.view.position)) return;
             if (e.kind == 7) amount *= ShieldBehavior.DamageMultiplier(e.facing, source - (Vector2)e.view.position, config.ShieldFrontMultiplier);
             e.hp = Mathf.Max(0, e.hp - amount);
-            EmberAudio.Ensure().PlayHit();
+            if (playHit) EmberAudio.Ensure().PlayHit();
             e.bar.Set(e.hp / e.maxHp);
             if (e.flash <= 0) { effects.Impact(e.view.position, false); e.flash = .10f; }
             if (amount >= 1) e.view.position += (e.view.position - player.position).normalized * (e.kind == 3 ? .015f : .06f);

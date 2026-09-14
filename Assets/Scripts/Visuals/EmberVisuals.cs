@@ -27,6 +27,7 @@ namespace Emberlight
         {
             var root=new GameObject(name).transform; root.SetParent(parent,false);
             Shape("Shadow",root,new Vector2(0,-.25f),new Vector2(.8f,.25f),new Color(0,0,0,.25f),1);
+            if(keeper) { root.gameObject.AddComponent<EmberKeeperAnimation>().Initialize(); return root; }
             Shape("Cloak",root,Vector2.zero,new Vector2(.65f,.8f),body,3);
             Shape("Hood",root,new Vector2(0,.25f),new Vector2(.65f,.6f),body*1.2f,4);
             Shape("Face",root,new Vector2(0,.24f),new Vector2(.43f,.3f),new Color(.07f,.10f,.16f),5);

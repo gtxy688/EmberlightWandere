@@ -75,9 +75,9 @@ namespace Emberlight
 
         void Fire(EmberWeaponContext ctx, bool wildfire)
         {
-            EmberAudio.Ensure().PlayWeaponFireball();
             int nearest = ctx.FindNearestVisibleEnemy();
             if (nearest < 0) return;
+            EmberAudio.Ensure().PlayWeaponFireball();
             var target = ctx.GetEnemy(nearest);
             Vector2 dir = ((Vector2)target.view.position - ctx.PlayerPos).normalized;
             int count = 1 + ctx.Progress.ExtraShots;
@@ -88,6 +88,8 @@ namespace Emberlight
                 Vector2 v = Quaternion.Euler(0, 0, (i - (count - 1) * .5f) * 9) * dir;
                 var r = ctx.Pool != null ? ctx.Pool.RentFire(ctx.World, ctx.PlayerPos, size) : EmberArt.Fire(ctx.World, ctx.PlayerPos, size);
                 r.transform.rotation = Quaternion.Euler(0, 0, Mathf.Atan2(v.y, v.x) * Mathf.Rad2Deg - 90);
+                r.sprite=EmberVisuals.Disc;
+                r.transform.localScale=new Vector3(size*.95f,size*1.25f,1);
                 shots.Add(new Shot
                 {
                     view = r,

@@ -23,6 +23,16 @@ namespace Emberlight
         public Func<Vector2, Vector2, float, bool> Intercept;
         public void DealDamage(int index, float amount, Vector2 source)
         { if (DamageFrom != null) DamageFrom(index, amount, source); else Damage(index, amount); }
+        public Action<int, float, Vector2> ContactDamageFrom;
+        public bool DealContactDamage(int index, float amount, Vector2 source)
+        {
+            var enemy = GetEnemy(index);
+            if (enemy == null || !enemy.Targetable || amount <= 0) return false;
+            float before = enemy.hp;
+            if (ContactDamageFrom != null) ContactDamageFrom(index, amount, source);
+            else DealDamage(index, amount, source);
+            return enemy.hp < before;
+        }
         public Action PlayingGate; // no-op helper reserved
         public Func<bool> StillPlaying;
 

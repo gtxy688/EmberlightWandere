@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Emberlight
@@ -72,7 +72,7 @@ namespace Emberlight
                 for (int k = 0; k < 3; k++) EmberArt.Fire(r.transform, new Vector2((k - 1) * .28f, .05f * Mathf.Sin(k)), .20f, 2);
             }
             flames.Add(new Flame { view = r, life = life, powerScale = powerScale });
-            EmberAudio.Ensure().PlayWeaponBurnGround();
+
         }
 
         public override void Tick(float dt, EmberWeaponContext ctx)
@@ -110,7 +110,8 @@ namespace Emberlight
                     var e = ctx.GetEnemy(j);
                     if (e == null || !e.Targetable) continue;
                     if (Vector2.Distance(ctx.PlayerPos, e.view.position) < ringR + e.radius)
-                        ctx.DealDamage(j, ringDps * dt, ctx.PlayerPos);
+                        if (ctx.DealContactDamage(j, ringDps * dt, ctx.PlayerPos))
+                            EmberAudio.Ensure().PlayWeaponBurnGround();
                 }
                 seaPatchTimer -= dt;
                 if (seaPatchTimer <= 0f)
@@ -146,7 +147,8 @@ namespace Emberlight
                     var e = ctx.GetEnemy(j);
                     if (e == null || !e.Targetable) continue;
                     if (Vector2.Distance(f.view.transform.position, e.view.position) < hitR)
-                        ctx.DealDamage(j, 46 * trailPow * f.powerScale * ctx.Progress.DamageMul * (1f + ctx.Progress.WeaponMagnitude(RunProgress.WeaponTrail)) * dt, f.view.transform.position); // +15% Weapon-Balance-v1
+                        if (ctx.DealContactDamage(j, 46 * trailPow * f.powerScale * ctx.Progress.DamageMul * (1f + ctx.Progress.WeaponMagnitude(RunProgress.WeaponTrail)) * dt, f.view.transform.position))
+                            EmberAudio.Ensure().PlayWeaponBurnGround();
                 }
                 if (f.life <= 0) { if (pool != null) pool.Release("burn", f.view); else Object.Destroy(f.view.gameObject); flames.RemoveAt(i); }
             }

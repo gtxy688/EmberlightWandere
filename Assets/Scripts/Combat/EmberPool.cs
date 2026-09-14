@@ -73,6 +73,7 @@ namespace Emberlight
                 r.sortingOrder = order;
                 r.color = new Color(1f, .30f, .055f);
                 r.sprite = EmberArt.Flame;
+                for(int i=0;i<go.transform.childCount;i++) go.transform.GetChild(i).gameObject.SetActive(true);
             }
             return r;
         }

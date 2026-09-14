@@ -9,10 +9,30 @@ namespace Emberlight
         readonly SpriteRenderer tell, aura, core, wake;
         readonly Transform embers;
         readonly EmberCombat.Enemy enemy;
+        readonly Transform[] bodyParts;
+        readonly Vector3[] restPositions, restScales;
+        readonly Quaternion[] restRotations;
+        Vector3 previousPosition;
+        float previousTime, locomotion, previousCharge, recoil;
 
         public EmberEnemyVisual(EmberCombat.Enemy enemy, Transform world)
         {
             this.enemy = enemy;
+            var parts = new System.Collections.Generic.List<Transform>();
+            foreach (Transform part in enemy.view)
+                if (part.name == "Cloak" || part.name == "Hood" || part.name == "Face" || part.name == "Eye" || part.name == "Silhouette") parts.Add(part);
+            bodyParts = parts.ToArray();
+            restPositions = new Vector3[bodyParts.Length];
+            restScales = new Vector3[bodyParts.Length];
+            restRotations = new Quaternion[bodyParts.Length];
+            for (int i=0;i<bodyParts.Length;i++)
+            {
+                restPositions[i]=bodyParts[i].localPosition;
+                restScales[i]=bodyParts[i].localScale;
+                restRotations[i]=bodyParts[i].localRotation;
+            }
+            previousPosition=enemy.view.position;
+            previousTime=-1f;
             // World-sized tells must not inherit enemy body scaling.
             root = new GameObject("Enemy tells").transform;
             root.SetParent(world, false);
@@ -45,14 +65,11 @@ namespace Emberlight
                 case 7:
                     shield = new GameObject("Directional shield").transform;
                     shield.SetParent(root, false);
-                    for (int i = -2; i <= 2; i++)
-                    {
-                        float a = i * 25f * Mathf.Deg2Rad;
-                        var plate = EmberVisuals.Shape("Shield plate", shield, new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * .6f,
-                            new Vector2(.14f, .30f), new Color(.5f, .8f, .9f), 13);
-                        plate.sprite = EmberArt.Panel;
-                        plate.transform.localRotation = Quaternion.Euler(0, 0, i * 25f);
-                    }
+                    var shieldBody = EmberVisuals.Shape("Solid shield", shield, new Vector2(.58f,0),new Vector2(.24f,.91f),new Color(.37f,.58f,.66f),13);
+                    shieldBody.sprite=EmberArt.Panel;
+                    var rim=EmberVisuals.Shape("Shield rim",shield,new Vector2(.65f,0),new Vector2(.065f,.78f),new Color(.69f,.84f,.87f),14);
+                    rim.sprite=EmberArt.Panel;
+                    EmberVisuals.Shape("Shield boss",shield,new Vector2(.58f,0),new Vector2(.15f,.18f),new Color(.78f,.87f,.86f),15);
                     core.color = new Color(.7f, .92f, 1f);
                     break;
                 case 8:
@@ -80,6 +97,7 @@ namespace Emberlight
 
         public void Tick(float time, LevelConfig config)
         {
+            AnimateBody(time);
             root.position = enemy.view.position;
             if (embers != null) embers.localRotation = Quaternion.Euler(0, 0, time * 80f);
             if (shield != null) shield.localRotation = Quaternion.Euler(0, 0, enemy.facing);
@@ -125,8 +143,39 @@ namespace Emberlight
             }
         }
 
+        void AnimateBody(float time)
+        {
+            float dt=previousTime<0?0:Mathf.Clamp(time-previousTime,0,.1f);
+            Vector3 delta=enemy.view.position-previousPosition;
+            previousTime=time;previousPosition=enemy.view.position;
+            float speed=dt>.0001f?delta.magnitude/dt:0;
+            locomotion=Mathf.Lerp(locomotion,Mathf.Clamp01(speed/2f),1f-Mathf.Exp(-dt*10f));
+            if(previousCharge>.1f && enemy.charge==0)recoil=1f;
+            previousCharge=enemy.charge;
+            recoil=Mathf.MoveTowards(recoil,0,dt*6f);
+            float rate=enemy.kind==6?12f:enemy.kind==1?8f:enemy.kind==2||enemy.kind==3?2.8f:4.5f;
+            float phase=time*rate+enemy.view.GetInstanceID()%31;
+            float wave=Mathf.Sin(phase);
+            float bob=wave*(.009f+.026f*locomotion);
+            float squash=wave*(enemy.kind==5?.055f:.025f)*locomotion;
+            float lean=-enemy.moveDirection.x*locomotion*(enemy.kind==7?2f:4f);
+            if(enemy.kind==4){squash-=enemy.charge*.055f;lean+=recoil*8f;}
+            if(enemy.detonating){squash=Mathf.Sin(time*27f)*.065f;bob=0;}
+            if(enemy.reviveTimer>0){squash=-.10f;bob=-.04f;lean=0;}
+            for(int i=0;i<bodyParts.Length;i++)
+            {
+                var part=bodyParts[i];if(part==null)continue;
+                part.localPosition=restPositions[i]+new Vector3(0,bob,0);
+                part.localScale=Vector3.Scale(restScales[i],new Vector3(1+squash,1-squash,1));
+                part.localRotation=restRotations[i]*Quaternion.Euler(0,0,lean);
+            }
+        }
+
         public void Clear()
         {
+            // Pooled enemies must return in their neutral pose.
+            for(int i=0;i<bodyParts.Length;i++)
+                if(bodyParts[i]!=null){bodyParts[i].localPosition=restPositions[i];bodyParts[i].localScale=restScales[i];bodyParts[i].localRotation=restRotations[i];}
             if (root == null) return;
             root.gameObject.SetActive(false);
             Object.Destroy(root.gameObject);

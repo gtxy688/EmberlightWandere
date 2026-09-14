@@ -126,6 +126,9 @@ namespace Emberlight
             cam.orthographicSize = 8;
             cam.clearFlags = CameraClearFlags.SolidColor;
             cam.backgroundColor = new Color(.055f, .085f, .12f);
+            // Start the camp ambience while the loading page is visible. ShowMainMenu
+            // calls this again, but EmberAudio keeps the current track playing.
+            EmberAudio.Ensure().PlayMenuMusic();
             gameObject.AddComponent<EmberIntro>().Begin(loadedFont =>
             {
                 ui.Build(transform, loadedFont, Pause);
@@ -410,9 +413,37 @@ namespace Emberlight
             if (ui.UpgradePanel != null) ui.UpgradePanel.Hide();
             if (ui.GodsSelect != null) ui.GodsSelect.Hide();
             if (ui.SettingsPanel != null)
-                ui.SettingsPanel.Show(SetPlaying, true);
+                ui.SettingsPanel.Show(SetPlaying, true, ReturnToCamp);
             else
                 ui.Show("\u6682\u6b47\u706f\u7554", "\u7a0d\u4f5c\u4f11\u606f\uff0c\u518d\u8d74\u957f\u591c\u3002", new[] { "\u7ee7\u7eed\u6218\u6597" }, new UnityEngine.Events.UnityAction[] { SetPlaying });
+        }
+
+        void ReturnToCamp()
+        {
+            Time.timeScale = 1f;
+            pointer = -1;
+            stick = Vector2.zero;
+            pendingWavePicks = 0;
+            compensationPick = false;
+
+            if (ui != null)
+            {
+                if (ui.UpgradePanel != null) ui.UpgradePanel.Hide();
+                if (ui.GodsSelect != null) ui.GodsSelect.Hide();
+                if (ui.BattleHud != null) ui.BattleHud.Show(false);
+                if (ui.StickBase != null) ui.StickBase.gameObject.SetActive(false);
+            }
+
+            if (combat != null) combat.TearDown();
+            if (world != null)
+            {
+                world.gameObject.SetActive(false);
+                Destroy(world.gameObject);
+            }
+            world = null;
+            player = null;
+            Progress = null;
+            ShowMainMenu();
         }
 
         void OnApplicationPause(bool paused) { if (paused) Pause(); }

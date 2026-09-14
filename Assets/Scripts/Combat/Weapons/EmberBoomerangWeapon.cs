@@ -46,6 +46,9 @@ namespace Emberlight
             for (int i = active.Count - 1; i >= 0; i--)
             {
                 var b = active[i];
+                b.view.transform.localScale=new Vector3(.60f*(.72f+.28f*Mathf.Abs(Mathf.Sin(ctx.Elapsed*22))),.50f,1);
+                b.view.transform.rotation=Quaternion.Euler(0,0,Mathf.Sin(ctx.Elapsed*8)*12);
+
                 if (!b.returning)
                 {
                     Vector2 step = b.dir * Speed * dt;
@@ -118,14 +121,14 @@ namespace Emberlight
 
         void Fire(EmberWeaponContext ctx)
         {
-            EmberAudio.Ensure().PlayWeaponBoomerang();
             int nearest = ctx.FindNearestVisibleEnemy();
             if (nearest < 0) return;
+            EmberAudio.Ensure().PlayWeaponBoomerang();
             var target = ctx.GetEnemy(nearest);
             Vector2 dir = ((Vector2)target.view.position - ctx.PlayerPos).normalized;
             float dmg = 18f * ctx.Progress.DamageMul * (1f + ctx.Progress.WeaponMagnitude(RunProgress.WeaponBoom));
             var r = ctx.Pool != null ? ctx.Pool.RentFire(ctx.World, ctx.PlayerPos, .30f) : EmberArt.Fire(ctx.World, ctx.PlayerPos, .30f);
-            r.color = new Color(1f, .4f, .55f);
+            EmberWorldArt.Projectile(r,10,.60f,.50f);
             active.Add(new Butterfly
             {
                 view = r,

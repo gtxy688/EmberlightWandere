@@ -116,3 +116,11 @@ InitTestScene*.unity*
 # Audio source packs (keep renamed clips only)
 Assets/Audio/_download/
 
+# Local AI tooling (Codely / Tuanjie): CLI install, extension caches and chat history.
+# These are referenced by Packages/manifest.json as file: deps and are re-installed
+# locally per machine, so they must not be committed. Keep .codelyignore tracked.
+/.codely-cli/
+/.codely.packages/
+/.codely-cli
+/.codely.packages
+

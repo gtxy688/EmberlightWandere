@@ -18,17 +18,32 @@ namespace Emberlight
         {
             font = fontAsset;
             Root = Box(parent, "Battle HUD", new Vector2(.04f, .83f), new Vector2(.96f, .995f), new Color(.02f, .035f, .055f, .9f)).gameObject;
-            clock = Text(Root.transform, font, "", 19, new Vector2(.03f, .77f), new Vector2(.80f, .98f));
-            health = Bar(Root.transform, "Life", new Vector2(.035f, .53f), new Vector2(.79f, .75f), new Color(.88f, .29f, .27f));
+            var frame = Root.GetComponent<Image>();
+            frame.sprite = EmberUiArt.Get(EmberUiArt.Piece.Panel);
+            frame.color = Color.white;
+            frame.pixelsPerUnitMultiplier = 4f;
+            clock = Text(Root.transform, font, "", 14, new Vector2(.065f, .77f), new Vector2(.78f, .94f));
+            clock.enableAutoSizing = true;
+            clock.fontSizeMin = 10;
+            clock.fontSizeMax = 14;
+            clock.overflowMode = TextOverflowModes.Ellipsis;
+            health = Bar(Root.transform, "Life", new Vector2(.065f, .53f), new Vector2(.78f, .75f), new Color(.88f, .29f, .27f));
             healthText = Text(health.transform.parent, font, "", 16, Vector2.zero, Vector2.one);
-            shield = Bar(Root.transform, "Shield", new Vector2(.035f, .30f), new Vector2(.79f, .50f), new Color(.20f, .72f, .96f));
+            shield = Bar(Root.transform, "Shield", new Vector2(.065f, .30f), new Vector2(.78f, .50f), new Color(.20f, .72f, .96f));
             shieldText = Text(shield.transform.parent, font, "", 14, Vector2.zero, Vector2.one);
-            waveFill = Bar(Root.transform, "Wave", new Vector2(.035f, .06f), new Vector2(.79f, .27f), new Color(.94f, .66f, .22f));
+            waveFill = Bar(Root.transform, "Wave", new Vector2(.065f, .06f), new Vector2(.78f, .27f), new Color(.94f, .66f, .22f));
             waveText = Text(waveFill.transform.parent, font, "", 15, Vector2.zero, Vector2.one);
-            var b = Box(Root.transform, "Pause", new Vector2(.83f, .24f), new Vector2(.98f, .86f), new Color(.12f, .19f, .25f));
+            var b = Box(Root.transform, "Pause", new Vector2(.82f, .29f), new Vector2(.94f, .72f), new Color(.12f, .19f, .25f));
+            b.sprite = EmberCardFrames.Get(EmberRarity.Silver);
+            b.color = Color.white;
+            b.pixelsPerUnitMultiplier = 7f;
             Text(b.transform, font, "\u6682\u505c", 17, Vector2.zero, Vector2.one);
             b.gameObject.AddComponent<Button>().onClick.AddListener(() => pause());
             bossRoot = Box(parent, "Boss HUD", new Vector2(.10f, .745f), new Vector2(.90f, .815f), new Color(.025f, .02f, .045f, .93f)).gameObject;
+            var bossFrame = bossRoot.GetComponent<Image>();
+            bossFrame.sprite = EmberCardFrames.Get(EmberRarity.Gold);
+            bossFrame.color = Color.white;
+            bossFrame.pixelsPerUnitMultiplier = 5f;
             bossText = Text(bossRoot.transform, font, "", 16, new Vector2(.02f, .47f), new Vector2(.98f, 1));
             bossFill = Bar(bossRoot.transform, "Boss life", new Vector2(.04f, .13f), new Vector2(.96f, .42f), new Color(.83f, .27f, .58f));
             bossRoot.SetActive(false);
@@ -57,7 +72,7 @@ namespace Emberlight
                 : "";
             clock.text = ((int)seconds / 60).ToString("00") + ":" + ((int)seconds % 60).ToString("00")
                 + "     \u51fb\u6740 " + kills
-                + "     \u4f59\u70ec " + (progress != null ? progress.Score : 0)
+
                 + slots;
         }
 

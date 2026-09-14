@@ -32,17 +32,8 @@ namespace Emberlight
             scaler.matchWidthOrHeight = .5f;
             var bg = EmberHud.Box(screen.transform, "Night sky", Vector2.zero, Vector2.one, new Color(.025f, .045f, .07f));
 
-            // Brand mark first (procedural sprite — no font needed).
-            var mark = EmberHud.Box(bg.transform, "Flame emblem", new Vector2(.43f, .74f), new Vector2(.57f, .86f), new Color(1, .61f, .19f));
-            if (EmberArt.Flame != null)
-            {
-                mark.sprite = EmberArt.Flame;
-                mark.type = Image.Type.Simple;
-                mark.preserveAspect = true;
-                var core = EmberHud.Box(mark.transform, "Flame heart", new Vector2(.28f, .10f), new Vector2(.72f, .64f), new Color(1, .92f, .63f));
-                core.sprite = EmberArt.Flame;
-                core.type = Image.Type.Simple;
-            }
+            var mark = EmberHud.Box(bg.transform, "Wanderer emblem", new Vector2(.37f,.74f),new Vector2(.63f,.89f),Color.white);
+            mark.sprite=EmberWorldArt.Get(8);mark.type=Image.Type.Simple;mark.preserveAspect=true;
 
             TMP_FontAsset fallback = TMP_Settings.defaultFontAsset;
             var titleEn = EmberHud.Text(bg.transform, fallback, "EmberlightWanderer", 26, new Vector2(.04f, .48f), new Vector2(.96f, .57f));

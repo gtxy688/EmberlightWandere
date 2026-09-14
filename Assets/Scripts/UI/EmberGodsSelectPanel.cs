@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -30,12 +30,12 @@ namespace Emberlight
             "\u7a7f\u900f\u706b\u77e2", "\u56de\u65cb\u70ec\u8776", "\u5929\u964d\u706b\u96e8"
         };
                 static readonly string[] RosterDescs = {
-            "\u81ea\u5df1\u4f1a\u6253\u706b\u7403\uff0c\u597d\u4e0a\u624b",
-            "\u706b\u56e2\u56f4\u7740\u4f60\u8f6c\uff0c\u78b0\u5230\u5c31\u70eb",
-            "\u8d70\u8fc7\u7684\u8def\u7740\u706b\uff0c\u602a\u8e29\u4e86\u6389\u8840",
-            "\u7ad9\u4f4f\u624d\u5f00\u706b\uff0c\u4e00\u7bad\u7a7f\u4e00\u4e32",
-            "\u4e22\u51fa\u53bb\u518d\u98de\u56de\u6765\uff0c\u6765\u56de\u90fd\u80fd\u6253",
-            "\u5148\u753b\u5708\u518d\u7838\u706b\uff0c\u6253\u4e00\u7247"
+            "自动朝最近的怪扔火球，简单好用",
+            "火球贴身绕圈转，谁靠近就烫谁",
+            "走过的地方留下一串火，踩上来的怪持续掉血",
+            "停下脚步才会射击，一箭射穿一条线上的怪",
+            "扔出一只火蝴蝶，飞出去打一下，飞回来再打一下",
+            "在地上标记大红圈，随后砸下一大片流星雨"
         };
         const int PageSize = 3;
 
@@ -59,22 +59,25 @@ namespace Emberlight
             selectedSlots = 2;
             root = Shade("Gods slots select");
             Title(root.transform,
-                "\u6b66\u5668\u69fd\u4f4d",
-                "\u5c11\u69fd\u66f4\u7a33\u0020\u00b7\u0020\u591a\u69fd\u66f4\u82b1\u66f4\u6613\u6b6a\u0020\u00b7\u0020\u9ed8\u8ba4\u0020\u004e\u003d\u0032");
+                "武器槽位",
+                "拿得越少强化越快，拿得越多打法越丰富 · 默认推荐 2 把");
 
             slotCards = new Image[5];
             string[] labels = {
-                "N=1  \u4e13\u7cbe\u7a33\u5065",
-                "N=2  \u53cc\u6838\uff08\u63a8\u8350\uff09",
-                "N=3  \u57fa\u51c6",
-                "N=4  \u5bbd\u6784\u7b51",
-                "N=5  \u6b66\u5668\u5e93"
+                "1 把武器",
+                "2 把武器（推荐）",
+                "3 把武器",
+                "4 把武器",
+                "5 把武器"
             };
             for (int i = 0; i < 5; i++)
             {
                 int n = i + 1;
                 float top = .64f - i * .09f;
                 var card = Box("Slot " + n, root.transform, new Vector2(.10f, top - .075f), new Vector2(.90f, top), Dim);
+                card.sprite = EmberUiArt.Get(EmberUiArt.Piece.Secondary);
+                card.color = Color.white;
+                card.pixelsPerUnitMultiplier = 3f;
                 slotCards[i] = card;
                 TextAt(card.transform, labels[i], 18, new Vector2(.04f, .05f), new Vector2(.96f, .95f), new Color(1, .92f, .76f));
                 int captured = n;
@@ -97,11 +100,11 @@ namespace Emberlight
 
         void BuildRosterUi(Action<int[]> onConfirm)
         {
-            if (root != null) { Destroy(root); root = null; }
+            if (root != null) { root.SetActive(false); Destroy(root); root = null; }
             root = Shade("Gods roster select");
             Title(root.transform,
-                "\u6b66\u5668\u5e93",
-                "\u70b9\u4e00\u5f20\u5373\u5f00\u6218\u0020\u00b7\u0020\u7a7a\u4f4d\u0020" + (selectedSlots - 1) + "\u0020\u7559\u7ed9\u5c40\u5185");
+                "挑选起始武器",
+                selectedSlots == 1 ? "先选择武器，再点击确认开战" : ("选好后点击确认 · 剩下的 " + (selectedSlots - 1) + " 个空位在战斗中补齐！"));
 
             int start = rosterPage * PageSize;
             int shown = Mathf.Min(PageSize, Roster.Length - start);
@@ -113,15 +116,40 @@ namespace Emberlight
                 float top = .62f - i * .14f;
                 bool taken = filled.Contains(id);
                 var card = Box("Roster " + id, root.transform, new Vector2(.08f, top - .12f), new Vector2(.92f, top), taken ? Filled : Dim);
+                card.sprite = EmberCardFrames.Get(EmberRarity.Gold);
+                card.color = taken ? new Color(1f, .91f, .65f) : Color.white;
+                card.pixelsPerUnitMultiplier = 4f;
                 rosterCards[i] = card;
-                TextAt(card.transform, RosterNames[idx], 24, new Vector2(.06f, .45f), new Vector2(.94f, .92f), new Color(1, .93f, .80f));
+                var icon = Box("Starter doodle " + id, card.transform, new Vector2(.07f, .16f), new Vector2(.27f, .84f), Color.white, false);
+                icon.sprite = EmberCardIcons.ForOffer(id);
+                icon.preserveAspect = true;
+                icon.raycastTarget = false;
+                TextAt(card.transform, RosterNames[idx], 24, new Vector2(.30f, .49f), new Vector2(.92f, .85f), new Color(1, .93f, .80f));
                 string desc = taken ? "\u5df2\u9009\u4e2d" : RosterDescs[idx];
-                TextAt(card.transform, desc, 15, new Vector2(.06f, .08f), new Vector2(.94f, .48f), new Color(.65f, .73f, .78f));
+                TextAt(card.transform, desc, 15, new Vector2(.30f, .15f), new Vector2(.92f, .49f), new Color(.65f, .73f, .78f));
                 int captured = id;
                 var btn = card.gameObject.AddComponent<Button>();
                 btn.targetGraphic = card;
                 btn.onClick.AddListener(() => { EmberAudio.Ensure().PlayUiClick(); ToggleRoster(captured, onConfirm); });
             }
+
+            string selectedName = filled.Count > 0 ? RosterNames[Array.IndexOf(Roster, filled[0])] : "";
+            var confirm = Box("Confirm starter", root.transform, new Vector2(.18f,.055f), new Vector2(.82f,.125f), Color.white);
+            confirm.sprite = EmberUiArt.Get(EmberUiArt.Piece.Primary);
+            confirm.pixelsPerUnitMultiplier = 3f;
+            TextAt(confirm.transform, filled.Count > 0 ? "确认 · " + selectedName : "请先选择武器", 20,
+                new Vector2(.16f,.08f), new Vector2(.90f,.92f), Gold);
+            var confirmButton = confirm.gameObject.AddComponent<Button>();
+            confirmButton.targetGraphic = confirm;
+            confirmButton.interactable = filled.Count > 0;
+            confirmButton.onClick.AddListener(() => {
+                if (!confirmButton.interactable || filled.Count == 0) return;
+                confirmButton.interactable = false;
+                var chosen = filled.ToArray();
+                EmberAudio.Ensure().PlayUiConfirm();
+                Hide();
+                onConfirm(chosen);
+            });
 
             // Page controls
             if (rosterPage > 0)
@@ -145,23 +173,29 @@ namespace Emberlight
 
         void ToggleRoster(int id, Action<int[]> onConfirm)
         {
-            // UI: click one card confirms starter; no multi-slot fill / OnSlotPick bar.
+            // Selection is retained across pages until explicit confirmation.
             filled.Clear();
             filled.Add(id);
-            Hide();
-            onConfirm(filled.ToArray());
+            BuildRosterUi(onConfirm);
         }
 
         void RefreshSlotHighlight()
         {
             if (slotCards == null) return;
             for (int i = 0; i < slotCards.Length; i++)
-                slotCards[i].color = (i + 1 == selectedSlots) ? Hi : Dim;
+            {
+                slotCards[i].sprite = EmberUiArt.Get(i + 1 == selectedSlots
+                    ? EmberUiArt.Piece.Primary : EmberUiArt.Piece.Secondary);
+                slotCards[i].color = Color.white;
+            }
         }
 
         void ConfirmRow(Transform parent, Action confirm)
         {
             var ok = Box("Confirm", parent, new Vector2(.18f, .06f), new Vector2(.82f, .13f), new Color(.28f, .42f, .32f));
+            ok.sprite = EmberUiArt.Get(EmberUiArt.Piece.Primary);
+            ok.color = Color.white;
+            ok.pixelsPerUnitMultiplier = 3f;
             TextAt(ok.transform, "\u786e\u8ba4", 22, Vector2.zero, Vector2.one, Gold);
             var okBtn = ok.gameObject.AddComponent<Button>();
             okBtn.targetGraphic = ok;

@@ -85,8 +85,8 @@ namespace Emberlight
             choosing = false;
             var shade = Box("Blessing veil", transform, Vector2.zero, Vector2.one, new Color(.015f, .028f, .05f, .90f), false);
             root = shade.gameObject;
-            var emblem = Box("Emblem", root.transform, new Vector2(.43f, .90f), new Vector2(.57f, .97f), new Color(1, .47f, .08f, .13f));
-            emblem.sprite = EmberArt.Glow; emblem.preserveAspect = true;
+            var emblem = Box("Emblem", root.transform, new Vector2(.37f, .90f), new Vector2(.63f, .98f), Color.white);
+            emblem.sprite = EmberUiArt.Get(EmberUiArt.Piece.Lantern); emblem.type = Image.Type.Simple; emblem.preserveAspect = true;
             TextAt(root.transform, "\u706f\u0020\u706b\u0020\u5347\u0020\u534e", 32, new Vector2(.10f, .82f), new Vector2(.90f, .89f), new Color(1, .89f, .66f));
             string sub = "\u6ce2\u6b21\u5956\u52b1\u0020\u00b7\u0020\u9009\u4e00\u9879\u0020\u00b7\u0020\u5e78\u8fd0 " + Mathf.RoundToInt(progress.Luck)
                 + "  \u00b7  \u5237\u65b0 " + progress.RefreshesRemaining;
@@ -104,10 +104,13 @@ namespace Emberlight
                 float top = top0 - i * (cardH + gap);
                 Color accent = EmberRarityUtil.Color(offer.Rarity);
                 var card = Box("Blessing card " + id, root.transform, new Vector2(.055f, top - cardH), new Vector2(.945f, top), accent * .65f);
-                var inner = Box("Card face", card.transform, Vector2.zero, Vector2.one, Ink);
-                inner.rectTransform.offsetMin = new Vector2(1.5f, 1.5f);
-                inner.rectTransform.offsetMax = new Vector2(-1.5f, -1.5f);
-                var shadeTop = Box("Route tint", inner.transform, new Vector2(.01f, .03f), new Vector2(.24f, .97f), new Color(accent.r * .15f, accent.g * .15f, accent.b * .15f, 1));
+                card.sprite = EmberCardFrames.Get(offer.Rarity);
+                card.color = Color.white;
+                card.pixelsPerUnitMultiplier = 4f;
+                var inner = Box("Card face", card.transform, Vector2.zero, Vector2.one, Color.clear, false);
+                inner.rectTransform.offsetMin = new Vector2(24f, 12f);
+                inner.rectTransform.offsetMax = new Vector2(-24f, -12f);
+                var shadeTop = Box("Route tint", inner.transform, new Vector2(.01f, .03f), new Vector2(.24f, .97f), new Color(16f / 255, 28f / 255, 40f / 255, 1));
                 DrawIcon(shadeTop.transform, id, accent);
                 string titleText = (id >= 0 && id < names.Length && !string.IsNullOrEmpty(names[id])) ? names[id] : ("#" + id);
                 if ((id == RunProgress.StatAtk || id == RunProgress.StatAs) && offer.WeaponId >= 0
@@ -129,7 +132,7 @@ namespace Emberlight
                 var preview = TextAt(inner.transform, Preview(id, offer.Rarity, progress, offer.WeaponId), 15, new Vector2(.275f, .05f), new Vector2(.97f, .30f), accent);
                 preview.alignment = TextAlignmentOptions.Left;
                 string label = RarityLabel(offer, progress);
-                var rarityLabel = TextAt(shadeTop.transform, label, 11, new Vector2(0.02f, 0.02f), new Vector2(0.98f, 0.34f), accent);
+                var rarityLabel = TextAt(shadeTop.transform, label, 11, new Vector2(0.02f, 0.02f), new Vector2(0.98f, 0.25f), accent);
                 rarityLabel.enableAutoSizing = true;
                 rarityLabel.fontSizeMin = 8;
                 rarityLabel.fontSizeMax = 11;
@@ -137,13 +140,13 @@ namespace Emberlight
                 rarityLabel.enableWordWrapping = false;
 
                 var button = card.gameObject.AddComponent<Button>();
-                button.targetGraphic = inner;
+                button.targetGraphic = card;
                 var colors = button.colors;
                 colors.highlightedColor = new Color(1.12f, 1.12f, 1.12f);
                 colors.pressedColor = new Color(.9f, .9f, .9f);
                 button.colors = colors;
                 var motion = card.gameObject.AddComponent<EmberCardMotion>();
-                motion.Initialize(i * .05f, inner);
+                motion.Initialize(i * .05f, card);
                 EmberOffer captured = offer;
                 button.onClick.AddListener(() =>
                 {
@@ -177,26 +180,11 @@ namespace Emberlight
 
         void DrawIcon(Transform parent, int id, Color c)
         {
-            var seal = Box("Seal", parent, new Vector2(.15f, .40f), new Vector2(.85f, .96f), new Color(c.r, c.g, c.b, .12f));
-            seal.sprite = EmberVisuals.Disc; seal.preserveAspect = true;
-            if (id == RunProgress.StatShield || id == RunProgress.StatAs || id == RunProgress.MetaOrbit || id == RunProgress.ExclOrbit || id == RunProgress.WeaponOrbit)
-            {
-                var ring = Box("Orbit glyph", parent, new Vector2(.18f, .32f), new Vector2(.82f, .84f), c);
-                ring.sprite = EmberArt.Ring; ring.preserveAspect = true;
-            }
-            else
-            {
-                int count = (id == RunProgress.ExclBasic || id == RunProgress.StatAtk) ? 2 : 1;
-                for (int i = 0; i < count; i++)
-                {
-                    float x = count == 1 ? .5f : .30f + i * .4f / (count - 1);
-                    float y = .55f;
-                    var f = Box("Flame glyph", parent, new Vector2(x - .13f, y - .18f), new Vector2(x + .13f, y + .22f), c);
-                    f.sprite = EmberArt.Flame;
-                }
-            }
+            var icon = Box("Doodle icon " + id, parent, new Vector2(.06f, .27f), new Vector2(.94f, .97f), Color.white, false);
+            icon.sprite = EmberCardIcons.ForOffer(id);
+            icon.preserveAspect = true;
+            icon.raycastTarget = false;
         }
-
         Image Box(string name, Transform parent, Vector2 min, Vector2 max, Color color, bool rounded = true)
         {
             var g = new GameObject(name, typeof(RectTransform), typeof(Image));

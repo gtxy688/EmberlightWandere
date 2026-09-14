@@ -15,7 +15,14 @@ namespace Emberlight
         {
             game=owner;body=root;world=arena;this.tier=tier;this.volley=volley;
             adornment=new GameObject("Boss adornment").transform;adornment.SetParent(root,false);root=adornment;
-            for(int i=-1;i<=1;i+=2){var horn=EmberVisuals.Shape("Crown horn",root,new Vector2(i*.27f,.56f),new Vector2(.2f,.45f),new Color(.8f,.3f,.65f),6);horn.sprite=EmberArt.Flame;horn.transform.localRotation=Quaternion.Euler(0,0,-i*25);}
+            for(int i=-1;i<=1;i++)
+            {
+                var tooth=EmberVisuals.Shape("Broken crown",root,new Vector2(i*.19f,.53f),new Vector2(.10f,i==1?.20f:.30f),new Color(.60f,.48f,.29f),6);
+                tooth.sprite=EmberArt.Panel;tooth.transform.localRotation=Quaternion.Euler(0,0,-i*12);
+            }
+            var band=EmberVisuals.Shape("Crown band",root,new Vector2(0,.43f),new Vector2(.58f,.09f),new Color(.60f,.48f,.29f),6);band.sprite=EmberArt.Panel;
+            var cage=EmberVisuals.Shape("Night lantern",root,new Vector2(.44f,-.05f),new Vector2(.22f,.32f),new Color(.33f,.28f,.39f),7);cage.sprite=EmberArt.Panel;
+            EmberArt.Fire(root,new Vector2(.44f,-.04f),.12f,8).color=new Color(.75f,.35f,.85f);
             var halo=EmberVisuals.Shape("Night crown",root,new Vector2(0,.30f),Vector2.one*1.1f,new Color(.7f,.3f,.65f,.6f),2);halo.sprite=EmberArt.Ring;
             EmberVisuals.Shape("Heart",root,new Vector2(0,-.08f),Vector2.one*.16f,new Color(1,.3f,.55f),7);
         }

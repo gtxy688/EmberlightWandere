@@ -181,12 +181,12 @@ namespace Emberlight
             if (weaponMeteor == null) weaponMeteor = LoadWeaponClip("weapon_meteor");
         }
 
-        /// <summary>Prefer polished Sfx/weapon_*; fall back to short Generated/ synths.</summary>
+        /// <summary>Prefer short action-aligned clips; preserve the original clips as fallback.</summary>
         AudioClip LoadWeaponClip(string fileNameNoExt)
         {
-            var clip = LoadClip("Audio/Sfx/" + fileNameNoExt);
+            var clip = Resources.Load<AudioClip>("Audio/Sfx/Generated/" + fileNameNoExt);
             if (clip != null) return clip;
-            return LoadClip("Audio/Sfx/Generated/" + fileNameNoExt);
+            return LoadClip("Audio/Sfx/" + fileNameNoExt);
         }
 
         public void PlayMusic(AudioClip clip)
@@ -226,7 +226,7 @@ namespace Emberlight
             currentMusic = null;
         }
 
-        public void PlaySfx(AudioClip clip, float startTime = 0f)
+        public void PlaySfx(AudioClip clip, float startTime = 0f, float gain = 1f)
         {
             if (sfx == null) Bootstrap();
             EnsureListener();
@@ -235,7 +235,7 @@ namespace Emberlight
             startTime = Mathf.Clamp(startTime, 0f, Mathf.Max(0f, clip.length - 0.02f));
             if (startTime <= 0.001f)
             {
-                sfx.PlayOneShot(clip, sfxVolume);
+                sfx.PlayOneShot(clip, Mathf.Clamp01(gain));
                 return;
             }
             // PlayOneShot cannot seek; spin a one-shot 2D source so attack aligns with the game event.
@@ -246,19 +246,10 @@ namespace Emberlight
             src.spatialBlend = 0f;
             src.ignoreListenerPause = true;
             src.clip = clip;
-            src.volume = sfxVolume;
+            src.volume = sfxVolume * Mathf.Clamp01(gain);
             src.time = startTime;
             src.Play();
             Object.Destroy(go, clip.length - startTime + 0.05f);
-        }
-
-        /// <summary>Long AI clips have late attacks; skip lead-in so the transient hits on the gameplay frame.</summary>
-        static float AttackStart(AudioClip clip, float longClipStart)
-        {
-            if (clip == null) return 0f;
-            // Generated synths are < 1s and already attack-aligned.
-            if (clip.length < 1.05f) return 0f;
-            return Mathf.Clamp(longClipStart, 0f, clip.length * 0.85f);
         }
 
         public void PlayUiClick()
@@ -275,8 +266,7 @@ namespace Emberlight
 
         public void PlayCardOpen()
         {
-            if (cardOpen == null) cardOpen = LoadClip("Audio/Sfx/card_open");
-            PlaySfx(cardOpen);
+            PlayCardPick();
         }
 
         public void PlayCardPick()
@@ -321,8 +311,8 @@ namespace Emberlight
             if (weaponMeteor == null) weaponMeteor = LoadWeaponClip("weapon_meteor");
             if (weaponMeteor != null)
             {
-                // Long clip peaks ~0.24s; seek so the smash lands on this frame.
-                PlaySfx(weaponMeteor, AttackStart(weaponMeteor, 0.20f));
+                // Impact starts at sample zero on the damage frame.
+                PlaySfx(weaponMeteor, 0f, .75f);
                 return;
             }
             if (meteorImpact == null) meteorImpact = LoadClip("Audio/Sfx/meteor_impact");
@@ -331,13 +321,13 @@ namespace Emberlight
             PlaySfx(hit);
         }
 
-        /// <summary>Weapon-Sfx-v1/v2: dedicated clip per weapon; long AI clips seek to attack.</summary>
+        /// <summary>Dedicated short launch clips, with lighter gain than ground impacts.</summary>
         public void PlayWeaponFireball()
         {
             if (Time.unscaledTime < nextWeaponShotTime) return;
             nextWeaponShotTime = Time.unscaledTime + FireHitMinInterval;
             if (weaponFireball == null) weaponFireball = LoadWeaponClip("weapon_fireball");
-            if (weaponFireball != null) { PlaySfx(weaponFireball, AttackStart(weaponFireball, 0.12f)); return; }
+            if (weaponFireball != null) { PlaySfx(weaponFireball, 0f, .45f); return; }
             PlayFire();
         }
 
@@ -346,8 +336,8 @@ namespace Emberlight
             if (Time.unscaledTime < nextWeaponArrowTime) return;
             nextWeaponArrowTime = Time.unscaledTime + FireHitMinInterval;
             if (weaponPierceArrow == null) weaponPierceArrow = LoadWeaponClip("weapon_pierce_arrow");
-            // Root AI pierce attacks ~0.52s in — without seek it feels half a beat late.
-            if (weaponPierceArrow != null) { PlaySfx(weaponPierceArrow, AttackStart(weaponPierceArrow, 0.50f)); return; }
+            // Short launch sound starts on the projectile spawn frame.
+            if (weaponPierceArrow != null) { PlaySfx(weaponPierceArrow, 0f, .55f); return; }
             PlayFire();
         }
 
@@ -356,27 +346,27 @@ namespace Emberlight
             if (Time.unscaledTime < nextWeaponBoomTime) return;
             nextWeaponBoomTime = Time.unscaledTime + FireHitMinInterval;
             if (weaponBoomerang == null) weaponBoomerang = LoadWeaponClip("weapon_boomerang");
-            if (weaponBoomerang != null) { PlaySfx(weaponBoomerang, AttackStart(weaponBoomerang, 0.65f)); return; }
+            if (weaponBoomerang != null) { PlaySfx(weaponBoomerang, 0f, .45f); return; }
             PlayFire();
         }
 
-        /// <summary>Throttled: orbit orbs re-form when orb count changes.</summary>
-        public void PlayWeaponOrbitIgnite()
+        /// <summary>Only called after orbit contact actually reduces enemy health.</summary>
+        public void PlayWeaponOrbitContact()
         {
             if (Time.unscaledTime < nextWeaponOrbitTime) return;
-            nextWeaponOrbitTime = Time.unscaledTime + 0.25f;
+            nextWeaponOrbitTime = Time.unscaledTime + 0.35f;
             if (weaponOrbitIgnite == null) weaponOrbitIgnite = LoadWeaponClip("weapon_orbit_ignite");
-            if (weaponOrbitIgnite != null) { PlaySfx(weaponOrbitIgnite, AttackStart(weaponOrbitIgnite, 0.10f)); return; }
+            if (weaponOrbitIgnite != null) { PlaySfx(weaponOrbitIgnite, 0f, .28f); return; }
             PlayFire();
         }
 
-        /// <summary>Burn patch crackle; 1.5s throttle so long clips do not smear.</summary>
+        /// <summary>Only called after ground fire damage; throttle overlapping patches.</summary>
         public void PlayWeaponBurnGround()
         {
             if (Time.unscaledTime < nextWeaponBurnTime) return;
-            nextWeaponBurnTime = Time.unscaledTime + 1.5f;
+            nextWeaponBurnTime = Time.unscaledTime + .7f;
             if (weaponBurnGround == null) weaponBurnGround = LoadWeaponClip("weapon_burn_ground");
-            if (weaponBurnGround != null) { PlaySfx(weaponBurnGround, AttackStart(weaponBurnGround, 0.08f)); return; }
+            if (weaponBurnGround != null) { PlaySfx(weaponBurnGround, 0f, .35f); return; }
             PlayFire();
         }
     }

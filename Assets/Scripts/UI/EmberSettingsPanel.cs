@@ -13,6 +13,7 @@ namespace Emberlight
         TMP_FontAsset font;
         GameObject root;
         Action onClose;
+        Action onReturnToCamp;
         float nextSfxPreview;
 
         static readonly Color PanelBg = new Color(0.025f, 0.045f, 0.075f, 0.96f);
@@ -30,14 +31,17 @@ namespace Emberlight
             Destroy(root);
             root = null;
             onClose = null;
+            onReturnToCamp = null;
         }
 
         /// <param name="close">Continue battle or return to previous screen.</param>
         /// <param name="fromPause">true: button = continue battle; false: back.</param>
-        public void Show(Action close, bool fromPause)
+        /// <param name="returnToCamp">When supplied from pause, ends the current run and opens the camp.</param>
+        public void Show(Action close, bool fromPause, Action returnToCamp = null)
         {
             Hide();
             onClose = close;
+            onReturnToCamp = returnToCamp;
             EmberAudio.Ensure();
 
             root = new GameObject("Settings", typeof(RectTransform), typeof(Image));
@@ -51,22 +55,41 @@ namespace Emberlight
 
             Label(root.transform, "\u8bbe\u7f6e", 36f, new Vector2(0.08f, 0.78f), new Vector2(0.92f, 0.90f));
 
-            Label(root.transform, "\u97f3\u4e50", 22f, new Vector2(0.08f, 0.48f), new Vector2(0.28f, 0.56f));
-            MakeSlider(root.transform, new Vector2(0.30f, 0.48f), new Vector2(0.92f, 0.56f),
+            MakeVolumeCard("背景音乐", "调节背景旋律", .55f, .73f,
                 EmberAudio.Ensure().MusicVolume, v => EmberAudio.Ensure().MusicVolume = v);
-
-            Label(root.transform, "\u97f3\u6548", 22f, new Vector2(0.08f, 0.36f), new Vector2(0.28f, 0.44f));
-            MakeSlider(root.transform, new Vector2(0.30f, 0.36f), new Vector2(0.92f, 0.44f),
+            MakeVolumeCard("游戏音效", "调节攻击与点击声", .33f, .51f,
                 EmberAudio.Ensure().SfxVolume, OnSfxChanged);
 
             string btn = fromPause ? "\u7ee7\u7eed\u6218\u6597" : "\u8fd4\u56de";
-            MakeButton(root.transform, btn, new Vector2(0.12f, 0.18f), new Vector2(0.88f, 0.30f), () =>
+            Vector2 closeMin = fromPause ? new Vector2(0.12f, 0.20f) : new Vector2(0.12f, 0.18f);
+            MakeButton(root.transform, btn, closeMin, new Vector2(0.88f, 0.30f), () =>
             {
                 EmberAudio.Ensure().PlayUiClick();
                 var cb = onClose;
                 Hide();
                 if (cb != null) cb();
             });
+
+            if (fromPause && onReturnToCamp != null)
+            {
+                bool awaitingConfirmation = false;
+                TextMeshProUGUI campLabel = null;
+                campLabel = MakeButton(root.transform, "返回营地", new Vector2(0.12f, 0.075f), new Vector2(0.88f, 0.175f), () =>
+                {
+                    EmberAudio.Ensure().PlayUiClick();
+                    if (!awaitingConfirmation)
+                    {
+                        awaitingConfirmation = true;
+                        campLabel.text = "再次点击确认放弃本局";
+                        campLabel.color = new Color(1f, 0.65f, 0.32f);
+                        return;
+                    }
+
+                    var cb = onReturnToCamp;
+                    Hide();
+                    if (cb != null) cb();
+                });
+            }
         }
 
         void OnSfxChanged(float v)
@@ -75,6 +98,29 @@ namespace Emberlight
             if (Time.unscaledTime < nextSfxPreview) return;
             nextSfxPreview = Time.unscaledTime + SfxPreviewInterval;
             EmberAudio.Ensure().PlayUiClick();
+        }
+
+        void MakeVolumeCard(string title, string hint, float bottom, float top, float value,
+            UnityEngine.Events.UnityAction<float> changed)
+        {
+            var card = ChildImage(root.transform, title, Color.white);
+            card.sprite = EmberUiArt.Get(EmberUiArt.Piece.Panel);
+            card.type = Image.Type.Sliced;
+            card.pixelsPerUnitMultiplier = 3f;
+            card.rectTransform.anchorMin = new Vector2(.08f, bottom);
+            card.rectTransform.anchorMax = new Vector2(.92f, top);
+            card.rectTransform.offsetMin = card.rectTransform.offsetMax = Vector2.zero;
+            var name = Label(card.transform, title, 23, new Vector2(.10f,.64f), new Vector2(.68f,.88f));
+            name.alignment = TextAlignmentOptions.Left;
+            var percent = Label(card.transform, "", 22, new Vector2(.70f,.64f), new Vector2(.90f,.88f));
+            percent.color = Fill;
+            Action<float> update = v => percent.text = v <= .001f ? "静音" : Mathf.RoundToInt(v * 100) + "%";
+            update(value);
+            MakeSlider(card.transform, new Vector2(.10f,.25f), new Vector2(.90f,.62f), value,
+                v => { update(v); changed(v); });
+            var caption = Label(card.transform, hint, 13, new Vector2(.10f,.08f), new Vector2(.90f,.25f));
+            caption.color = new Color(.60f,.69f,.75f);
+            caption.alignment = TextAlignmentOptions.Left;
         }
 
         TextMeshProUGUI Label(Transform parent, string text, float size, Vector2 amin, Vector2 amax)
@@ -97,31 +143,50 @@ namespace Emberlight
             var r = g.GetComponent<RectTransform>();
             r.anchorMin = amin; r.anchorMax = amax; r.offsetMin = r.offsetMax = Vector2.zero;
 
+            // Keep a generous invisible touch target around the thin visible track.
+            g.AddComponent<Image>().color = Color.clear;
             var bg = ChildImage(g.transform, "Background", BarBg);
             Stretch(bg);
+            bg.sprite = EmberArt.Panel;
+            bg.type = Image.Type.Sliced;
+            bg.rectTransform.anchorMin = new Vector2(0,.40f);
+            bg.rectTransform.anchorMax = new Vector2(1,.60f);
+            bg.rectTransform.offsetMin = new Vector2(16f, 0f);
+            bg.rectTransform.offsetMax = new Vector2(-16f, 0f);
+            bg.raycastTarget = false;
 
             var fillArea = new GameObject("Fill Area", typeof(RectTransform));
             fillArea.transform.SetParent(g.transform, false);
             var fa = fillArea.GetComponent<RectTransform>();
-            fa.anchorMin = new Vector2(0f, 0.25f);
-            fa.anchorMax = new Vector2(1f, 0.75f);
-            fa.offsetMin = new Vector2(8f, 0f);
-            fa.offsetMax = new Vector2(-8f, 0f);
+            fa.anchorMin = new Vector2(0f, 0.42f);
+            fa.anchorMax = new Vector2(1f, 0.58f);
+            fa.offsetMin = new Vector2(16f, 0f);
+            fa.offsetMax = new Vector2(-16f, 0f);
 
             var fill = ChildImage(fillArea.transform, "Fill", Fill);
             Stretch(fill);
+            fill.sprite = EmberArt.Panel;
+            fill.type = Image.Type.Sliced;
+            fill.raycastTarget = false;
 
             var handleArea = new GameObject("Handle Slide Area", typeof(RectTransform));
             handleArea.transform.SetParent(g.transform, false);
             var ha = handleArea.GetComponent<RectTransform>();
-            ha.anchorMin = Vector2.zero;
-            ha.anchorMax = Vector2.one;
-            ha.offsetMin = new Vector2(8f, 0f);
-            ha.offsetMax = new Vector2(-8f, 0f);
+            ha.anchorMin = new Vector2(0,.5f);
+            ha.anchorMax = new Vector2(1,.5f);
+            ha.offsetMin = new Vector2(16f, 0f);
+            ha.offsetMax = new Vector2(-16f, 0f);
 
             var handle = ChildImage(handleArea.transform, "Handle", Handle);
             var hr = handle.GetComponent<RectTransform>();
-            hr.sizeDelta = new Vector2(28f, 28f);
+            hr.sizeDelta = new Vector2(32f, 32f);
+            handle.sprite = EmberVisuals.Disc;
+            var center = ChildImage(handle.transform, "Orange center", Fill);
+            Stretch(center);
+            center.rectTransform.offsetMin = new Vector2(7,7);
+            center.rectTransform.offsetMax = new Vector2(-7,-7);
+            center.sprite = EmberVisuals.Disc;
+            center.raycastTarget = false;
 
             var slider = g.GetComponent<Slider>();
             slider.fillRect = fill.GetComponent<RectTransform>();
@@ -153,15 +218,19 @@ namespace Emberlight
             r.offsetMin = r.offsetMax = Vector2.zero;
         }
 
-        void MakeButton(Transform parent, string label, Vector2 amin, Vector2 amax, UnityEngine.Events.UnityAction action)
+        TextMeshProUGUI MakeButton(Transform parent, string label, Vector2 amin, Vector2 amax, UnityEngine.Events.UnityAction action)
         {
             var g = new GameObject("Button " + label, typeof(RectTransform), typeof(Image), typeof(Button));
             g.transform.SetParent(parent, false);
             var r = g.GetComponent<RectTransform>();
             r.anchorMin = amin; r.anchorMax = amax; r.offsetMin = r.offsetMax = Vector2.zero;
-            g.GetComponent<Image>().color = new Color(0.18f, 0.26f, 0.32f);
+            var face = g.GetComponent<Image>();
+            face.color = Color.white;
+            face.sprite = EmberUiArt.Get(EmberUiArt.Piece.Secondary);
+            face.type = Image.Type.Sliced;
+            face.pixelsPerUnitMultiplier = 2f;
             g.GetComponent<Button>().onClick.AddListener(action);
-            Label(g.transform, label, 24f, new Vector2(0.04f, 0.08f), new Vector2(0.96f, 0.92f));
+            return Label(g.transform, label, 24f, new Vector2(0.04f, 0.08f), new Vector2(0.96f, 0.92f));
         }
     }
 }
