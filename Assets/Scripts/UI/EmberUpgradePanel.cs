@@ -114,6 +114,14 @@ namespace Emberlight
                     && offer.WeaponId < names.Length && !string.IsNullOrEmpty(names[offer.WeaponId]))
                     titleText = names[offer.WeaponId] + "\u00b7" + titleText;
                 string descText = (id >= 0 && id < descriptions.Length) ? descriptions[id] : "";
+                if ((id == RunProgress.StatAtk || id == RunProgress.StatAs) && offer.WeaponId >= 0
+                    && offer.WeaponId < names.Length && !string.IsNullOrEmpty(names[offer.WeaponId]))
+                {
+                    string wname = names[offer.WeaponId];
+                    descText = id == RunProgress.StatAtk
+                        ? ("\u53ea\u63d0\u9ad8\u300c" + wname + "\u300d\u7684\u4f24\u5bb3")
+                        : ("\u53ea\u63d0\u9ad8\u300c" + wname + "\u300d\u7684\u653b\u51fb\u901f\u5ea6");
+                }
                 var title = TextAt(inner.transform, titleText, 22, new Vector2(.275f, .55f), new Vector2(.96f, .92f), new Color(1, .93f, .80f));
                 title.alignment = TextAlignmentOptions.Left;
                 var desc = TextAt(inner.transform, descText, 14, new Vector2(.275f, .30f), new Vector2(.97f, .55f), new Color(.65f, .73f, .78f));

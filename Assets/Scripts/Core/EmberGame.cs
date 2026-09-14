@@ -38,8 +38,8 @@ namespace Emberlight
         };
                 public static readonly string[] UpgradeDetails =
         {
-            "\u53ea\u52a0\u5f3a\u8fd9\u628a\u6b66\u5668",
-            "\u53ea\u52a0\u5f3a\u8fd9\u628a\u6b66\u5668",
+            "\u53ea\u63d0\u9ad8\u5bf9\u5e94\u6b66\u5668\u7684\u4f24\u5bb3",
+            "\u53ea\u63d0\u9ad8\u5bf9\u5e94\u6b66\u5668\u7684\u653b\u901f",
             "\u66f4\u5bb9\u6613\u5237\u51fa\u597d\u5361",
             "\u6240\u6709\u6b66\u5668\u4f24\u5bb3\u518d\u4e58\u4e00\u622a",
             "立即获得护盾，受伤时优先消耗；可叠加，仅本局有效",
