@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace Emberlight
 {
@@ -24,10 +24,13 @@ namespace Emberlight
             var c = new LevelConfig();
             c.BossWave = waves == 50 ? 50 : 25;
             c.Difficulty = System.Enum.IsDefined(typeof(EmberDifficulty), difficulty) ? difficulty : EmberDifficulty.Standard;
+            // jack 2026-09-14: all modes monster HP /2 (was Casual .5 / Standard 1 / Hard 1.35)
             if (c.Difficulty == EmberDifficulty.Casual)
-            { c.HealthMultiplier = .5f; c.DamageMultiplier = .7f; c.CountMultiplier = .85f; c.IntervalMultiplier = 1.15f; c.AffixMultiplier = .7f; }
-            if (c.Difficulty == EmberDifficulty.Hard)
-            { c.HealthMultiplier = 1.35f; c.DamageMultiplier = 1.3f; c.CountMultiplier = 1.2f; c.IntervalMultiplier = .88f; c.AffixMultiplier = 1.25f; }
+            { c.HealthMultiplier = .25f; c.DamageMultiplier = .7f; c.CountMultiplier = .85f; c.IntervalMultiplier = 1.15f; c.AffixMultiplier = .7f; }
+            else if (c.Difficulty == EmberDifficulty.Hard)
+            { c.HealthMultiplier = .675f; c.DamageMultiplier = 1.3f; c.CountMultiplier = 1.2f; c.IntervalMultiplier = .88f; c.AffixMultiplier = 1.25f; }
+            else
+            { c.HealthMultiplier = .5f; }
             c.BossHp = (c.BossWave == 50 ? 10000f : 6000f) * c.HealthMultiplier;
             return c;
         }
