@@ -151,10 +151,16 @@ namespace Emberlight
             if (world != null) world.gameObject.SetActive(false);
             ui.Show(
                 "\u70ec\u706f\u884c\u8005",
-                "25\u6ce2\u6807\u51c6\u5f81\u9014\u00b7\u002050\u6ce2\u6f2b\u957f\u5f81\u7a0b\n\u81ea\u7531\u9009\u62e9\u96be\u5ea6\uff0c\u6bcf\u5c40\u4ece\u76f8\u540c\u7684\u57fa\u7840\u5c5e\u6027\u51fa\u53d1\u3002\n\u6e05\u6ce2\u9009\u5361\uff0c\u51fb\u8d25\u6700\u7ec8\u5b88\u536b\u3002",
+                "25\u6ce2\u6807\u51c6\u5f81\u9014\u00b7\u002050\u6ce2\u6f2b\u957f\u5f81\u7a0b\n\u81ea\u7531\u9009\u62e9\u96be\u5ea6\uff0c\u6bcf\u5c40\u4ece\u76f8\u540c\u7684\u57fa\u7840\u5c5e\u6027\u51fa\u53d1\u3002\n\u6ce2\u6b21\u5956\u52b1\u9009\u5361\uff0c\u51fb\u8d25\u6700\u7ec8\u5b88\u536b\u3002",
                 new[] { "\u70b9\u4eae\u65c5\u7a0b", "\u8bbe\u7f6e" },
                 new UnityEngine.Events.UnityAction[] { BeginRun, OpenSettingsFromMenu },
-                true);
+                true,
+                // Offered once, until the player actually changes the speed. Tapping it counts
+                // as acknowledgement so it does not nag every session.
+                GameSpeed.ShouldShowHint
+                    ? "\u89c9\u5f97\u592a\u6162\uff1f\u70b9\u5f00\u300c\u8bbe\u7f6e\u300d\uff0c\u65c5\u9014\u8282\u594f\u53ef\u4ee5\u8c03\u5230 5 \u500d  \u00b7  \u70b9\u6b64\u5173\u95ed"
+                    : null,
+                GameSpeed.MarkHintSeen);
         }
 
 
@@ -266,6 +272,8 @@ namespace Emberlight
             if (ui.GodsSelect != null) ui.GodsSelect.Hide();
             if (ui.SettingsPanel != null) ui.SettingsPanel.Hide();
             State = Mode.Playing;
+            // Restore the player's chosen speed; teardown and the editor reset timeScale to 1.
+            GameSpeed.Apply();
             EmberAudio.Ensure().PlayCombatMusic();
             ui.Overlay.SetActive(false);
             ui.BattleHud.Show(true);

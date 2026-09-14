@@ -20,6 +20,8 @@ namespace Emberlight
         TextMeshProUGUI heading, summary;
         Transform buttons;
         GameObject brandRoot;
+        GameObject hintRoot;
+        TextMeshProUGUI hintText;
 
         public void Build(Transform host, TMP_FontAsset loadedFont, System.Action pause)
         {
@@ -106,7 +108,8 @@ namespace Emberlight
             StickKnob.anchoredPosition = stick * 45;
         }
 
-        public void Show(string title, string desc, string[] labels, UnityEngine.Events.UnityAction[] actions, bool showBrand = false)
+        public void Show(string title, string desc, string[] labels, UnityEngine.Events.UnityAction[] actions, bool showBrand = false,
+            string hint = null, UnityEngine.Events.UnityAction onHintDismissed = null)
         {
             if (UpgradePanel != null) UpgradePanel.Hide();
             if (GodsSelect != null) GodsSelect.Hide();
@@ -124,6 +127,49 @@ namespace Emberlight
             }
             for (int i = 0; i < labels.Length; i++)
                 MakeButton(buttons, labels[i], new Vector2(.09f, .43f - i * .135f), new Vector2(.91f, .54f - i * .135f), actions[i]);
+
+            // One-time discovery hint. Sits under the choice buttons, which stop at .16, and is
+            // itself the dismiss control so the tip costs no extra chrome.
+            if (string.IsNullOrEmpty(hint))
+            {
+                HideHint();
+            }
+            else if (hintRoot == null)
+            {
+                var bar = new GameObject("Hint", typeof(RectTransform), typeof(Image), typeof(Button));
+                bar.transform.SetParent(Overlay.transform, false);
+                hintRoot = bar;
+                var hr = bar.GetComponent<RectTransform>();
+                hr.anchorMin = new Vector2(.07f, .045f);
+                hr.anchorMax = new Vector2(.93f, .15f);
+                hr.offsetMin = hr.offsetMax = Vector2.zero;
+                var face = bar.GetComponent<Image>();
+                face.color = new Color(.13f, .19f, .25f, .96f);
+                face.sprite = EmberUiArt.Get(EmberUiArt.Piece.Panel);
+                face.type = Image.Type.Sliced;
+                face.pixelsPerUnitMultiplier = 3f;
+                hintText = Label("Hint text", bar.transform, hint, 16, new Vector2(.06f, .16f), new Vector2(.94f, .84f));
+                hintText.color = new Color(1f, .89f, .66f);
+                bar.GetComponent<Button>().onClick.AddListener(() =>
+                {
+                    EmberAudio.Ensure().PlayUiClick();
+                    HideHint();
+                    if (onHintDismissed != null) onHintDismissed();
+                });
+            }
+            else if (hintText != null)
+            {
+                hintText.text = hint;
+            }
+        }
+
+        /// <summary>Removes the discovery hint if it is currently on screen.</summary>
+        public void HideHint()
+        {
+            if (hintRoot == null) return;
+            Object.Destroy(hintRoot);
+            hintRoot = null;
+            hintText = null;
         }
 
         TextMeshProUGUI Label(string name, Transform parent, string text, float size, Vector2 anchorMin, Vector2 anchorMax)

@@ -14,6 +14,7 @@ namespace Emberlight
         GameObject root;
         Action onClose;
         Action onReturnToCamp;
+        Action onSpeedChanged;
         float nextSfxPreview;
 
         static readonly Color PanelBg = new Color(0.025f, 0.045f, 0.075f, 0.96f);
@@ -32,16 +33,19 @@ namespace Emberlight
             root = null;
             onClose = null;
             onReturnToCamp = null;
+            onSpeedChanged = null;
         }
 
         /// <param name="close">Continue battle or return to previous screen.</param>
         /// <param name="fromPause">true: button = continue battle; false: back.</param>
         /// <param name="returnToCamp">When supplied from pause, ends the current run and opens the camp.</param>
-        public void Show(Action close, bool fromPause, Action returnToCamp = null)
+        /// <param name="onSpeedChanged">Notified after the player picks a different game speed.</param>
+        public void Show(Action close, bool fromPause, Action returnToCamp = null, Action onSpeedChanged = null)
         {
             Hide();
             onClose = close;
             onReturnToCamp = returnToCamp;
+            this.onSpeedChanged = onSpeedChanged;
             EmberAudio.Ensure();
 
             root = new GameObject("Settings", typeof(RectTransform), typeof(Image));
@@ -53,16 +57,16 @@ namespace Emberlight
             root.GetComponent<Image>().color = PanelBg;
             root.transform.SetAsLastSibling();
 
-            Label(root.transform, "\u8bbe\u7f6e", 36f, new Vector2(0.08f, 0.78f), new Vector2(0.92f, 0.90f));
+            Label(root.transform, "\u8bbe\u7f6e", 36f, new Vector2(0.08f, 0.82f), new Vector2(0.92f, 0.92f));
 
-            MakeVolumeCard("背景音乐", "调节背景旋律", .55f, .73f,
+            MakeVolumeCard("背景音乐", "调节背景旋律", .615f, .745f,
                 EmberAudio.Ensure().MusicVolume, v => EmberAudio.Ensure().MusicVolume = v);
-            MakeVolumeCard("游戏音效", "调节攻击与点击声", .33f, .51f,
+            MakeVolumeCard("游戏音效", "调节攻击与点击声", .475f, .605f,
                 EmberAudio.Ensure().SfxVolume, OnSfxChanged);
+            MakeSpeedCard(.325f, .455f);
 
             string btn = fromPause ? "\u7ee7\u7eed\u6218\u6597" : "\u8fd4\u56de";
-            Vector2 closeMin = fromPause ? new Vector2(0.12f, 0.20f) : new Vector2(0.12f, 0.18f);
-            MakeButton(root.transform, btn, closeMin, new Vector2(0.88f, 0.30f), () =>
+            MakeButton(root.transform, btn, new Vector2(0.12f, 0.20f), new Vector2(0.88f, 0.295f), () =>
             {
                 EmberAudio.Ensure().PlayUiClick();
                 var cb = onClose;
@@ -74,7 +78,7 @@ namespace Emberlight
             {
                 bool awaitingConfirmation = false;
                 TextMeshProUGUI campLabel = null;
-                campLabel = MakeButton(root.transform, "返回营地", new Vector2(0.12f, 0.075f), new Vector2(0.88f, 0.175f), () =>
+                campLabel = MakeButton(root.transform, "返回营地", new Vector2(0.12f, 0.085f), new Vector2(0.88f, 0.18f), () =>
                 {
                     EmberAudio.Ensure().PlayUiClick();
                     if (!awaitingConfirmation)
@@ -90,6 +94,74 @@ namespace Emberlight
                     if (cb != null) cb();
                 });
             }
+        }
+
+        /// <summary>
+        /// 1x-5x picker. A row of discrete segments rather than a slider because the feature is
+        /// explicitly five fixed steps, and five tap targets read better than a continuous drag.
+        /// </summary>
+        void MakeSpeedCard(float bottom, float top)
+        {
+            var card = ChildImage(root.transform, "Game speed", Color.white);
+            card.sprite = EmberUiArt.Get(EmberUiArt.Piece.Panel);
+            card.type = Image.Type.Sliced;
+            card.pixelsPerUnitMultiplier = 3f;
+            card.rectTransform.anchorMin = new Vector2(.08f, bottom);
+            card.rectTransform.anchorMax = new Vector2(.92f, top);
+            card.rectTransform.offsetMin = card.rectTransform.offsetMax = Vector2.zero;
+
+            var name = Label(card.transform, "游戏速度", 23, new Vector2(.10f, .60f), new Vector2(.60f, .84f));
+            name.alignment = TextAlignmentOptions.Left;
+            var caption = Label(card.transform, "整体时间流逝的倍率", 13, new Vector2(.10f, .37f), new Vector2(.72f, .58f));
+            caption.color = new Color(.60f, .69f, .75f);
+            caption.alignment = TextAlignmentOptions.Left;
+            var current = Label(card.transform, "", 22, new Vector2(.74f, .60f), new Vector2(.90f, .84f));
+            current.color = Fill;
+
+            const int segments = GameSpeed.MaxMultiplier - GameSpeed.MinMultiplier + 1;
+            var faces = new Image[segments];
+            var texts = new TextMeshProUGUI[segments];
+
+            Action refresh = () =>
+            {
+                int speed = GameSpeed.Multiplier;
+                current.text = speed + "\u500d";
+                for (int i = 0; i < segments; i++)
+                {
+                    bool active = i + GameSpeed.MinMultiplier == speed;
+                    faces[i].color = active ? Fill : BarBg;
+                    texts[i].color = active ? new Color(.10f, .07f, .03f) : Ink;
+                }
+            };
+
+            for (int i = 0; i < segments; i++)
+            {
+                int value = i + GameSpeed.MinMultiplier;
+                float w = 1f / segments;
+                var seg = ChildImage(card.transform, "Speed " + value, BarBg);
+                seg.sprite = EmberArt.Panel;
+                seg.type = Image.Type.Sliced;
+                var sr = seg.rectTransform;
+                sr.anchorMin = new Vector2(.10f + i * w * .80f, .10f);
+                sr.anchorMax = new Vector2(.10f + (i + 1) * w * .80f - .012f, .34f);
+                sr.offsetMin = sr.offsetMax = Vector2.zero;
+                var label = Label(seg.transform, value + "x", 18, Vector2.zero, Vector2.one);
+                faces[i] = seg;
+                texts[i] = label;
+
+                var btn = seg.gameObject.AddComponent<Button>();
+                btn.targetGraphic = seg;
+                int captured = value;
+                btn.onClick.AddListener(() =>
+                {
+                    EmberAudio.Ensure().PlayUiClick();
+                    GameSpeed.Multiplier = captured;
+                    refresh();
+                    if (onSpeedChanged != null) onSpeedChanged();
+                });
+            }
+
+            refresh();
         }
 
         void OnSfxChanged(float v)
