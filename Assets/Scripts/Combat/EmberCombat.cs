@@ -43,6 +43,9 @@ namespace Emberlight
         int extraSpawned;
         public string EncounterText { get { return encounterTimer > 0 ? encounterText : ""; } }
 
+        /// <summary>Banner lead-in before a Boss appears, in unscaled-by-design game seconds.</summary>
+        const float BossWarningSeconds = 3f;
+
         Transform world, player;
         Camera cam;
         EmberEffects effects;
@@ -50,6 +53,9 @@ namespace Emberlight
         LevelConfig config;
         float spawnTimer;
         bool bossSpawned, awaitingUpgrade;
+        // Counts down the pre-boss banner before the Boss actually appears. Kept separate from
+        // bossSpawned so ticks can tell "warning is showing" apart from "Boss is out".
+        float bossWarning;
         int wave = 1;
         int waveQuota;
         int waveSpawned;
@@ -194,6 +200,7 @@ namespace Emberlight
             extraSpawned = 0;
             eventTriggered = false;
             encounterTimer = 0;
+            bossWarning = 0;
             enemyProjectiles.Clear();
             awaitingUpgrade = false;
             waveSpawned = 0;
@@ -202,10 +209,17 @@ namespace Emberlight
             if (config.IsBossWave(wave))
             {
                 waveQuota = 0;
+                // Announce the Boss before it exists. Previously the Boss appeared on this very
+                // frame with no banner at all, which read as a bug on the final wave and gave
+                // the player no chance to reposition.
                 if (!bossSpawned)
                 {
-                    bossSpawned = true;
-                    SpawnEnemy(true);
+                    bossWarning = BossWarningSeconds;
+                    bool final = wave >= config.BossWave;
+                    encounterText = final
+                        ? "\u957f\u591c\u5b88\u536b\u0020\u00b7\u0020\u6700\u7ec8\u51b3\u6218\n\u6ce8\u610f\u907f\u5f00\u9884\u8b66\u5708"
+                        : "\u5b88\u536b\u8bd5\u70bc\u0020\u00b7\u0020\u6697\u5f71\u6765\u88ad";
+                    encounterTimer = BossWarningSeconds;
                 }
                 return;
             }
@@ -221,6 +235,7 @@ namespace Emberlight
             StartWave(wave + 1);
         }
 
+        /// <summary>Editor-only shortcut that jumps straight to the Boss, skipping the lead-in banner.</summary>
         public void PreviewBoss()
         {
             if (game.State != EmberGame.Mode.Playing || bossSpawned) return;
@@ -231,6 +246,7 @@ namespace Emberlight
             waveSpawned = 0;
             waveKilled = 0;
             awaitingUpgrade = false;
+            bossWarning = 0;
             bossSpawned = true;
             SpawnEnemy(true);
         }
@@ -254,6 +270,20 @@ namespace Emberlight
 
             healingDrops.Tick(dt, player.position);
             encounterTimer = Mathf.Max(0, encounterTimer - dt);
+
+            // Boss lead-in: hold the banner, then bring the Boss in. Deliberately placed before
+            // the horde spawner above could restart, and it never runs while a Boss is out.
+            if (bossWarning > 0)
+            {
+                bossWarning -= dt;
+                if (bossWarning <= 0)
+                {
+                    bossWarning = 0;
+                    bossSpawned = true;
+                    SpawnEnemy(true);
+                }
+            }
+
             TryEncounter();
             enemyProjectiles.Move(dt);
             bool inBurningAura = false;

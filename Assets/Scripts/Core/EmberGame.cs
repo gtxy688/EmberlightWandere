@@ -187,8 +187,11 @@ namespace Emberlight
             pendingRoster = new int[0];
             compensationPick = false;
             State = Mode.SelectLength;
-            ui.Show("选择征程", "局长与难度独立选择。\n前 10 波每波选卡，之后每 2 波选卡；阶段 Boss 额外奖励一次。",
-                new[] { "标准征程 · 25 波（推荐）", "漫长征程 · 50 波", "返回营地" },
+            // Spells out the Boss schedule before the run starts: every 10th wave is a stage Boss
+            // and the last one is the Nightwarden, so the final wave is not a surprise.
+            ui.Show("\u9009\u62e9\u5f81\u7a0b",
+                "\u5c40\u957f\u4e0e\u96be\u5ea6\u72ec\u7acb\u9009\u62e9\u3002\n\u524d 10 \u6ce2\u6bcf\u6ce2\u9009\u5361\uff0c\u4e4b\u540e\u6bcf 2 \u6ce2\u9009\u5361\uff1b\u9636\u6bb5 Boss \u989d\u5916\u5956\u52b1\u4e00\u6b21\u3002\n\u6bcf 10 \u6ce2\u662f\u5b88\u536b\u8bd5\u70bc\uff0c\u6700\u540e\u4e00\u6ce2\u662f\u957f\u591c\u5b88\u536b\u3002",
+                new[] { "\u6807\u51c6\u5f81\u7a0b \u00b7 25\u6ce2\uff08\u63a8\u8350\uff09", "\u6f2b\u957f\u5f81\u7a0b \u00b7 50\u6ce2", "\u8fd4\u56de\u8425\u5730" },
                 new UnityEngine.Events.UnityAction[] { () => ChooseLength(25), () => ChooseLength(50), ShowMainMenu });
         }
 
