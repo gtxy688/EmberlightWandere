@@ -295,6 +295,9 @@ namespace Emberlight
             hurtTimer -= dt;
             ReadInput();
             if (State != Mode.Playing) return;
+#if UNITY_EDITOR
+            EditorProbeKeys();
+#endif
 
             Vector2 move = Vector2.ClampMagnitude(new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical")) + stick, 1);
             player.position += (Vector3)(move * (3.3f * (1 + Progress.MoveSpeedBonus) * dt));
@@ -306,9 +309,45 @@ namespace Emberlight
             UpdateHud();
         }
 
-        void UpdateHud()
+#if UNITY_EDITOR
+        /// <summary>
+        /// Temporary Boss-wave diagnostics, read here rather than from an editor hook:
+        /// EditorApplication.update does not receive key input during play mode, which is why
+        /// the first attempt at this never fired. F8 jumps to the wave before the Boss wave,
+        /// F9 dumps the combat state. Remove with DebugState once the Boss wave is fixed.
+        /// </summary>
+        void EditorProbeKeys()
         {
-            if (ui == null || ui.BattleHud == null || Progress == null) return;
+            if (Input.GetKeyDown(KeyCode.F8)) ProbeJumpToPreBoss();
+            if (Input.GetKeyDown(KeyCode.F9)) ProbeDumpState();
+        }
+
+        public void ProbeJumpToPreBoss()
+        {
+            // Guard loudly: pressing this from the menu would otherwise look like a dead key.
+            if (State != Mode.Playing || combat == null)
+            {
+                Debug.LogError("[Probe] jump ignored: the game is not in a run (state=" + State + ")");
+                return;
+            }
+            int bossWave = runLevel != null ? runLevel.BossWave : 25;
+            combat.StartWaveForProbe(bossWave - 1);
+            Debug.Log("[Probe] jumped to wave " + (bossWave - 1) + " (boss wave is " + bossWave + ")\n" + combat.DebugState());
+        }
+
+        public void ProbeDumpState()
+        {
+            if (State != Mode.Playing || combat == null)
+            {
+                Debug.LogError("[Probe] dump ignored: the game is not in a run (state=" + State + ")");
+                return;
+            }
+            Debug.Log("[Probe] state=" + State + " :: " + combat.DebugState());
+        }
+#endif
+
+        void UpdateHud()
+        {            if (ui == null || ui.BattleHud == null || Progress == null) return;
             int wave = combat != null ? combat.Wave : 1;
             int remaining = combat != null ? combat.WaveRemaining : 0;
             int quota = combat != null ? combat.WaveQuota : 0;

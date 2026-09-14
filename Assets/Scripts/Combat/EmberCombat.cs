@@ -78,6 +78,11 @@ namespace Emberlight
                 + " BossWave=" + (config != null ? config.BossWave : -1)
                 + " IsBossWave=" + (config != null && config.IsBossWave(wave));
         }
+
+#if UNITY_EDITOR
+        /// <summary>Temporary hook so the editor can jump waves during a run.</summary>
+        public void StartWaveForProbe(int next) { StartWave(next); }
+#endif
         /// <summary>Remaining trash for HUD: unspawned quota + on-field count.</summary>
         public int WaveRemaining
         {
