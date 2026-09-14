@@ -12,6 +12,11 @@ namespace Emberlight
         static Sprite Create(int kind)
         {
             const int n=128;
+            // Prefer the build-time baked PNG (Emberlight/Bake runtime art); fall back to
+            // rasterising here so the game still runs before the art has been baked.
+            var baked = Baked(kind);
+            if (baked != null)
+                return Sprite.Create(baked,new Rect(0,0,baked.width,baked.height),Vector2.one*.5f,n,0,SpriteMeshType.FullRect,kind==2?new Vector4(24,24,24,24):Vector4.zero);
             var t=new Texture2D(n,n,TextureFormat.RGBA32,false);t.name="EmberArt"+kind;t.wrapMode=TextureWrapMode.Clamp;
             for(int y=0;y<n;y++)for(int x=0;x<n;x++)
             {
@@ -34,6 +39,16 @@ namespace Emberlight
                 t.SetPixel(x,y,new Color(1,1,1,a));
             }
             t.Apply();return Sprite.Create(t,new Rect(0,0,n,n),Vector2.one*.5f,n,0,SpriteMeshType.FullRect,kind==2?new Vector4(24,24,24,24):Vector4.zero);
+        }
+        static Texture2D Baked(int kind)
+        {
+            switch(kind)
+            {
+                case 0: return EmberBakedArt.Flame;
+                case 1: return EmberBakedArt.Ring;
+                case 2: return EmberBakedArt.Panel;
+                default: return EmberBakedArt.Glow;
+            }
         }
         public static SpriteRenderer Fire(Transform parent,Vector2 position,float size,int order=8)
         {

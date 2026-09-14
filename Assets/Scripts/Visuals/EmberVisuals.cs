@@ -9,6 +9,13 @@ namespace Emberlight
             get
             {
                 if (disc != null) return disc;
+                // Baked PNG first (Emberlight/Bake runtime art), rasterise as the fallback.
+                var baked = EmberBakedArt.Disc;
+                if (baked != null)
+                {
+                    disc = Sprite.Create(baked, new Rect(0, 0, baked.width, baked.height), new Vector2(.5f, .5f), 64);
+                    return disc;
+                }
                 var tex = new Texture2D(64,64,TextureFormat.RGBA32,false);
                 for(int y=0;y<64;y++) for(int x=0;x<64;x++)
                 { float d=Vector2.Distance(new Vector2(x,y),new Vector2(31.5f,31.5f)); tex.SetPixel(x,y,new Color(1,1,1,Mathf.Clamp01(31.5f-d))); }
