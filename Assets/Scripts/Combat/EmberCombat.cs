@@ -60,6 +60,9 @@ namespace Emberlight
         int waveQuota;
         int waveSpawned;
         int waveKilled;
+#if UNITY_EDITOR
+        int waveTrace;
+#endif
 
         public int EnemyCount { get { return enemies.Count; } }
         public Enemy Boss { get { return bossEnemy; } }
@@ -211,6 +214,15 @@ namespace Emberlight
         void StartWave(int next)
         {
             wave = next;
+#if UNITY_EDITOR
+            // Temporary: wave advances on its own, so trace who calls this and what comes next.
+            if (waveTrace < 25)
+            {
+                waveTrace++;
+                Debug.Log("[WaveTrace] #" + waveTrace + " StartWave(" + next + ") caller:\n"
+                    + new System.Diagnostics.StackTrace(1, true).ToString());
+            }
+#endif
             bossSpawned = false;
             extraSpawned = 0;
             eventTriggered = false;
