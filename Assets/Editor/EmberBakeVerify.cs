@@ -38,12 +38,23 @@ namespace Emberlight.Editor
             {
                 int chars = font.characterTable != null ? font.characterTable.Count : -1;
                 int glyphs = font.glyphTable != null ? font.glyphTable.Count : -1;
+                int slots = font.atlasTextures != null ? font.atlasTextures.Length : -1;
                 int aw = font.atlasTexture != null ? font.atlasTexture.width : -1;
                 int ah = font.atlasTexture != null ? font.atlasTexture.height : -1;
                 Debug.Log(string.Format(
-                    "[EmberBakeVerify] font: chars={0} glyphs={1} mode={2} atlas={3}x{4} material={5}",
-                    chars, glyphs, font.atlasPopulationMode, aw, ah, font.material != null ? "yes" : "NULL"));
+                    "[EmberBakeVerify] font: chars={0} glyphs={1} mode={2} atlasTextures={3} atlas={4}x{5} material={6}",
+                    chars, glyphs, font.atlasPopulationMode, slots, aw, ah, font.material != null ? "yes" : "NULL"));
 
+                // atlasTextures is the one that actually breaks the game: TMP_FontAsset.atlasTexture
+                // reads slot 0 of it, and any label drawn with a font whose array was never
+                // serialised throws UnassignedReferenceException out of GetFallbackMaterial.
+                // Checking characterTable alone passed a font that could not render a thing.
+                if (slots <= 0 || font.atlasTextures[0] == null)
+                {
+                    Debug.LogError("[EmberBakeVerify] font.atlasTextures is empty or slot 0 is null - "
+                        + "this font will throw UnassignedReferenceException when text is drawn");
+                    ok = false;
+                }
                 if (chars <= 0 || glyphs <= 0) { Debug.LogError("[EmberBakeVerify] font has no glyphs"); ok = false; }
                 if (aw <= 0 || ah <= 0) { Debug.LogError("[EmberBakeVerify] font atlas is empty"); ok = false; }
                 if (font.material == null) { Debug.LogError("[EmberBakeVerify] font material is null"); ok = false; }

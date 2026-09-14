@@ -75,6 +75,7 @@ namespace Emberlight.Editor
             int glyphCount = font.characterTable != null ? font.characterTable.Count : 0;
             int atlasW = 0, atlasH = 0;
             if (font.atlasTexture != null) { atlasW = font.atlasTexture.width; atlasH = font.atlasTexture.height; }
+            int slots = font.atlasTextures != null ? font.atlasTextures.Length : 0;
 
             // Freeze: no runtime population, so nothing is baked on the loading screen.
             font.atlasPopulationMode = AtlasPopulationMode.Static;
@@ -84,23 +85,61 @@ namespace Emberlight.Editor
             {
                 font.atlasTexture.name = font.name + " Atlas";
                 AssetDatabase.AddObjectToAsset(font.atlasTexture, font);
+
+                // Adding the texture as a sub-asset is NOT enough on its own. The font
+                // serialises a separate m_AtlasTextures array, and TMP_FontAsset.atlasTexture
+                // reads slot 0 of it. If that array is left empty in the asset file the font
+                // loads as a non-null object with no texture, and the first label drawn
+                // throws UnassignedReferenceException out of GetFallbackMaterial, which takes
+                // the whole UI down. Assign the slot explicitly and dirty it so the reference
+                // is actually written, then assert it survived the save.
+                if (font.atlasTextures == null || font.atlasTextures.Length == 0)
+                    font.atlasTextures = new Texture2D[] { font.atlasTexture };
+                else
+                    font.atlasTextures[0] = font.atlasTexture;
+
+                EditorUtility.SetDirty(font.atlasTexture);
+            }
+            else
+            {
+                UnityEngine.Debug.LogError("[EmberFontBake] font has no atlas texture; refusing to save a broken asset");
+                return;
             }
             if (font.material != null)
             {
                 font.material.name = font.name + " Material";
                 AssetDatabase.AddObjectToAsset(font.material, font);
+                EditorUtility.SetDirty(font.material);
             }
             EditorUtility.SetDirty(font);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
+
+            // Re-read from disk so this checks what was serialised, not the live object.
+            var saved = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(OutPath);
+            int savedSlots = saved != null && saved.atlasTextures != null ? saved.atlasTextures.Length : 0;
+            bool slotOk = saved != null && savedSlots > 0 && saved.atlasTextures[0] != null;
             total.Stop();
+
+            if (!slotOk)
+            {
+                UnityEngine.Debug.LogError("[EmberFontBake] SERIALISATION FAILED: the saved atlas has "
+                    + savedSlots + " atlas texture slot(s). This asset would crash the UI at runtime; "
+                    + "deleting it so the runtime bake takes over.");
+                AssetDatabase.DeleteAsset(OutPath);
+                AssetDatabase.Refresh();
+                return;
+            }
 
             UnityEngine.Debug.Log(string.Format(
                 "[EmberFontBake] baked {0} glyphs into a {1}x{2} atlas (requested {3} characters)\n"
                 + "  CreateFontAsset {4,8:F1} ms\n  TryAddCharacters {5,8:F1} ms\n  total {6,8:F1} ms\n"
-                + "  missing glyphs: {7}\n  written to {8}",
+                + "  missing glyphs: {7}\n"
+                + "  atlas texture slots in memory {8}, after save {9} (must be > 0)\n"
+                + "  written to {10}",
                 glyphCount, atlasW, atlasH, glyphs.Length, createMs, bakeMs, total.Elapsed.TotalMilliseconds,
                 string.IsNullOrEmpty(missing) ? "none" : missing.Length + " code points",
+                slots, savedSlots,
                 OutPath));
         }
     }

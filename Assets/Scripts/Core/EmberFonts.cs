@@ -19,8 +19,17 @@ namespace Emberlight
         {
             // Pre-baked atlas first: no CreateFontAsset and no glyph baking on the loading
             // screen. Falls through to the runtime bake when the asset is absent.
+            //
+            // The null check is not enough on its own. A partially serialised font asset
+            // loads as a non-null object whose atlas texture array was never written, and
+            // TMP then throws UnassignedReferenceException out of GetFallbackMaterial on the
+            // first label it draws, which breaks the whole UI rather than just the text.
+            // Only accept a baked asset that can actually render.
             if (baked == null) baked = Resources.Load<TMP_FontAsset>(BakedPath);
-            if (baked != null) return baked;
+            if (IsUsable(baked)) return baked;
+            if (baked != null)
+                Debug.LogWarning("[EmberFonts] ignoring unusable baked atlas at Resources/" + BakedPath
+                    + " (missing atlas texture); falling back to the runtime bake");
 
             var source = Resources.Load<Font>(SourcePath);
             if (source == null)
@@ -41,6 +50,20 @@ namespace Emberlight
             if (!string.IsNullOrEmpty(miss))
                 Debug.LogWarning("[EmberFonts] dynamic missing glyphs: " + miss.Length);
             return font;
+        }
+
+        /// <summary>
+        /// A font asset is only usable once it has an atlas texture to point materials at.
+        /// TMP_FontAsset.atlasTexture reads the first slot of atlasTextures, and both it and
+        /// text objects that reference the font throw when that array was never serialised.
+        /// </summary>
+        static bool IsUsable(TMP_FontAsset font)
+        {
+            if (font == null) return false;
+            if (font.atlasTextures == null || font.atlasTextures.Length == 0) return false;
+            if (font.atlasTextures[0] == null) return false;
+            if (font.characterTable == null || font.characterTable.Count == 0) return false;
+            return true;
         }
     }
 }
