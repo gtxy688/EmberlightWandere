@@ -25,7 +25,7 @@ namespace Emberlight
                 case RunProgress.StatAtk:
                     return "\u653b\u51fb\u0020\u002b" + Mathf.RoundToInt(EmberRarityUtil.GenericAtkAs(rarity) * 100) + "%  (\u5408\u8ba1 +" + Mathf.RoundToInt(progress.DamageBonus * 100) + "%)";
                 case RunProgress.StatAs:
-                    return "\u653b\u901f\u5df2\u9000\u51fa\u901a\u7528\u6c60";
+                    return "\u653b\u901f\u0020\u002b" + Mathf.RoundToInt(EmberRarityUtil.GenericAttackSpeed(rarity) * 100) + "%  (\u5408\u8ba1 +" + Mathf.RoundToInt(progress.AttackSpeedBonus * 100) + "%)";
                 case RunProgress.StatLuck:
                     return "\u5e78\u8fd0\u0020\u002b" + EmberRarityUtil.GenericLuck(rarity) + "  (\u5f53\u524d " + Mathf.RoundToInt(progress.Luck) + "/" + RunProgress.MaxLuck + ")";
                 case RunProgress.StatAmp:

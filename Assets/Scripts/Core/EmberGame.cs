@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using TMPro;
 
 namespace Emberlight
@@ -39,7 +39,7 @@ namespace Emberlight
                 public static readonly string[] UpgradeDetails =
         {
             "\u6253\u5f97\u66f4\u75bc",
-            "\u5df2\u4e0d\u7528",
+            "\u6253\u5f97\u66f4\u5feb",
             "\u66f4\u5bb9\u6613\u5237\u51fa\u597d\u5361",
             "\u6240\u6709\u6b66\u5668\u4f24\u5bb3\u518d\u4e58\u4e00\u622a",
             "立即获得护盾，受伤时优先消耗；可叠加，仅本局有效",
