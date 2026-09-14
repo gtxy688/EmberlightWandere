@@ -44,6 +44,22 @@ namespace Emberlight
             var pct = EmberHud.Text(bg.transform, fallback, "0%", 18, new Vector2(.74f, .19f), new Vector2(.92f, .24f));
             pct.alignment = TextAlignmentOptions.Left;
 
+            // Hold the wording back until the Chinese font exists. It is built about half a
+            // second in (CreateFontAsset + the whole glyph set), so drawing it earlier means
+            // drawing it with TMP's built-in Latin-only font and then swapping fonts mid-screen,
+            // which is what made the Chinese appear to lag behind the English. Nothing but the
+            // emblem and the bar shows until the font is ready, then all of it appears at once
+            // in one typeface. Percentages stay visible: digits are in the default font too.
+            titleEn.gameObject.SetActive(false);
+            titleCn.gameObject.SetActive(false);
+            prompt.gameObject.SetActive(false);
+            Action revealWording = () =>
+            {
+                titleEn.gameObject.SetActive(true);
+                titleCn.gameObject.SetActive(true);
+                prompt.gameObject.SetActive(true);
+            };
+
             const float minShow = 5f;
             float began = Time.unscaledTime;
             float visual = 0f;
@@ -90,6 +106,7 @@ namespace Emberlight
                 titleCn.fontSize = 28;
                 prompt.text = "Font load failed — tap to continue";
                 prepared(fallback);
+                revealWording();
                 yield return SpinBar(1f, 0.8f);
                 progress.transform.parent.gameObject.SetActive(false);
                 pct.gameObject.SetActive(false);
@@ -109,6 +126,9 @@ namespace Emberlight
             prompt.text = "\u70b9\u4eae\u706f\u706b\u2026";
             prompt.ForceMeshUpdate();
             pct.ForceMeshUpdate();
+
+            // Font is in place and the wording is already set, so show it all now.
+            revealWording();
 
             yield return SpinBar(0.55f, 0.8f);
             prepared(font);
