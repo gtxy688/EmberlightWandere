@@ -1,7 +1,6 @@
 using System;
 using System.Diagnostics;
 using System.IO;
-using TMPro;
 using UnityEditor;
 using UnityEngine;
 
@@ -41,39 +40,20 @@ namespace Emberlight.Editor
         };
 
         /// <summary>
-        /// Headless entry point for a single -executeMethod run: measures the old runtime
-        /// cost, then bakes art and font. Kept so the whole job is one Unity launch instead
-        /// of three, and so the measurement is recorded next to the bake that replaces it.
+        /// Headless entry point for a single -executeMethod run: measures the old runtime cost
+        /// then bakes the art, so the measurement is recorded next to the bake replacing it.
+        ///
+        /// There is deliberately no font step. Pre-baking the Chinese SDF atlas was tried twice
+        /// and both assets threw on the first label drawn, so EmberFonts always builds the
+        /// dynamic atlas; see the comment there.
         /// </summary>
         public static void BakeAll()
         {
             UnityEngine.Debug.Log("[EmberArtBake] ===== measure runtime cost (pre-bake) =====");
             Measure();
-            UnityEngine.Debug.Log("[EmberArtBake] ===== bake art =====");
+            UnityEngine.Debug.Log("[EmberArtBake] ===== bake art + integrity check =====");
             Bake();
-            UnityEngine.Debug.Log("[EmberFontBake] ===== bake font =====");
-            EmberFontBake.Bake();
             UnityEngine.Debug.Log("[EmberArtBake] ===== done =====");
-        }
-
-        /// <summary>
-        /// Headless entry point that forces a fresh font bake: removes the existing atlas
-        /// first (a Static atlas cannot be re-baked in place), then bakes and verifies.
-        /// </summary>
-        public static void RebakeAndVerify()
-        {
-            EmberGlyphSet.Report();
-
-            var existing = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(EmberFontBake.OutAssetPath);
-            if (existing != null)
-            {
-                AssetDatabase.DeleteAsset(EmberFontBake.OutAssetPath);
-                AssetDatabase.Refresh();
-                UnityEngine.Debug.Log("[EmberArtBake] removed the previous font atlas for a clean re-bake");
-            }
-
-            EmberFontBake.Bake();
-            EmberBakeVerify.Run();
         }
 
         [MenuItem("Emberlight/Bake runtime art", false, 210)]

@@ -10,27 +10,18 @@ namespace Emberlight
         public const string GlyphSet = " %()+-./0123456789:DFLPS[]adefgilnot\u00b7\u00d7\u2026\u2192\u3001\u3002\u3010\u3011\u4e00\u4e0a\u4e0b\u4e0e\u4e14\u4e24\u4e2a\u4e2d\u4e30\u4e32\u4e45\u4e4b\u4eae\u4eba\u4ece\u4ee5\u4efb\u4f10\u4f11\u4f18\u4f1a\u4f24\u4f4d\u4f53\u4f59\u4f5c\u4fa7\u500d\u505c\u50cf\u5148\u5149\u5165\u5173\u518d\u51b2\u51c6\u51fa\u51fb\u5206\u5229\u5230\u5237\u523b\u524d\u5269\u52a0\u52a8\u52b1\u5316\u5347\u534a\u534e\u5355\u5361\u536b\u5373\u53bb\u53cc\u53d1\u53d6\u53d7\u53d8\u53e0\u53ea\u53ef\u5404\u5408\u540c\u540e\u5468\u547d\u548c\u54c1\u54ea\u5668\u56de\u56f4\u5708\u5728\u5730\u573a\u57df\u57fa\u5806\u589e\u5907\u590d\u5916\u591a\u591c\u5927\u5929\u5956\u597d\u59cb\u5b58\u5b88\u5bb3\u5bb9\u5bcc\u5c04\u5c0f\u5c11\u5c31\u5c3e\u5c40\u5c42\u5c4f\u5c5e\u5e55\u5e76\u5e78\u5e87\u5ea6\u5f00\u5f20\u5f3a\u5f53\u5f55\u5f71\u5f80\u5f81\u5f84\u5f97\u5feb\u6012\u6027\u602a\u6062\u606f\u610f\u6210\u6218\u6240\u624d\u6253\u6254\u6263\u6269\u628a\u62a4\u62b5\u62c9\u62d6\u62e9\u62fe\u62ff\u6301\u6309\u6311\u6389\u6392\u63a5\u63a8\u63d0\u653b\u653e\u654c\u6563\u6570\u6597\u65b0\u65b9\u65c5\u65cb\u65e0\u65f6\u6613\u661f\u6625\u6653\u6682\u6696\u6697\u66b4\u66f4\u6700\u6709\u671d\u671f\u6740\u6761\u6765\u679a\u6807\u6837\u69fd\u6b21\u6b47\u6b65\u6b66\u6bcf\u6bd4\u6cd5\u6ce2\u6d41\u6d6a\u6e05\u6ee1\u6ee9\u6f2b\u706b\u706d\u706f\u707c\u70b8\u70b9\u70bd\u70c8\u70e7\u70eb\u70ec\u70ed\u7130\u7184\u71c3\u7206\u7247\u724c\u7269\u72c2\u730e\u73af\u7403\u751f\u7528\u7531\u7554\u7559\u75bc\u75be\u767d\u767e\u7684\u76c8\u76ee\u76f4\u76f8\u76fe\u7740\u77e2\u77f3\u7834\u7838\u7840\u795d\u798f\u79cd\u79d2\u79ef\u79fb\u7a0b\u7a0d\u7a7a\u7a7f\u7acb\u7b2c\u7b49\u7b80\u7bad\u7ea2\u7ea7\u7eaa\u7ebf\u7ec8\u7ed5\u7ed9\u7ee7\u7eed\u7efd\u7ffb\u8005\u800c\u80dc\u811a\u81ea\u81f3\u8272\u8303\u8350\u83b7\u8425\u843d\u8774\u8776\u8840\u884c\u8865\u88c2\u88c5\u88f9\u89e3\u8b66\u8ba1\u8ba4\u8bb0\u8c01\u8d25\u8d28\u8d34\u8d70\u8d74\u8d77\u8d8a\u8def\u8e0f\u8e29\u8eab\u8f6c\u8f7b\u8fb9\u8fc7\u8fce\u8fd0\u8fd1\u8fd4\u8fd8\u8fd9\u8fdb\u8ffd\u9000\u9009\u900f\u9014\u901a\u901f\u9020\u9053\u91ca\u91cc\u91cf\u91d1\u94bb\u94dc\u94f6\u9501\u950b\u952e\u9556\u957f\u964d\u9650\u968f\u96be\u96e8\u9752\u9760\u9762\u9879\u9884\u9897\u989d\u98ce\u98de\u9ad8\u9ec4\u9ed8\u9f50\uff01\uff08\uff09\uff0c\uff1a";
 
         const string SourcePath = "Fonts/NotoSansCJKsc-Regular";
-        // Static atlas produced by Emberlight/Bake Chinese font atlas. Kept in Resources
-        // (not loaded through a direct reference) so an unbaked project still runs.
-        const string BakedPath = "Fonts/NotoSansCJKsc-Regular SDF";
-        static TMP_FontAsset baked;
 
         public static TMP_FontAsset CreateChinese()
         {
-            // Pre-baked atlas first: no CreateFontAsset and no glyph baking on the loading
-            // screen. Falls through to the runtime bake when the asset is absent.
-            //
-            // The null check is not enough on its own. A partially serialised font asset
-            // loads as a non-null object whose atlas texture array was never written, and
-            // TMP then throws UnassignedReferenceException out of GetFallbackMaterial on the
-            // first label it draws, which breaks the whole UI rather than just the text.
-            // Only accept a baked asset that can actually render.
-            if (baked == null) baked = Resources.Load<TMP_FontAsset>(BakedPath);
-            if (IsUsable(baked)) return baked;
-            if (baked != null)
-                Debug.LogWarning("[EmberFonts] ignoring unusable baked atlas at Resources/" + BakedPath
-                    + " (missing atlas texture); falling back to the runtime bake");
-
+            // Deliberately no pre-baked asset path here. Two attempts at saving a Static TMP
+            // atlas for this project produced assets that loaded fine and then threw on the
+            // first label drawn -- one with an unresolved m_AtlasTextures slot, one with
+            // glyphs pointing at an atlas index that did not exist. Both shipped past
+            // asset-field checks because the tables looked healthy. The dynamic atlas cannot
+            // fail this way: TMP owns the texture and builds it in memory, so it is always
+            // internally consistent. The measured cost is small (CreateFontAsset ~9 ms,
+            // TryAddCharacters ~90 ms in the editor), which does not buy back a class of
+            // crash that is invisible until something draws text.
             var source = Resources.Load<Font>(SourcePath);
             if (source == null)
             {
@@ -50,20 +41,6 @@ namespace Emberlight
             if (!string.IsNullOrEmpty(miss))
                 Debug.LogWarning("[EmberFonts] dynamic missing glyphs: " + miss.Length);
             return font;
-        }
-
-        /// <summary>
-        /// A font asset is only usable once it has an atlas texture to point materials at.
-        /// TMP_FontAsset.atlasTexture reads the first slot of atlasTextures, and both it and
-        /// text objects that reference the font throw when that array was never serialised.
-        /// </summary>
-        static bool IsUsable(TMP_FontAsset font)
-        {
-            if (font == null) return false;
-            if (font.atlasTextures == null || font.atlasTextures.Length == 0) return false;
-            if (font.atlasTextures[0] == null) return false;
-            if (font.characterTable == null || font.characterTable.Count == 0) return false;
-            return true;
         }
     }
 }
