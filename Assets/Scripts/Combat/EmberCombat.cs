@@ -68,6 +68,16 @@ namespace Emberlight
         public int WaveQuota { get { return waveQuota + extraSpawned; } }
         public int WaveSpawned { get { return waveSpawned; } }
         public int WaveKilled { get { return waveKilled; } }
+        /// <summary>Diagnostic snapshot for the editor boss-state dump.</summary>
+        public string DebugState()
+        {
+            return "wave=" + wave + " quota=" + waveQuota + " spawned=" + waveSpawned
+                + " kills=" + waveKilled + " enemies=" + enemies.Count
+                + " bossSpawned=" + bossSpawned + " bossWarning=" + bossWarning.ToString("F2")
+                + " awaitingUpgrade=" + awaitingUpgrade + " bossEnemy=" + (bossEnemy != null)
+                + " BossWave=" + (config != null ? config.BossWave : -1)
+                + " IsBossWave=" + (config != null && config.IsBossWave(wave));
+        }
         /// <summary>Remaining trash for HUD: unspawned quota + on-field count.</summary>
         public int WaveRemaining
         {
