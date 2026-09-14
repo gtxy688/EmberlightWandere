@@ -60,9 +60,6 @@ namespace Emberlight
         int waveQuota;
         int waveSpawned;
         int waveKilled;
-#if UNITY_EDITOR
-        int waveTrace;
-#endif
 
         public int EnemyCount { get { return enemies.Count; } }
         public Enemy Boss { get { return bossEnemy; } }
@@ -71,21 +68,7 @@ namespace Emberlight
         public int WaveQuota { get { return waveQuota + extraSpawned; } }
         public int WaveSpawned { get { return waveSpawned; } }
         public int WaveKilled { get { return waveKilled; } }
-        /// <summary>Diagnostic snapshot for the editor boss-state dump.</summary>
-        public string DebugState()
-        {
-            return "wave=" + wave + " quota=" + waveQuota + " spawned=" + waveSpawned
-                + " kills=" + waveKilled + " enemies=" + enemies.Count
-                + " bossSpawned=" + bossSpawned + " bossWarning=" + bossWarning.ToString("F2")
-                + " awaitingUpgrade=" + awaitingUpgrade + " bossEnemy=" + (bossEnemy != null)
-                + " BossWave=" + (config != null ? config.BossWave : -1)
-                + " IsBossWave=" + (config != null && config.IsBossWave(wave));
-        }
 
-#if UNITY_EDITOR
-        /// <summary>Temporary hook so the editor can jump waves during a run.</summary>
-        public void StartWaveForProbe(int next) { StartWave(next); }
-#endif
         /// <summary>Remaining trash for HUD: unspawned quota + on-field count.</summary>
         public int WaveRemaining
         {
@@ -214,15 +197,6 @@ namespace Emberlight
         void StartWave(int next)
         {
             wave = next;
-#if UNITY_EDITOR
-            // Temporary: wave advances on its own, so trace who calls this and what comes next.
-            if (waveTrace < 25)
-            {
-                waveTrace++;
-                Debug.Log("[WaveTrace] #" + waveTrace + " StartWave(" + next + ") caller:\n"
-                    + new System.Diagnostics.StackTrace(1, true).ToString());
-            }
-#endif
             bossSpawned = false;
             extraSpawned = 0;
             eventTriggered = false;
@@ -266,21 +240,6 @@ namespace Emberlight
             StartWave(wave + 1);
         }
 
-        /// <summary>Editor-only shortcut that jumps straight to the Boss, skipping the lead-in banner.</summary>
-        public void PreviewBoss()
-        {
-            if (game.State != EmberGame.Mode.Playing || bossSpawned) return;
-            ClearLists(false);
-            wave = (config ?? LevelConfig.Default).BossWave;
-            extraSpawned = 0;
-            waveQuota = 0;
-            waveSpawned = 0;
-            waveKilled = 0;
-            awaitingUpgrade = false;
-            bossWarning = 0;
-            bossSpawned = true;
-            SpawnEnemy(true);
-        }
 
         public void Tick(float dt)
         {

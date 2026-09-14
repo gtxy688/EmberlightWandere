@@ -79,6 +79,8 @@ sysinfo.txt
 mono_crash.*
 
 # Builds
+*.keystore
+*.jks
 *.apk
 *.aab
 *.unitypackage
@@ -123,4 +125,3 @@ Assets/Audio/_download/
 /.codely.packages/
 /.codely-cli
 /.codely.packages
-

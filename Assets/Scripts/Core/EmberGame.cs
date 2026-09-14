@@ -190,7 +190,7 @@ namespace Emberlight
             // Spells out the Boss schedule before the run starts: every 10th wave is a stage Boss
             // and the last one is the Nightwarden, so the final wave is not a surprise.
             ui.Show("\u9009\u62e9\u5f81\u7a0b",
-                "\u5c40\u957f\u4e0e\u96be\u5ea6\u72ec\u7acb\u9009\u62e9\u3002\n\u524d 10 \u6ce2\u6bcf\u6ce2\u9009\u5361\uff0c\u4e4b\u540e\u6bcf 2 \u6ce2\u9009\u5361\uff1b\u9636\u6bb5 Boss \u989d\u5916\u5956\u52b1\u4e00\u6b21\u3002\n\u6bcf 10 \u6ce2\u662f\u5b88\u536b\u8bd5\u70bc\uff0c\u6700\u540e\u4e00\u6ce2\u662f\u957f\u591c\u5b88\u536b\u3002",
+                "\u5c40\u957f\u4e0e\u96be\u5ea6\u72ec\u7acb\u9009\u62e9\u3002\n\u524d 10 \u6ce2\u6bcf\u6ce2\u9009\u5361\uff0c\u4e4b\u540e\u6bcf 2 \u6ce2\u9009\u5361\u3002\n\u9636\u6bb5 Boss \u989d\u5916\u5956\u52b1\u4e00\u6b21\u3002\n\u6bcf 10 \u6ce2\u662f\u5b88\u536b\u8bd5\u70bc\uff0c\u6700\u540e\u4e00\u6ce2\u662f\u957f\u591c\u5b88\u536b\u3002",
                 new[] { "\u6807\u51c6\u5f81\u7a0b \u00b7 25\u6ce2\uff08\u63a8\u8350\uff09", "\u6f2b\u957f\u5f81\u7a0b \u00b7 50\u6ce2", "\u8fd4\u56de\u8425\u5730" },
                 new UnityEngine.Events.UnityAction[] { () => ChooseLength(25), () => ChooseLength(50), ShowMainMenu });
         }
@@ -295,9 +295,6 @@ namespace Emberlight
             hurtTimer -= dt;
             ReadInput();
             if (State != Mode.Playing) return;
-#if UNITY_EDITOR
-            EditorProbeKeys();
-#endif
 
             Vector2 move = Vector2.ClampMagnitude(new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical")) + stick, 1);
             player.position += (Vector3)(move * (3.3f * (1 + Progress.MoveSpeedBonus) * dt));
@@ -309,66 +306,6 @@ namespace Emberlight
             UpdateHud();
         }
 
-#if UNITY_EDITOR
-        /// <summary>
-        /// Temporary Boss-wave diagnostics, read here rather than from an editor hook:
-        /// EditorApplication.update does not receive key input during play mode, which is why
-        /// the first attempt at this never fired. F8 jumps to the wave before the Boss wave,
-        /// F9 dumps the combat state. Remove with DebugState once the Boss wave is fixed.
-        /// </summary>
-        void EditorProbeKeys()
-        {
-            if (Input.GetKeyDown(KeyCode.F8)) ProbeJumpToPreBoss();
-            if (Input.GetKeyDown(KeyCode.F9)) ProbeDumpState();
-        }
-
-        public void ProbeJumpToPreBoss()
-        {
-            // Guard loudly: pressing this from the menu would otherwise look like a dead key.
-            if (State != Mode.Playing || combat == null)
-            {
-                Debug.LogError("[Probe] jump ignored: the game is not in a run (state=" + State + ")");
-                return;
-            }
-            int bossWave = runLevel != null ? runLevel.BossWave : 25;
-            combat.StartWaveForProbe(bossWave - 1);
-            Debug.Log("[Probe] jumped to wave " + (bossWave - 1) + " (boss wave is " + bossWave + ")\n" + combat.DebugState());
-        }
-
-        public void ProbeDumpState()
-        {
-            if (State != Mode.Playing || combat == null)
-            {
-                Debug.LogError("[Probe] dump ignored: the game is not in a run (state=" + State + ")");
-                return;
-            }
-            Debug.Log("[Probe] state=" + State + " :: " + combat.DebugState());
-            ProbeDumpKeeper();
-        }
-
-        /// <summary>
-        /// Lists every SpriteRenderer under the keeper with its sprite, colour and sorting
-        /// order, plus the world bounds of each. Answers "is the shadow object there at all"
-        /// and "is it drawing somewhere off-screen" without needing a screenshot.
-        /// </summary>
-        public void ProbeDumpKeeper()
-        {
-            if (player == null) { Debug.LogError("[Probe] no player transform"); return; }
-            var parts = player.GetComponentsInChildren<SpriteRenderer>(true);
-            var sb = new System.Text.StringBuilder();
-            sb.AppendLine("[Probe] keeper hierarchy: " + parts.Length + " renderers, root=" + player.position);
-            foreach (var r in parts)
-            {
-                var b = r.bounds;
-                sb.AppendLine(string.Format("  {0,-22} order={1,3} enabled={2,-5} sprite={3,-16} color=({4:F2},{5:F2},{6:F2},{7:F2}) world=({8:F2},{9:F2}) size=({10:F2},{11:F2})",
-                    r.gameObject.name, r.sortingOrder, r.enabled,
-                    r.sprite != null ? r.sprite.name : "NULL",
-                    r.color.r, r.color.g, r.color.b, r.color.a,
-                    b.center.x, b.center.y, b.size.x, b.size.y));
-            }
-            Debug.Log(sb.ToString());
-        }
-#endif
 
         void UpdateHud()
         {
@@ -418,7 +355,6 @@ namespace Emberlight
         }
 
         public void PlayBossBurst(Vector2 point) { combat.PlayBossBurst(point); }
-        public void PreviewBoss() { combat.PreviewBoss(); }
         public void RegisterKill() { Kills++; }
         public void EndRun(bool won) { End(won); }
 

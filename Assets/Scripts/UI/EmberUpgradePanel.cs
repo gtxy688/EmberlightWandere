@@ -96,6 +96,27 @@ namespace Emberlight
             float cardH = n > 4 ? 0.11f : (n > 3 ? 0.125f : 0.145f);
             float gap = n > 4 ? 0.015f : 0.02f;
             float top0 = 0.75f;
+            RectTransform scrollContent = null;
+            if (n > 4)
+            {
+                var viewport = Box("Card viewport", root.transform, new Vector2(.055f, .075f), new Vector2(.945f, .75f), Color.clear, false);
+                viewport.gameObject.AddComponent<RectMask2D>();
+                var scroll = viewport.gameObject.AddComponent<ScrollRect>();
+                scrollContent = new GameObject("Cards", typeof(RectTransform)).GetComponent<RectTransform>();
+                scrollContent.SetParent(viewport.transform, false);
+                scrollContent.anchorMin = new Vector2(0, 1);
+                scrollContent.anchorMax = Vector2.one;
+                scrollContent.pivot = new Vector2(.5f, 1);
+                scrollContent.sizeDelta = new Vector2(0, n * 144f - 12f);
+                scrollContent.anchoredPosition = Vector2.zero;
+                scroll.viewport = viewport.rectTransform;
+                scroll.content = scrollContent;
+                scroll.horizontal = false;
+                scroll.vertical = true;
+                scroll.movementType = ScrollRect.MovementType.Clamped;
+                var hint = TextAt(root.transform, "上下滑动查看全部选项", 12, new Vector2(.1f, .055f), new Vector2(.9f, .075f), new Color(.60f, .67f, .73f));
+                FitText(hint, 10, 12, false);
+            }
 
             for (int i = 0; i < n; i++)
             {
@@ -103,13 +124,20 @@ namespace Emberlight
                 int id = offer.Id;
                 float top = top0 - i * (cardH + gap);
                 Color accent = EmberRarityUtil.Color(offer.Rarity);
-                var card = Box("Blessing card " + id, root.transform, new Vector2(.055f, top - cardH), new Vector2(.945f, top), accent * .65f);
+                var card = Box("Blessing card " + id, scrollContent != null ? scrollContent : root.transform, new Vector2(.055f, top - cardH), new Vector2(.945f, top), accent * .65f);
+                if (scrollContent != null)
+                {
+                    card.rectTransform.anchorMin = new Vector2(0, 1);
+                    card.rectTransform.anchorMax = Vector2.one;
+                    card.rectTransform.offsetMin = new Vector2(0, -i * 144f - 132f);
+                    card.rectTransform.offsetMax = new Vector2(0, -i * 144f);
+                }
                 card.sprite = EmberCardFrames.Get(offer.Rarity);
                 card.color = Color.white;
                 card.pixelsPerUnitMultiplier = 4f;
                 var inner = Box("Card face", card.transform, Vector2.zero, Vector2.one, Color.clear, false);
-                inner.rectTransform.offsetMin = new Vector2(24f, 12f);
-                inner.rectTransform.offsetMax = new Vector2(-24f, -12f);
+                inner.rectTransform.offsetMin = new Vector2(24f, 8f);
+                inner.rectTransform.offsetMax = new Vector2(-24f, -8f);
                 var shadeTop = Box("Route tint", inner.transform, new Vector2(.01f, .03f), new Vector2(.24f, .97f), new Color(16f / 255, 28f / 255, 40f / 255, 1));
                 DrawIcon(shadeTop.transform, id, accent);
                 string titleText = (id >= 0 && id < names.Length && !string.IsNullOrEmpty(names[id])) ? names[id] : ("#" + id);
@@ -125,18 +153,23 @@ namespace Emberlight
                         ? ("\u53ea\u63d0\u9ad8\u300c" + wname + "\u300d\u7684\u4f24\u5bb3")
                         : ("\u53ea\u63d0\u9ad8\u300c" + wname + "\u300d\u7684\u653b\u51fb\u901f\u5ea6");
                 }
-                var title = TextAt(inner.transform, titleText, 22, new Vector2(.275f, .55f), new Vector2(.96f, .92f), new Color(1, .93f, .80f));
+                if (id == RunProgress.StatShield)
+                    descText = "立即获得护盾，受伤优先消耗\n可叠加，仅本局有效";
+                var title = TextAt(inner.transform, titleText, 22, new Vector2(.275f, .70f), new Vector2(.97f, .98f), new Color(1, .93f, .80f));
                 title.alignment = TextAlignmentOptions.Left;
-                var desc = TextAt(inner.transform, descText, 14, new Vector2(.275f, .30f), new Vector2(.97f, .55f), new Color(.65f, .73f, .78f));
+                FitText(title, 13, 22, false);
+                var desc = TextAt(inner.transform, descText, 14, new Vector2(.275f, .25f), new Vector2(.97f, .68f), new Color(.65f, .73f, .78f));
                 desc.alignment = TextAlignmentOptions.Left;
-                var preview = TextAt(inner.transform, Preview(id, offer.Rarity, progress, offer.WeaponId), 15, new Vector2(.275f, .05f), new Vector2(.97f, .30f), accent);
+                FitText(desc, 11, 14, id != RunProgress.StatShield);
+                var preview = TextAt(inner.transform, Preview(id, offer.Rarity, progress, offer.WeaponId), 15, new Vector2(.275f, .01f), new Vector2(.97f, .23f), accent);
                 preview.alignment = TextAlignmentOptions.Left;
+                FitText(preview, 10, 15, false);
                 string label = RarityLabel(offer, progress);
                 var rarityLabel = TextAt(shadeTop.transform, label, 11, new Vector2(0.02f, 0.02f), new Vector2(0.98f, 0.25f), accent);
                 rarityLabel.enableAutoSizing = true;
                 rarityLabel.fontSizeMin = 8;
                 rarityLabel.fontSizeMax = 11;
-                rarityLabel.overflowMode = TextOverflowModes.Ellipsis;
+                rarityLabel.overflowMode = TextOverflowModes.Overflow;
                 rarityLabel.enableWordWrapping = false;
 
                 var button = card.gameObject.AddComponent<Button>();
@@ -178,6 +211,16 @@ namespace Emberlight
             }
         }
 
+        // Separate title, two-line explanation and numeric preview so fitting one cannot overlap another.
+        static void FitText(TextMeshProUGUI text, float min, float max, bool wrap)
+        {
+            text.enableAutoSizing = true;
+            text.fontSizeMin = min;
+            text.fontSizeMax = max;
+            text.enableWordWrapping = wrap;
+            text.overflowMode = TextOverflowModes.Overflow;
+        }
+
         void DrawIcon(Transform parent, int id, Color c)
         {
             var icon = Box("Doodle icon " + id, parent, new Vector2(.06f, .27f), new Vector2(.94f, .97f), Color.white, false);
@@ -208,7 +251,7 @@ namespace Emberlight
             t.alignment = TextAlignmentOptions.Center;
             t.raycastTarget = false;
             t.enableWordWrapping = true;
-            t.overflowMode = TextOverflowModes.Ellipsis;
+            FitText(t, size * .75f, size, true);
             return t;
         }
     }

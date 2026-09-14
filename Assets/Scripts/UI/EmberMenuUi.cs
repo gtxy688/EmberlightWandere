@@ -199,7 +199,11 @@ namespace Emberlight
             face.pixelsPerUnitMultiplier = 2f;
             face.color = Color.white;
             g.GetComponent<Button>().onClick.AddListener(() => { EmberAudio.Ensure().PlayUiClick(); if (action != null) action(); });
-            Label("Label", g.transform, label, 23, new Vector2(.18f, .12f), new Vector2(.88f, .88f));
+            var text = Label("Label", g.transform, label, 23, new Vector2(.14f, .10f), new Vector2(.94f, .90f));
+            text.enableWordWrapping = false;
+            text.enableAutoSizing = true;
+            text.fontSizeMin = 16f;
+            text.fontSizeMax = 23f;
         }
     }
 }

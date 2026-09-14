@@ -29,13 +29,13 @@ namespace Emberlight
             "\u706b\u7403", "\u73af\u706b", "\u71c3\u5730",
             "\u7a7f\u900f\u706b\u77e2", "\u56de\u65cb\u70ec\u8776", "\u5929\u964d\u706b\u96e8"
         };
-                static readonly string[] RosterDescs = {
-            "自动朝最近的怪扔火球，简单好用",
-            "火球贴身绕圈转，谁靠近就烫谁",
-            "走过的地方留下一串火，踩上来的怪持续掉血",
-            "停下脚步才会射击，一箭射穿一条线上的怪",
-            "扔出一只火蝴蝶，飞出去打一下，飞回来再打一下",
-            "在地上标记大红圈，随后砸下一大片流星雨"
+        static readonly string[] RosterDescs = {
+            "自动发射火球\n攻击最近的敌人",
+            "火球环绕身边\n灼烧靠近的敌人",
+            "沿途留下火焰\n持续灼烧踏入的敌人",
+            "停下脚步发射火矢\n贯穿直线上的敌人",
+            "掷出回旋火蝴蝶\n往返均可命中敌人",
+            "标记目标区域\n召唤火雨轰击敌人"
         };
         const int PageSize = 3;
 
@@ -124,9 +124,16 @@ namespace Emberlight
                 icon.sprite = EmberCardIcons.ForOffer(id);
                 icon.preserveAspect = true;
                 icon.raycastTarget = false;
-                TextAt(card.transform, RosterNames[idx], 24, new Vector2(.30f, .49f), new Vector2(.92f, .85f), new Color(1, .93f, .80f));
+                TextAt(card.transform, RosterNames[idx], 24, new Vector2(.30f, .57f), new Vector2(.92f, .88f), new Color(1, .93f, .80f));
                 string desc = taken ? "\u5df2\u9009\u4e2d" : RosterDescs[idx];
-                TextAt(card.transform, desc, 15, new Vector2(.30f, .15f), new Vector2(.92f, .49f), new Color(.65f, .73f, .78f));
+                // Reserve two lines and shrink slightly on compact screens instead of truncating.
+                var description = TextAt(card.transform, desc, 15, new Vector2(.30f, .10f), new Vector2(.92f, .55f), new Color(.65f, .73f, .78f));
+                description.enableAutoSizing = true;
+                description.fontSizeMin = 12f;
+                description.fontSizeMax = 15f;
+                // Explicit semantic lines prevent isolated trailing Chinese characters.
+                description.enableWordWrapping = false;
+                description.overflowMode = TextOverflowModes.Overflow;
                 int captured = id;
                 var btn = card.gameObject.AddComponent<Button>();
                 btn.targetGraphic = card;
@@ -240,7 +247,10 @@ namespace Emberlight
             t.alignment = TextAlignmentOptions.Center;
             t.raycastTarget = false;
             t.enableWordWrapping = true;
-            t.overflowMode = TextOverflowModes.Ellipsis;
+            t.enableAutoSizing = true;
+            t.fontSizeMin = size * .75f;
+            t.fontSizeMax = size;
+            t.overflowMode = TextOverflowModes.Overflow;
             return t;
         }
     }

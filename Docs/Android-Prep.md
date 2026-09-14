@@ -1,5 +1,7 @@
 # Android 打包清单
 
+> **下文为历史记录。** 2026-09-14 发布准备清理后，以 [Android-Release-Prep.md](Android-Release-Prep.md) 为准。旧的临时检查、烘焙和 Boss 调试菜单已删除；目标 API 已锁定 35，构建入口默认关闭 Development Build。
+
 > 更新：2026-09-14。工程侧已收口，可打真机调试包。还剩 keystore 签名需要人工决定。
 
 ## 环境（已就绪）

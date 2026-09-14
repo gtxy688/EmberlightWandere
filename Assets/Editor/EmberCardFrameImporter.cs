@@ -12,6 +12,7 @@ namespace Emberlight.Editor
             importer.textureType = TextureImporterType.Default;
             importer.npotScale = TextureImporterNPOTScale.None;
             importer.mipmapEnabled = false;
+            importer.alphaIsTransparency = true;
             importer.isReadable = false;
             importer.wrapMode = TextureWrapMode.Clamp;
             importer.filterMode = FilterMode.Bilinear;

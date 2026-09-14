@@ -13,3 +13,6 @@ Create a usable 2D mobile game UI ASSET ATLAS in the same simple doodle style as
 ## 最终编辑要求
 
 Preserve all six assets and exact layout. Replace background and panel interiors with opaque flat navy #101c28. Remove transparency, glow, gradients, shadows, bevels, textures and grid lines. Use only simple solid cream outlines and orange accents; preserve empty centers for game text.
+
+## 面板透明边缘修复
+已离线移除 doodle-ui 图集四种封闭面板描边外的深色底块，保留内部底色、描边、尺寸及切片坐标。启用 alphaIsTransparency 防止边缘采样色晕，无运行时裁剪或纹理处理。
