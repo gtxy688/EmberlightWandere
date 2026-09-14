@@ -142,8 +142,12 @@ namespace Emberlight
             State = Mode.Menu;
             EmberAudio.Ensure().PlayMenuMusic();
             if (world != null) world.gameObject.SetActive(false);
-            ui.Show("烬灯行者", "25 波标准征程 · 50 波漫长征程\n自由选择难度，每局从相同的基础属性出发。\n清波选卡，击败最终守卫。",
-                new[] { "提灯出发", "\u8bbe\u7f6e" }, new UnityEngine.Events.UnityAction[] { BeginRun, OpenSettingsFromMenu });
+            ui.Show(
+                "\u70ec\u706f\u884c\u8005",
+                "25\u6ce2\u6807\u51c6\u5f81\u9014\u00b7\u002050\u6ce2\u6f2b\u957f\u5f81\u7a0b\n\u81ea\u7531\u9009\u62e9\u96be\u5ea6\uff0c\u6bcf\u5c40\u4ece\u76f8\u540c\u7684\u57fa\u7840\u5c5e\u6027\u51fa\u53d1\u3002\n\u6e05\u6ce2\u9009\u5361\uff0c\u51fb\u8d25\u6700\u7ec8\u5b88\u536b\u3002",
+                new[] { "\u70b9\u4eae\u65c5\u7a0b", "\u8bbe\u7f6e" },
+                new UnityEngine.Events.UnityAction[] { BeginRun, OpenSettingsFromMenu },
+                true);
         }
 
 

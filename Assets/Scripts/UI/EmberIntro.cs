@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
@@ -32,17 +32,27 @@ namespace Emberlight
             scaler.matchWidthOrHeight = .5f;
             var bg = EmberHud.Box(screen.transform, "Night sky", Vector2.zero, Vector2.one, new Color(.025f, .045f, .07f));
 
+            // Brand mark first (procedural sprite — no font needed).
+            var mark = EmberHud.Box(bg.transform, "Flame emblem", new Vector2(.43f, .74f), new Vector2(.57f, .86f), new Color(1, .61f, .19f));
+            if (EmberArt.Flame != null)
+            {
+                mark.sprite = EmberArt.Flame;
+                mark.type = Image.Type.Simple;
+                mark.preserveAspect = true;
+                var core = EmberHud.Box(mark.transform, "Flame heart", new Vector2(.28f, .10f), new Vector2(.72f, .64f), new Color(1, .92f, .63f));
+                core.sprite = EmberArt.Flame;
+                core.type = Image.Type.Simple;
+            }
+
             TMP_FontAsset fallback = TMP_Settings.defaultFontAsset;
-            var titleEn = EmberHud.Text(bg.transform, fallback, "EmberlightWanderer", 26, new Vector2(.04f, .52f), new Vector2(.96f, .62f));
-            TextMeshProUGUI titleCn = null;
+            var titleEn = EmberHud.Text(bg.transform, fallback, "EmberlightWanderer", 26, new Vector2(.04f, .48f), new Vector2(.96f, .57f));
+            TextMeshProUGUI titleCn = EmberHud.Text(bg.transform, fallback, "", 40, new Vector2(.03f, .58f), new Vector2(.97f, .70f));
             prompt = EmberHud.Text(bg.transform, fallback, "Loading...", 20, new Vector2(.1f, .30f), new Vector2(.9f, .38f));
             var progress = EmberHud.Bar(bg.transform, "Loading", new Vector2(.16f, .20f), new Vector2(.72f, .228f), new Color(.95f, .67f, .27f));
             progress.fillAmount = 0f;
             var pct = EmberHud.Text(bg.transform, fallback, "0%", 18, new Vector2(.74f, .19f), new Vector2(.92f, .24f));
             pct.alignment = TextAlignmentOptions.Left;
 
-            // Progress is stage-driven only (no wall-clock Max). Font bake is sync and can
-            // stall several seconds — the old `Max(visual, elapsed/5*0.95)` snapped to 95% after that.
             const float minShow = 5f;
             float began = Time.unscaledTime;
             float visual = 0f;
@@ -77,44 +87,45 @@ namespace Emberlight
 
             SetProgress(0f);
             yield return null;
-            yield return SpinBar(0.15f, 0.6f);
+            yield return SpinBar(0.15f, 0.5f);
 
             prompt.text = "Loading fonts...";
             yield return null;
             var font = EmberFonts.CreateChinese();
             if (font == null)
             {
-                prompt.text = "Font load failed";
+                // Visible fallback: English title + flame already on screen.
+                titleCn.text = "EmberlightWanderer";
+                titleCn.fontSize = 28;
+                prompt.text = "Font load failed — tap to continue";
+                prepared(fallback);
+                yield return SpinBar(1f, 0.8f);
+                progress.transform.parent.gameObject.SetActive(false);
+                pct.gameObject.SetActive(false);
+                Ready = true;
+                readyAt = Time.unscaledTime;
                 yield break;
             }
 
-            titleCn = EmberHud.Text(bg.transform, font, "\u70ec\u706f\u884c\u8005", 40, new Vector2(.03f, .58f), new Vector2(.97f, .70f));
+            // Chinese title as soon as font is ready.
+            titleCn.font = font;
+            titleCn.text = "\u70ec\u706f\u884c\u8005";
             titleCn.ForceMeshUpdate();
             titleEn.font = font;
             titleEn.ForceMeshUpdate();
-            titleEn.rectTransform.anchorMin = new Vector2(.04f, .48f);
-            titleEn.rectTransform.anchorMax = new Vector2(.96f, .57f);
             prompt.font = font;
             pct.font = font;
             prompt.text = "\u70b9\u4eae\u706f\u706b\u2026";
             prompt.ForceMeshUpdate();
             pct.ForceMeshUpdate();
 
-            // Resume from wherever we were (often still ~15% after a long font bake).
-            yield return SpinBar(0.45f, 1.0f);
-
-            var mark = EmberHud.Box(bg.transform, "Flame emblem", new Vector2(.43f, .74f), new Vector2(.57f, .86f), new Color(1, .61f, .19f));
-            mark.sprite = EmberArt.Flame; mark.type = Image.Type.Simple; mark.preserveAspect = true;
-            var core = EmberHud.Box(mark.transform, "Flame heart", new Vector2(.28f, .10f), new Vector2(.72f, .64f), new Color(1, .92f, .63f));
-            core.sprite = EmberArt.Flame; core.type = Image.Type.Simple;
-
-            yield return SpinBar(0.7f, 0.9f);
+            yield return SpinBar(0.55f, 0.8f);
             prepared(font);
 
-            float remain = Mathf.Max(1.2f, minShow - (Time.unscaledTime - began));
+            float remain = Mathf.Max(1.0f, minShow - (Time.unscaledTime - began));
             yield return SpinBar(1f, remain);
             SetProgress(1f);
-            yield return new WaitForSecondsRealtime(0.2f);
+            yield return new WaitForSecondsRealtime(0.15f);
 
             EmberHud.Text(bg.transform, font, "\u63d0\u706f\u5165\u591c\uff0c\u4ee5\u706b\u7834\u6653\u3002", 21, new Vector2(.08f, .38f), new Vector2(.92f, .44f));
             progress.transform.parent.gameObject.SetActive(false);

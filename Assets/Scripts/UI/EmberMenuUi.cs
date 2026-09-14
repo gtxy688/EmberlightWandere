@@ -19,6 +19,7 @@ namespace Emberlight
         TMP_FontAsset font;
         TextMeshProUGUI heading, summary;
         Transform buttons;
+        GameObject brandRoot;
 
         public void Build(Transform host, TMP_FontAsset loadedFont, System.Action pause)
         {
@@ -64,13 +65,41 @@ namespace Emberlight
             var r = Overlay.GetComponent<RectTransform>();
             r.anchorMin = Vector2.zero; r.anchorMax = Vector2.one; r.offsetMin = r.offsetMax = Vector2.zero;
             Overlay.GetComponent<Image>().color = new Color(.025f, .045f, .075f, .95f);
-            heading = Label("Title", Overlay.transform, "", 38, new Vector2(.06f, .76f), new Vector2(.94f, .91f));
-            summary = Label("Description", Overlay.transform, "", 19, new Vector2(.06f, .56f), new Vector2(.94f, .76f));
+            brandRoot = new GameObject("Brand", typeof(RectTransform));
+            brandRoot.transform.SetParent(Overlay.transform, false);
+            var brandRt = brandRoot.GetComponent<RectTransform>();
+            brandRt.anchorMin = new Vector2(.42f, .88f);
+            brandRt.anchorMax = new Vector2(.58f, .98f);
+            brandRt.offsetMin = brandRt.offsetMax = Vector2.zero;
+            var brandBg = brandRoot.AddComponent<Image>();
+            brandBg.color = new Color(1f, .61f, .19f, 1f);
+            brandBg.raycastTarget = false;
+            if (EmberArt.Flame != null)
+            {
+                brandBg.sprite = EmberArt.Flame;
+                brandBg.type = Image.Type.Simple;
+                brandBg.preserveAspect = true;
+                var coreGo = new GameObject("Flame heart", typeof(RectTransform), typeof(Image));
+                coreGo.transform.SetParent(brandRoot.transform, false);
+                var cr = coreGo.GetComponent<RectTransform>();
+                cr.anchorMin = new Vector2(.28f, .10f);
+                cr.anchorMax = new Vector2(.72f, .64f);
+                cr.offsetMin = cr.offsetMax = Vector2.zero;
+                var ci = coreGo.GetComponent<Image>();
+                ci.sprite = EmberArt.Flame;
+                ci.color = new Color(1f, .92f, .63f, 1f);
+                ci.type = Image.Type.Simple;
+                ci.raycastTarget = false;
+            }
+            brandRoot.SetActive(false);
+
+            heading = Label("Title", Overlay.transform, "", 34, new Vector2(.06f, .72f), new Vector2(.94f, .86f));
+            summary = Label("Description", Overlay.transform, "", 19, new Vector2(.06f, .52f), new Vector2(.94f, .70f));
             buttons = new GameObject("Choices", typeof(RectTransform)).transform;
             buttons.SetParent(Overlay.transform, false);
             var b = (RectTransform)buttons;
             b.anchorMin = Vector2.zero; b.anchorMax = Vector2.one; b.offsetMin = b.offsetMax = Vector2.zero;
-            Label("Footer", Overlay.transform, "\u70ec\u706f\u884c\u8005\n拖动屏幕移动，清波选择强化", 16, new Vector2(.05f, .025f), new Vector2(.95f, .12f));
+            Label("Footer", Overlay.transform, "\u70ec\u706f\u884c\u8005\n\u62d6\u52a8\u5c4f\u5e55\u79fb\u52a8\uff0c\u6e05\u6ce2\u9009\u62e9\u5f3a\u5316", 16, new Vector2(.05f, .025f), new Vector2(.95f, .12f));
         }
 
         public void UpdateSafeArea()
@@ -90,13 +119,14 @@ namespace Emberlight
             StickKnob.anchoredPosition = stick * 45;
         }
 
-        public void Show(string title, string desc, string[] labels, UnityEngine.Events.UnityAction[] actions)
+        public void Show(string title, string desc, string[] labels, UnityEngine.Events.UnityAction[] actions, bool showBrand = false)
         {
             if (UpgradePanel != null) UpgradePanel.Hide();
             if (GodsSelect != null) GodsSelect.Hide();
             if (SettingsPanel != null) SettingsPanel.Hide();
             BattleHud.Show(false);
             Overlay.SetActive(true);
+            if (brandRoot != null) brandRoot.SetActive(showBrand);
             heading.text = title;
             summary.text = desc;
             StickBase.gameObject.SetActive(false);
