@@ -90,3 +90,20 @@
 - **待手动验收**：H1–H10（主闭环、武器库可读性、滚动选卡、防重复领卡、返回营地确认、HUD 可读性、音量持久化、倍速、真机触控、窄屏适配）。
 - **未验证**：A1–A22 全部（阻塞原因：项目无 asmdef 与测试程序集；PlayMode 测试还需可脚本化装配 Canvas）。
 - **未通过**：无。
+
+## UI 复用回归（2026-09-15）
+
+- 独立脚本：Tools/UiReuse/RuntimeUiChecks.cs，复制到隔离项目 Assets/Editor，以 -batchmode -executeMethod RuntimeUiChecks.Run 执行。不是项目测试程序集。
+- 范围：20 次设置/选卡开关保持对象 ID；静默音量同步；确认重置；最新回调；3/7 张切换与滚动复位；隐藏取消动画；双击只提交一次。
+- 待人工验收：主菜单 → 开局四步 → 战斗 → 升级/刷新 → 暂停/返回营地 → 结算；中文、滚动顶部标题、HUD 文字与护盾数值无重叠。
+- 真机待验收：重复相同操作比较 CPU 与 GC Alloc 尖峰，不以对象复用检查替代性能实测。
+- 字体/图片导入检查：N/A，本次未修改字体资源、切片或导入器；另运行现有字形覆盖检查。
+
+### 本次执行结果
+
+- 已验证：使用 Unity 2022.3.62f3 自带 Roslyn 和现有 Assembly-CSharp.rsp 编译到 Library/UiReuseCompile.dll，退出码 0。
+- 已验证：`python Tools/atlas_glyph_check.py Library/UiReuseCompile.dll`，MISSING (0)，TMP 特殊字符齐全。
+- 已验证：隔离副本 Library/RuntimeUiChecks，以 `-batchmode -executeMethod RuntimeUiChecks.Run` 运行，上述对象身份与交互检查 PASS；结果见该目录 result.txt。
+- 已验证：hud.png 实际渲染截图已查看，生命、护盾、波次文字及暂停按钮未重叠；截图只是布局检查，不是主场景完整试玩。
+- 未验证：主项目完整游戏闭环，本次仅在隔离副本运行面板检查，未操作当前打开的主场景。
+- 待人工验收：HUD 可读性/点击手感，真实选卡界面各文案组合，以及 Android 真机性能对比。

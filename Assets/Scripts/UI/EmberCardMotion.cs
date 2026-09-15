@@ -7,7 +7,8 @@ namespace Emberlight
     public sealed class EmberCardMotion : MonoBehaviour,IPointerDownHandler,IPointerUpHandler,IPointerExitHandler
     {
         CanvasGroup group;Vector3 target=Vector3.one;float delay,age;bool selected;Image face;
-        public void Initialize(float entranceDelay,Image background){group=gameObject.AddComponent<CanvasGroup>();group.alpha=0;delay=entranceDelay;face=background;transform.localScale=Vector3.one*.94f;}
+        public void Initialize(float entranceDelay,Image background){StopAllCoroutines();if(group==null)group=GetComponent<CanvasGroup>();if(group==null)group=gameObject.AddComponent<CanvasGroup>();selected=false;age=0;target=Vector3.one;background.color=Color.white;group.alpha=0;delay=entranceDelay;face=background;transform.localScale=Vector3.one*.94f;}
+        void OnDisable(){StopAllCoroutines();selected=false;target=Vector3.one;}
         void Update(){age+=Time.unscaledDeltaTime;if(group!=null)group.alpha=Mathf.Clamp01((age-delay)/.22f);transform.localScale=Vector3.Lerp(transform.localScale,target,Time.unscaledDeltaTime*18);}
         public void OnPointerDown(PointerEventData e){if(!selected)target=Vector3.one*.97f;}
         public void OnPointerUp(PointerEventData e){if(!selected)target=Vector3.one;}

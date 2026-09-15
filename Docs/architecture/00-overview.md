@@ -86,7 +86,7 @@ M8(音频) ──► 无玩法依赖（Resources 自加载）
 | 灼热 / 疾风 / 重生词缀 | M5 | `05-enemy-system.md` |
 | 敌人动画 / 剪影 / 角色标记 / 预警圈 | M5 + M7 | `05-enemy-system.md` |
 | 主菜单 / 开局流程 / 选难度 / 选槽位 / 选武器 | M6 | `06-ui-flow.md` |
-| HUD / 血条 / 波次横幅 / 暂停 / 设置页 / 音量滑条 | M6 | `06-ui-flow.md` |
+| HUD / 血条 / 波次横幅 / 暂停 / 设置页 / 音量滑条 / UI 复用 | M6 | `06-ui-flow.md` |
 | 卡面排版 / 徽章 / 图标映射 / 滚动选卡 | M6 + M7 | `06-ui-flow.md` |
 | 简笔画素材 / 图集 / 程序化精灵 / 粒子 | M7 | `07-art-presentation.md` |
 | 中文字体 / TMP 图集 / 字体预热 / 加载页 | M7 | `07-art-presentation.md` |
