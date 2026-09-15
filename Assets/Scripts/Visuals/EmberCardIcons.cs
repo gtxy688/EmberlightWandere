@@ -7,6 +7,11 @@ namespace Emberlight
     {
         static readonly Sprite[] icons = new Sprite[24];
         static Texture2D atlas;
+        static bool reportedSlice;
+        // Sub-sprite names as the Sprite Editor writes them: "<atlas>_<index>", row-major from
+        // the top-left, so index == cell. The slicing itself lives in the .meta and is applied by
+        // EmberCardIconImporter; this name pattern is the contract between the two.
+        const string Stem = "doodle-icons";
 
         public static Sprite ForOffer(int id)
         {
@@ -47,7 +52,21 @@ namespace Emberlight
         static Sprite Cell(int cell)
         {
             if (icons[cell] != null) return icons[cell];
-            if (atlas == null) atlas = Resources.Load<Texture2D>("Art/Cards/doodle-icons");
+            // Preferred: the sub-sprite cut in the Sprite Editor. Atlas is still loaded as a
+            // Texture2D because the fallback below needs it -- and on this path the texture has
+            // to be resident regardless, or the sprite would pull it in anyway.
+            if (atlas == null) atlas = Resources.Load<Texture2D>("Art/Cards/" + Stem);
+            if (atlas != null)
+            {
+                var cut = Resources.Load<Sprite>("Art/Cards/" + Stem + "_" + cell);
+                if (cut != null)
+                {
+                    icons[cell] = cut;
+                    if (!reportedSlice) { reportedSlice = true; Debug.Log("[EmberCardIcons] using sliced atlas sprites (" + Stem + "_*)"); }
+                    return icons[cell];
+                }
+            }
+            // Fallback: not reimported since the meta was cut, or no atlas at all.
             if (atlas == null) return EmberArt.Flame;
             int column = cell % 4, row = cell / 4;
             // Inset avoids sampling neighbouring cells with bilinear filtering.

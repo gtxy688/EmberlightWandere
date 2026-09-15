@@ -43,7 +43,7 @@ TextureImporter:
   nPOTScale: 0
   lightmap: 0
   compressionQuality: 50
-  spriteMode: 1
+  spriteMode: 2
   spriteExtrude: 1
   spriteMeshType: 1
   alignment: 0
@@ -54,7 +54,7 @@ TextureImporter:
   alphaUsage: 1
   alphaIsTransparency: 1
   spriteTessellationDetail: -1
-  textureType: 0
+  textureType: 8
   textureShape: 1
   singleChannelComponent: 0
   flipbookRows: 1
@@ -121,7 +121,133 @@ TextureImporter:
     forceMaximumCompressionQuality_BC6H_BC7: 0
   spriteSheet:
     serializedVersion: 2
-    sprites: []
+    sprites:
+    - serializedVersion: 2
+      name: doodle-ui_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 724
+        width: 724
+        height: 362
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 73e16a5b59d4c1540ab85dd5fc1d5062
+      internalID: -1052054431
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doodle-ui_1
+      rect:
+        serializedVersion: 2
+        x: 724
+        y: 724
+        width: 724
+        height: 362
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 155fe7b47b866d24793de9ee25988368
+      internalID: 1889422819
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doodle-ui_2
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 362
+        width: 724
+        height: 362
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 9e3c612ab57e8e04d91b940d73254e0c
+      internalID: -1680667240
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doodle-ui_3
+      rect:
+        serializedVersion: 2
+        x: 724
+        y: 362
+        width: 724
+        height: 362
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 2ee2e5bd88d2990489218665c4567235
+      internalID: 1164672742
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doodle-ui_4
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 724
+        height: 362
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 1c4571fda5a879d4cba89eea9ad0e2e2
+      internalID: 683840514
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doodle-ui_5
+      rect:
+        serializedVersion: 2
+        x: 724
+        y: 0
+        width: 724
+        height: 362
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 1065184a62d11d145a9863ea4a3d5f73
+      internalID: -914986074
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
     outline: []
     physicsShape: []
     bones: []
@@ -132,7 +258,13 @@ TextureImporter:
     edges: []
     weights: []
     secondaryTextures: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      doodle-ui_0: -1052054431
+      doodle-ui_1: 1889422819
+      doodle-ui_2: -1680667240
+      doodle-ui_3: 1164672742
+      doodle-ui_4: 683840514
+      doodle-ui_5: -914986074
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

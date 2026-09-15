@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 namespace Emberlight
 {
@@ -48,15 +48,23 @@ namespace Emberlight
             return Mathf.RoundToInt(Magnitude(rarity) * 100f);
         }
 
+        /// <summary>
+        /// Rarity display names, indexed by the EmberRarity enum. The single source for these
+        /// four strings: Name() reads from here, and EmberFonts prewarms them so the first card
+        /// that shows 钻石 does not rasterise its glyphs mid-run.
+        /// </summary>
+        public static readonly string[] AllNames =
+        {
+            "\u9752\u94dc",  // Bronze
+            "\u767d\u94f6",  // Silver
+            "\u9ec4\u91d1",  // Gold
+            "\u94bb\u77f3",  // Diamond
+        };
+
         public static string Name(EmberRarity rarity)
         {
-            switch (rarity)
-            {
-                case EmberRarity.Silver: return "\u767d\u94f6";
-                case EmberRarity.Gold: return "\u9ec4\u91d1";
-                case EmberRarity.Diamond: return "\u94bb\u77f3";
-                default: return "\u9752\u94dc";
-            }
+            int index = (int)rarity;
+            return index >= 0 && index < AllNames.Length ? AllNames[index] : AllNames[0];
         }
 
         public static Color Color(EmberRarity rarity)

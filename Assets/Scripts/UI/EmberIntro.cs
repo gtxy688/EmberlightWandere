@@ -44,21 +44,10 @@ namespace Emberlight
             var pct = EmberHud.Text(bg.transform, fallback, "0%", 18, new Vector2(.74f, .19f), new Vector2(.92f, .24f));
             pct.alignment = TextAlignmentOptions.Left;
 
-            // Hold the wording back until the Chinese font exists. It is built about half a
-            // second in (CreateFontAsset + the whole glyph set), so drawing it earlier means
-            // drawing it with TMP's built-in Latin-only font and then swapping fonts mid-screen,
-            // which is what made the Chinese appear to lag behind the English. Nothing but the
-            // emblem and the bar shows until the font is ready, then all of it appears at once
-            // in one typeface. Percentages stay visible: digits are in the default font too.
-            titleEn.gameObject.SetActive(false);
-            titleCn.gameObject.SetActive(false);
-            prompt.gameObject.SetActive(false);
-            Action revealWording = () =>
-            {
-                titleEn.gameObject.SetActive(true);
-                titleCn.gameObject.SetActive(true);
-                prompt.gameObject.SetActive(true);
-            };
+            // The labels are created here with the built-in Latin font and re-pointed at the
+            // Chinese atlas a few lines below, before any frame has been presented. There is no
+            // reveal step to hold them back: with the pre-baked atlas the font is a serialized
+            // asset, so the swap costs nothing and the wording is correct on frame one.
 
             const float minShow = 5f;
             float began = Time.unscaledTime;
@@ -92,21 +81,46 @@ namespace Emberlight
                 SetProgress(target);
             }
 
+            // ── Font first, animation second ─────────────────────────────────────────────────
+            // This used to call CreateChinese() only after a 0.5 s SpinBar, so the earliest the
+            // wording could appear was half a second in -- which is exactly what read as "the
+            // Chinese lags by half a beat". Nothing was slow; the text was simply scheduled after
+            // an animation. With the pre-baked atlas the font is a serialized asset, so it is
+            // loaded here, on the first frame, and every wait below happens with the text already
+            // on screen.
+            prompt.text = "Loading fonts...";
+            var font = EmberFonts.CreateChinese();
+
+            // ── Wording ──────────────────────────────────────────────────────────────────────
+            // Set once here rather than inside a reveal action: the fallback and the success path
+            // differ only in what the text says, so there is no reason for two code paths to own
+            // the same three labels.
+            titleCn.font = font != null ? font : fallback;
+            titleCn.text = font != null ? "\u70ec\u706f\u884c\u8005" : "EmberlightWanderer";
+            titleCn.fontSize = font != null ? 40 : 28;
+            titleEn.font = titleCn.font;
+            prompt.font = titleCn.font;
+            pct.font = titleCn.font;
+            prompt.text = font != null ? "\u70b9\u4eae\u706f\u706b\u2026" : "Font load failed \u2014 tap to continue";
+            titleCn.ForceMeshUpdate();
+            titleEn.ForceMeshUpdate();
+            prompt.ForceMeshUpdate();
+            pct.ForceMeshUpdate();
+
+            // Everything the first screen needs is already in the atlas (CreateChinese adds it
+            // synchronously). The remainder goes in 48 at a time while this screen is still held
+            // open; for a Static atlas this returns immediately.
+            yield return EmberFonts.PrewarmInBackground(font);
+
+            // Now the bar. These waits fill the minimum on-screen time with the text already
+            // visible instead of before it exists.
             SetProgress(0f);
             yield return null;
             yield return SpinBar(0.15f, 0.5f);
 
-            prompt.text = "Loading fonts...";
-            yield return null;
-            var font = EmberFonts.CreateChinese();
             if (font == null)
             {
-                // Visible fallback: English title + flame already on screen.
-                titleCn.text = "EmberlightWanderer";
-                titleCn.fontSize = 28;
-                prompt.text = "Font load failed — tap to continue";
                 prepared(fallback);
-                revealWording();
                 yield return SpinBar(1f, 0.8f);
                 progress.transform.parent.gameObject.SetActive(false);
                 pct.gameObject.SetActive(false);
@@ -114,21 +128,6 @@ namespace Emberlight
                 readyAt = Time.unscaledTime;
                 yield break;
             }
-
-            // Chinese title as soon as font is ready.
-            titleCn.font = font;
-            titleCn.text = "\u70ec\u706f\u884c\u8005";
-            titleCn.ForceMeshUpdate();
-            titleEn.font = font;
-            titleEn.ForceMeshUpdate();
-            prompt.font = font;
-            pct.font = font;
-            prompt.text = "\u70b9\u4eae\u706f\u706b\u2026";
-            prompt.ForceMeshUpdate();
-            pct.ForceMeshUpdate();
-
-            // Font is in place and the wording is already set, so show it all now.
-            revealWording();
 
             yield return SpinBar(0.55f, 0.8f);
             prepared(font);
