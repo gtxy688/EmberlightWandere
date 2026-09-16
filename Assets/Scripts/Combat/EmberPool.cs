@@ -43,6 +43,9 @@ namespace Emberlight
             }
         }
 
+        static readonly Unity.Profiling.ProfilerMarker CreateMarker = new Unity.Profiling.ProfilerMarker("Ember.Pool.Create");
+        static readonly Unity.Profiling.ProfilerMarker ReuseMarker = new Unity.Profiling.ProfilerMarker("Ember.Pool.Reuse");
+
         public GameObject Rent(string key, Transform parent, Func<Transform, GameObject> create)
         {
             Stack<GameObject> stack;
@@ -52,12 +55,16 @@ namespace Emberlight
                 {
                     var g = stack.Pop();
                     if (g == null) continue;
-                    g.transform.SetParent(parent, false);
-                    g.SetActive(true);
-                    return g;
+                    using (ReuseMarker.Auto())
+                    {
+                        g.transform.SetParent(parent, false);
+                        g.SetActive(true);
+                        return g;
+                    }
                 }
             }
-            return create(parent);
+            using (CreateMarker.Auto())
+                return create(parent);
         }
 
         public SpriteRenderer RentFire(Transform parent, Vector2 position, float size, int order = 8)
@@ -95,22 +102,27 @@ namespace Emberlight
             return r;
         }
 
+        static readonly Unity.Profiling.ProfilerMarker RentEnemyMarker = new Unity.Profiling.ProfilerMarker("Ember.Pool.RentEnemy");
+
         public Transform RentEnemy(string key, Transform parent, Color body)
         {
-            bool boss = key == "boss";
-            var go = Rent(key, parent, p => EmberVisuals.Character(boss ? "Nightwarden" : "Shade", p, body).gameObject);
-            go.transform.SetParent(parent, false);
-            go.transform.rotation = Quaternion.identity;
-            // Recolor cloak/hood if present (children Shape nodes).
-            var parts = go.GetComponentsInChildren<SpriteRenderer>(true);
-            for (int i = 0; i < parts.Length; i++)
+            using (RentEnemyMarker.Auto())
             {
-                var n = parts[i].name;
-                if (n == "Cloak") parts[i].color = body;
-                else if (n == "Hood") parts[i].color = body * 1.2f;
+                bool boss = key == "boss";
+                var go = Rent(key, parent, p => EmberVisuals.Character(boss ? "Nightwarden" : "Shade", p, body).gameObject);
+                go.transform.SetParent(parent, false);
+                go.transform.rotation = Quaternion.identity;
+                // Recolor cloak/hood if present (children Shape nodes).
+                var parts = go.GetComponentsInChildren<SpriteRenderer>(true);
+                for (int i = 0; i < parts.Length; i++)
+                {
+                    var n = parts[i].name;
+                    if (n == "Cloak") parts[i].color = body;
+                    else if (n == "Hood") parts[i].color = body * 1.2f;
+                }
+                go.SetActive(true);
+                return go.transform;
             }
-            go.SetActive(true);
-            return go.transform;
         }
 
         public void Release(string key, GameObject go)

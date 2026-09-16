@@ -141,3 +141,5 @@ EmberCombat 刷怪：RollKind(wave, rng) → kind
 | 敌人行为是否需要更多种类 | 扩到 6+ 种 / 维持现 5 种 | 现配置已覆盖拉距离/控制击杀位/绕后/躲避四种应对 | jack + xiaoPlanner |
 | `EmberEnemyVisual` 是否从数据驱动改配置化 | 抽 ScriptableObject / 维持代码常量 | 动画参数目前散在代码里 | xiaoCoder |
 | 治疗掉落上限 24 与粒子上限 120 的真机预算 | 真机 Profiler 后调 / 维持 | 影响长局性能 | xiaoCoder + jack |
+
+性能定位标记见 `03-combat-waves.md` 的「性能定位标记」；本次仅新增采样作用域，公开行为不变。

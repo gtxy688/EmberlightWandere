@@ -15,79 +15,84 @@ namespace Emberlight
         Vector3 previousPosition;
         float previousTime, locomotion, previousCharge, recoil;
 
+        static readonly Unity.Profiling.ProfilerMarker VisualMarker = new Unity.Profiling.ProfilerMarker("Ember.Enemy.Visual.Initialize");
+
         public EmberEnemyVisual(EmberCombat.Enemy enemy, Transform world)
         {
-            this.enemy = enemy;
-            var parts = new System.Collections.Generic.List<Transform>();
-            foreach (Transform part in enemy.view)
-                if (part.name == "Cloak" || part.name == "Hood" || part.name == "Face" || part.name == "Eye" || part.name == "Silhouette") parts.Add(part);
-            bodyParts = parts.ToArray();
-            restPositions = new Vector3[bodyParts.Length];
-            restScales = new Vector3[bodyParts.Length];
-            restRotations = new Quaternion[bodyParts.Length];
-            for (int i=0;i<bodyParts.Length;i++)
+            using (VisualMarker.Auto())
             {
-                restPositions[i]=bodyParts[i].localPosition;
-                restScales[i]=bodyParts[i].localScale;
-                restRotations[i]=bodyParts[i].localRotation;
-            }
-            previousPosition=enemy.view.position;
-            previousTime=-1f;
-            // World-sized tells must not inherit enemy body scaling.
-            root = new GameObject("Enemy tells").transform;
-            root.SetParent(world, false);
-            root.position = enemy.view.position;
-            core = Shape("Role mark", Vector2.zero, new Vector2(.22f, .22f), Color.white, 12);
-            tell = Shape("Attack warning", Vector2.zero, Vector2.one, Color.clear, 3);
-            aura = Shape("Affix ring", Vector2.zero, Vector2.one, Color.clear, 2);
-            aura.sprite = EmberArt.Ring;
-            wake = Shape("Wind wake", Vector2.zero, Vector2.one, Color.clear, 1);
-            wake.sprite = EmberArt.Ring;
-            core.transform.localPosition = Vector2.up * .28f;
-
-            switch (enemy.kind)
-            {
-                case 4:
-                    Shape("Candle staff", new Vector2(.42f, .1f), new Vector2(.09f, .9f), new Color(.46f, .26f, .59f), 11).sprite = EmberArt.Panel;
-                    var flame = Shape("Violet flame", new Vector2(.42f, .58f), new Vector2(.24f, .35f), new Color(.85f, .5f, 1), 12);
-                    flame.sprite = EmberArt.Flame;
-                    core.color = new Color(.85f, .5f, 1);
-                    break;
-                case 5:
-                    for (int i = -1; i <= 1; i++) Shape("Brood egg", new Vector2(i * .26f, -.12f), new Vector2(.25f, .33f), new Color(.7f, .85f, .3f), 12);
-                    core.color = new Color(.8f, 1f, .35f);
-                    break;
-                case 6:
-                    core.transform.localScale = new Vector2(.18f, .12f);
-                    core.transform.localPosition = Vector2.zero;
-                    core.color = new Color(.9f, 1f, .4f);
-                    break;
-                case 7:
-                    shield = new GameObject("Directional shield").transform;
-                    shield.SetParent(root, false);
-                    var shieldBody = EmberVisuals.Shape("Solid shield", shield, new Vector2(.58f,0),new Vector2(.24f,.91f),new Color(.37f,.58f,.66f),13);
-                    shieldBody.sprite=EmberArt.Panel;
-                    var rim=EmberVisuals.Shape("Shield rim",shield,new Vector2(.65f,0),new Vector2(.065f,.78f),new Color(.69f,.84f,.87f),14);
-                    rim.sprite=EmberArt.Panel;
-                    EmberVisuals.Shape("Shield boss",shield,new Vector2(.58f,0),new Vector2(.15f,.18f),new Color(.78f,.87f,.86f),15);
-                    core.color = new Color(.7f, .92f, 1f);
-                    break;
-                case 8:
-                    core.sprite = EmberArt.Flame;
-                    core.color = new Color(1f, .35f, .1f);
-                    core.transform.localPosition = Vector2.up * .55f;
-                    break;
-                default: core.gameObject.SetActive(enemy.affix != EnemyAffix.None); break;
-            }
-            if (enemy.affix == EnemyAffix.Rebirth) core.color = new Color(.86f, .94f, 1f);
-            if (enemy.affix == EnemyAffix.Burning)
-            {
-                embers = new GameObject("Burning embers").transform;
-                embers.SetParent(root, false);
-                for (int i = 0; i < 4; i++)
+                this.enemy = enemy;
+                var parts = new System.Collections.Generic.List<Transform>();
+                foreach (Transform part in enemy.view)
+                    if (part.name == "Cloak" || part.name == "Hood" || part.name == "Face" || part.name == "Eye" || part.name == "Silhouette") parts.Add(part);
+                bodyParts = parts.ToArray();
+                restPositions = new Vector3[bodyParts.Length];
+                restScales = new Vector3[bodyParts.Length];
+                restRotations = new Quaternion[bodyParts.Length];
+                for (int i=0;i<bodyParts.Length;i++)
                 {
-                    float a = i * Mathf.PI * .5f;
-                    EmberArt.Fire(embers, new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * .6f, .16f, 12);
+                    restPositions[i]=bodyParts[i].localPosition;
+                    restScales[i]=bodyParts[i].localScale;
+                    restRotations[i]=bodyParts[i].localRotation;
+                }
+                previousPosition=enemy.view.position;
+                previousTime=-1f;
+                // World-sized tells must not inherit enemy body scaling.
+                root = new GameObject("Enemy tells").transform;
+                root.SetParent(world, false);
+                root.position = enemy.view.position;
+                core = Shape("Role mark", Vector2.zero, new Vector2(.22f, .22f), Color.white, 12);
+                tell = Shape("Attack warning", Vector2.zero, Vector2.one, Color.clear, 3);
+                aura = Shape("Affix ring", Vector2.zero, Vector2.one, Color.clear, 2);
+                aura.sprite = EmberArt.Ring;
+                wake = Shape("Wind wake", Vector2.zero, Vector2.one, Color.clear, 1);
+                wake.sprite = EmberArt.Ring;
+                core.transform.localPosition = Vector2.up * .28f;
+
+                switch (enemy.kind)
+                {
+                    case 4:
+                        Shape("Candle staff", new Vector2(.42f, .1f), new Vector2(.09f, .9f), new Color(.46f, .26f, .59f), 11).sprite = EmberArt.Panel;
+                        var flame = Shape("Violet flame", new Vector2(.42f, .58f), new Vector2(.24f, .35f), new Color(.85f, .5f, 1), 12);
+                        flame.sprite = EmberArt.Flame;
+                        core.color = new Color(.85f, .5f, 1);
+                        break;
+                    case 5:
+                        for (int i = -1; i <= 1; i++) Shape("Brood egg", new Vector2(i * .26f, -.12f), new Vector2(.25f, .33f), new Color(.7f, .85f, .3f), 12);
+                        core.color = new Color(.8f, 1f, .35f);
+                        break;
+                    case 6:
+                        core.transform.localScale = new Vector2(.18f, .12f);
+                        core.transform.localPosition = Vector2.zero;
+                        core.color = new Color(.9f, 1f, .4f);
+                        break;
+                    case 7:
+                        shield = new GameObject("Directional shield").transform;
+                        shield.SetParent(root, false);
+                        var shieldBody = EmberVisuals.Shape("Solid shield", shield, new Vector2(.58f,0),new Vector2(.24f,.91f),new Color(.37f,.58f,.66f),13);
+                        shieldBody.sprite=EmberArt.Panel;
+                        var rim=EmberVisuals.Shape("Shield rim",shield,new Vector2(.65f,0),new Vector2(.065f,.78f),new Color(.69f,.84f,.87f),14);
+                        rim.sprite=EmberArt.Panel;
+                        EmberVisuals.Shape("Shield boss",shield,new Vector2(.58f,0),new Vector2(.15f,.18f),new Color(.78f,.87f,.86f),15);
+                        core.color = new Color(.7f, .92f, 1f);
+                        break;
+                    case 8:
+                        core.sprite = EmberArt.Flame;
+                        core.color = new Color(1f, .35f, .1f);
+                        core.transform.localPosition = Vector2.up * .55f;
+                        break;
+                    default: core.gameObject.SetActive(enemy.affix != EnemyAffix.None); break;
+                }
+                if (enemy.affix == EnemyAffix.Rebirth) core.color = new Color(.86f, .94f, 1f);
+                if (enemy.affix == EnemyAffix.Burning)
+                {
+                    embers = new GameObject("Burning embers").transform;
+                    embers.SetParent(root, false);
+                    for (int i = 0; i < 4; i++)
+                    {
+                        float a = i * Mathf.PI * .5f;
+                        EmberArt.Fire(embers, new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * .6f, .16f, 12);
+                    }
                 }
             }
         }

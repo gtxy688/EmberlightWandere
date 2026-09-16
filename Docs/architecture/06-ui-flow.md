@@ -144,3 +144,5 @@ EmberMenuUi（UI 根容器，持有 Canvas 540×960 / EventSystem / 安全区 / 
 | UI 是否迁移到 Prefab / UI Toolkit | 运行时构建 / Prefab / UI Toolkit | 当前代码构建难以在 Inspector 调整，但零场景依赖 | jack + xiaoCoder |
 | 是否补小屏适配（<540×960） | 引入 CanvasScaler 匹配 / 维持硬编码锚点 | 现有锚点按 540×960 硬编码，窄屏可能越界 | xiaoUI |
 | 返回营地二次确认是否有超时复位 | 加 2s 超时 / 维持需再次点击 | 误触后可能长期停留在确认态 | xiaoUI |
+
+性能定位标记见 `03-combat-waves.md` 的「性能定位标记」；本次仅新增采样作用域，公开行为不变。

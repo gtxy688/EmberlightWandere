@@ -112,184 +112,189 @@ namespace Emberlight
             Show(offers, progress, names, descriptions, select, null);
         }
 
+        static readonly Unity.Profiling.ProfilerMarker ShowMarker = new Unity.Profiling.ProfilerMarker("Ember.UI.Upgrade.Show");
+
         public void Show(EmberOffer[] offers, RunProgress progress, string[] names, string[] descriptions, Action<EmberOffer> select, Func<bool> onRefresh)
         {
-            Hide();
-            if (progress == null || offers == null || offers.Length == 0) return;
-            choosing = false;
-            if (root == null)
+            using (ShowMarker.Auto())
             {
-            var shade = Box("Blessing veil", transform, Vector2.zero, Vector2.one, new Color(.015f, .028f, .05f, .90f), false);
-            root = shade.gameObject;
-            var emblem = Box("Emblem", root.transform, new Vector2(.37f, .90f), new Vector2(.63f, .98f), Color.white);
-            emblem.sprite = EmberUiArt.Get(EmberUiArt.Piece.Lantern); emblem.type = Image.Type.Simple; emblem.preserveAspect = true;
-            TextAt(root.transform, "\u706f\u0020\u706b\u0020\u5347\u0020\u534e", 32, new Vector2(.10f, .82f), new Vector2(.90f, .89f), new Color(1, .89f, .66f));
-            }
-            onSelect = select;
-            refresh = onRefresh;
-            string sub = "\u6ce2\u6b21\u5956\u52b1\u0020\u00b7\u0020\u9009\u4e00\u9879\u0020\u00b7\u0020\u5e78\u8fd0 " + Mathf.RoundToInt(progress.Luck)
-                + "  \u00b7  \u5237\u65b0 " + progress.RefreshesRemaining;
-            if (subtitle == null) subtitle = TextAt(root.transform, "", 15, new Vector2(.08f, .775f), new Vector2(.92f, .82f), new Color(.60f, .67f, .73f));
-            subtitle.text = sub;
-
-            int n = offers != null ? offers.Length : 0;
-            float cardH = n > 4 ? 0.11f : (n > 3 ? 0.125f : 0.145f);
-            float gap = n > 4 ? 0.015f : 0.02f;
-            float top0 = 0.75f;
-            RectTransform scrollContent = null;
-            if (scroll == null)
-            {
-                var viewport = Box("Card viewport", root.transform, new Vector2(.055f, .075f), new Vector2(.945f, .75f), Color.clear, false);
-                viewport.gameObject.AddComponent<RectMask2D>();
-                scroll = viewport.gameObject.AddComponent<ScrollRect>();
-                scrollContent = new GameObject("Cards", typeof(RectTransform)).GetComponent<RectTransform>();
-                scrollContent.SetParent(viewport.transform, false);
-                scrollContent.anchorMin = new Vector2(0, 1);
-                scrollContent.anchorMax = Vector2.one;
-                scrollContent.pivot = new Vector2(.5f, 1);
-                scrollContent.sizeDelta = new Vector2(0, n * 144f - 12f);
-                scrollContent.anchoredPosition = Vector2.zero;
-                scroll.viewport = viewport.rectTransform;
-                scroll.content = scrollContent;
-                scroll.horizontal = false;
-                scroll.vertical = true;
-                scroll.movementType = ScrollRect.MovementType.Clamped;
-                scrollHint = TextAt(root.transform, "上下滑动查看全部选项", 12, new Vector2(.1f, .055f), new Vector2(.9f, .075f), new Color(.60f, .67f, .73f));
-                FitText(scrollHint, 10, 12, false);
-            }
-
-            scroll.gameObject.SetActive(n > 4);
-            scrollHint.gameObject.SetActive(n > 4);
-            scroll.content.sizeDelta = new Vector2(0, n * 144f - 12f);
-            scroll.content.anchoredPosition = Vector2.zero;
-            scrollContent = n > 4 ? scroll.content : null;
-            foreach (var cached in cards) cached.Face.gameObject.SetActive(false);
-            for (int i = 0; i < n; i++)
-            {
-                EmberOffer offer = offers[i];
-                int id = offer.Id;
-                float top = top0 - i * (cardH + gap);
-                Color accent = EmberRarityUtil.Color(offer.Rarity);
-                bool create = i >= cards.Count;
-                var view = create ? new CardView() : cards[i];
-                if (create) cards.Add(view);
-                var card = view.Face;
-                if (create) card = view.Face = Box("Blessing card " + id, scrollContent != null ? scrollContent : root.transform, new Vector2(.055f, top - cardH), new Vector2(.945f, top), accent * .65f);
-                var parent = scrollContent != null ? scrollContent : root.transform;
-                if (card.transform.parent != parent) card.transform.SetParent(parent, false);
-                card.rectTransform.anchorMin = new Vector2(.055f, top - cardH);
-                card.rectTransform.anchorMax = new Vector2(.945f, top);
-                card.rectTransform.offsetMin = card.rectTransform.offsetMax = Vector2.zero;
-                card.transform.SetAsLastSibling();
-                card.gameObject.SetActive(true);
-                if (scrollContent != null)
+                Hide();
+                if (progress == null || offers == null || offers.Length == 0) return;
+                choosing = false;
+                if (root == null)
                 {
-                    card.rectTransform.anchorMin = new Vector2(0, 1);
-                    card.rectTransform.anchorMax = Vector2.one;
-                    card.rectTransform.offsetMin = new Vector2(0, -i * 144f - 132f);
-                    card.rectTransform.offsetMax = new Vector2(0, -i * 144f);
+                var shade = Box("Blessing veil", transform, Vector2.zero, Vector2.one, new Color(.015f, .028f, .05f, .90f), false);
+                root = shade.gameObject;
+                var emblem = Box("Emblem", root.transform, new Vector2(.37f, .90f), new Vector2(.63f, .98f), Color.white);
+                emblem.sprite = EmberUiArt.Get(EmberUiArt.Piece.Lantern); emblem.type = Image.Type.Simple; emblem.preserveAspect = true;
+                TextAt(root.transform, "\u706f\u0020\u706b\u0020\u5347\u0020\u534e", 32, new Vector2(.10f, .82f), new Vector2(.90f, .89f), new Color(1, .89f, .66f));
                 }
-                card.sprite = EmberCardFrames.Get(offer.Rarity);
-                card.color = Color.white;
-                card.pixelsPerUnitMultiplier = 4f;
-                var inner = view.Inner;
-                if (create) inner = view.Inner = Box("Card face", card.transform, Vector2.zero, Vector2.one, Color.clear, false);
-                inner.rectTransform.offsetMin = new Vector2(24f, 8f);
-                inner.rectTransform.offsetMax = new Vector2(-24f, -8f);
-                var shadeTop = view.Shade;
-                if (create) shadeTop = view.Shade = Box("Route tint", inner.transform, new Vector2(.01f, .03f), new Vector2(.24f, .97f), new Color(16f / 255, 28f / 255, 40f / 255, 1));
-                if (create)
-                {
-                    view.Icon = Box("Doodle icon", shadeTop.transform, new Vector2(.06f, .27f), new Vector2(.94f, .97f), Color.white, false);
-                    view.Icon.preserveAspect = true;
-                    view.Icon.raycastTarget = false;
-                }
-                view.Icon.sprite = EmberCardIcons.ForOffer(id);
-                string titleText = (id >= 0 && id < names.Length && !string.IsNullOrEmpty(names[id])) ? names[id] : ("#" + id);
-                if ((id == RunProgress.StatAtk || id == RunProgress.StatAs) && offer.WeaponId >= 0
-                    && offer.WeaponId < names.Length && !string.IsNullOrEmpty(names[offer.WeaponId]))
-                    titleText = names[offer.WeaponId] + "\u00b7" + titleText;
-                string descText = (id >= 0 && id < descriptions.Length) ? descriptions[id] : "";
-                if ((id == RunProgress.StatAtk || id == RunProgress.StatAs) && offer.WeaponId >= 0
-                    && offer.WeaponId < names.Length && !string.IsNullOrEmpty(names[offer.WeaponId]))
-                {
-                    string wname = names[offer.WeaponId];
-                    descText = id == RunProgress.StatAtk
-                        ? ("\u53ea\u63d0\u9ad8\u300c" + wname + "\u300d\u7684\u4f24\u5bb3")
-                        : ("\u53ea\u63d0\u9ad8\u300c" + wname + "\u300d\u7684\u653b\u51fb\u901f\u5ea6");
-                }
-                if (id == RunProgress.StatShield)
-                    descText = "立即获得护盾，受伤优先消耗\n可叠加，仅本局有效";
-                var title = view.Title;
-                if (create) title = view.Title = TextAt(inner.transform, titleText, 22, new Vector2(.275f, .70f), new Vector2(.97f, .98f), new Color(1, .93f, .80f));
-                title.text = titleText;
-                title.alignment = TextAlignmentOptions.Left;
-                FitText(title, 13, 22, false);
-                var desc = view.Description;
-                if (create) desc = view.Description = TextAt(inner.transform, descText, 14, new Vector2(.275f, .25f), new Vector2(.97f, .68f), new Color(.65f, .73f, .78f));
-                desc.text = descText;
-                desc.alignment = TextAlignmentOptions.Left;
-                FitText(desc, 11, 14, id != RunProgress.StatShield);
-                var preview = view.Preview;
-                if (create) preview = view.Preview = TextAt(inner.transform, Preview(id, offer.Rarity, progress, offer.WeaponId), 15, new Vector2(.275f, .01f), new Vector2(.97f, .23f), accent);
-                preview.text = Preview(id, offer.Rarity, progress, offer.WeaponId);
-                preview.color = accent;
-                preview.alignment = TextAlignmentOptions.Left;
-                FitText(preview, 10, 15, false);
-                string label = RarityLabel(offer, progress);
-                var rarityLabel = view.Rarity;
-                if (create) rarityLabel = view.Rarity = TextAt(shadeTop.transform, label, 11, new Vector2(0.02f, 0.02f), new Vector2(0.98f, 0.25f), accent);
-                rarityLabel.text = label;
-                rarityLabel.color = accent;
-                rarityLabel.enableAutoSizing = true;
-                rarityLabel.fontSizeMin = 8;
-                rarityLabel.fontSizeMax = 11;
-                rarityLabel.overflowMode = TextOverflowModes.Overflow;
-                rarityLabel.enableWordWrapping = false;
+                onSelect = select;
+                refresh = onRefresh;
+                string sub = "\u6ce2\u6b21\u5956\u52b1\u0020\u00b7\u0020\u9009\u4e00\u9879\u0020\u00b7\u0020\u5e78\u8fd0 " + Mathf.RoundToInt(progress.Luck)
+                    + "  \u00b7  \u5237\u65b0 " + progress.RefreshesRemaining;
+                if (subtitle == null) subtitle = TextAt(root.transform, "", 15, new Vector2(.08f, .775f), new Vector2(.92f, .82f), new Color(.60f, .67f, .73f));
+                subtitle.text = sub;
 
-                var button = view.Button;
-                if (create) button = view.Button = card.gameObject.AddComponent<Button>();
-                button.interactable = true;
-                button.targetGraphic = card;
-                var colors = button.colors;
-                colors.highlightedColor = new Color(1.12f, 1.12f, 1.12f);
-                colors.pressedColor = new Color(.9f, .9f, .9f);
-                button.colors = colors;
-                view.Offer = offer;
-                if (create)
+                int n = offers != null ? offers.Length : 0;
+                float cardH = n > 4 ? 0.11f : (n > 3 ? 0.125f : 0.145f);
+                float gap = n > 4 ? 0.015f : 0.02f;
+                float top0 = 0.75f;
+                RectTransform scrollContent = null;
+                if (scroll == null)
                 {
-                    view.Motion = card.gameObject.AddComponent<EmberCardMotion>();
-                    button.onClick.AddListener(() =>
+                    var viewport = Box("Card viewport", root.transform, new Vector2(.055f, .075f), new Vector2(.945f, .75f), Color.clear, false);
+                    viewport.gameObject.AddComponent<RectMask2D>();
+                    scroll = viewport.gameObject.AddComponent<ScrollRect>();
+                    scrollContent = new GameObject("Cards", typeof(RectTransform)).GetComponent<RectTransform>();
+                    scrollContent.SetParent(viewport.transform, false);
+                    scrollContent.anchorMin = new Vector2(0, 1);
+                    scrollContent.anchorMax = Vector2.one;
+                    scrollContent.pivot = new Vector2(.5f, 1);
+                    scrollContent.sizeDelta = new Vector2(0, n * 144f - 12f);
+                    scrollContent.anchoredPosition = Vector2.zero;
+                    scroll.viewport = viewport.rectTransform;
+                    scroll.content = scrollContent;
+                    scroll.horizontal = false;
+                    scroll.vertical = true;
+                    scroll.movementType = ScrollRect.MovementType.Clamped;
+                    scrollHint = TextAt(root.transform, "上下滑动查看全部选项", 12, new Vector2(.1f, .055f), new Vector2(.9f, .075f), new Color(.60f, .67f, .73f));
+                    FitText(scrollHint, 10, 12, false);
+                }
+
+                scroll.gameObject.SetActive(n > 4);
+                scrollHint.gameObject.SetActive(n > 4);
+                scroll.content.sizeDelta = new Vector2(0, n * 144f - 12f);
+                scroll.content.anchoredPosition = Vector2.zero;
+                scrollContent = n > 4 ? scroll.content : null;
+                foreach (var cached in cards) cached.Face.gameObject.SetActive(false);
+                for (int i = 0; i < n; i++)
+                {
+                    EmberOffer offer = offers[i];
+                    int id = offer.Id;
+                    float top = top0 - i * (cardH + gap);
+                    Color accent = EmberRarityUtil.Color(offer.Rarity);
+                    bool create = i >= cards.Count;
+                    var view = create ? new CardView() : cards[i];
+                    if (create) cards.Add(view);
+                    var card = view.Face;
+                    if (create) card = view.Face = Box("Blessing card " + id, scrollContent != null ? scrollContent : root.transform, new Vector2(.055f, top - cardH), new Vector2(.945f, top), accent * .65f);
+                    var parent = scrollContent != null ? scrollContent : root.transform;
+                    if (card.transform.parent != parent) card.transform.SetParent(parent, false);
+                    card.rectTransform.anchorMin = new Vector2(.055f, top - cardH);
+                    card.rectTransform.anchorMax = new Vector2(.945f, top);
+                    card.rectTransform.offsetMin = card.rectTransform.offsetMax = Vector2.zero;
+                    card.transform.SetAsLastSibling();
+                    card.gameObject.SetActive(true);
+                    if (scrollContent != null)
                     {
-                        if (choosing || !root.activeInHierarchy || !view.Button.interactable) return;
-                        EmberAudio.Ensure().PlayUiClick();
-                        choosing = true;
-                        foreach (var other in cards) other.Button.interactable = false;
-                        if (refreshButton != null) refreshButton.interactable = false;
-                        var callback = onSelect;
-                        var selected = view.Offer;
-                        view.Motion.Select(() => callback?.Invoke(selected));
-                    });
-                }
-                view.Motion.Initialize(i * .05f, card);
-            }
+                        card.rectTransform.anchorMin = new Vector2(0, 1);
+                        card.rectTransform.anchorMax = Vector2.one;
+                        card.rectTransform.offsetMin = new Vector2(0, -i * 144f - 132f);
+                        card.rectTransform.offsetMax = new Vector2(0, -i * 144f);
+                    }
+                    card.sprite = EmberCardFrames.Get(offer.Rarity);
+                    card.color = Color.white;
+                    card.pixelsPerUnitMultiplier = 4f;
+                    var inner = view.Inner;
+                    if (create) inner = view.Inner = Box("Card face", card.transform, Vector2.zero, Vector2.one, Color.clear, false);
+                    inner.rectTransform.offsetMin = new Vector2(24f, 8f);
+                    inner.rectTransform.offsetMax = new Vector2(-24f, -8f);
+                    var shadeTop = view.Shade;
+                    if (create) shadeTop = view.Shade = Box("Route tint", inner.transform, new Vector2(.01f, .03f), new Vector2(.24f, .97f), new Color(16f / 255, 28f / 255, 40f / 255, 1));
+                    if (create)
+                    {
+                        view.Icon = Box("Doodle icon", shadeTop.transform, new Vector2(.06f, .27f), new Vector2(.94f, .97f), Color.white, false);
+                        view.Icon.preserveAspect = true;
+                        view.Icon.raycastTarget = false;
+                    }
+                    view.Icon.sprite = EmberCardIcons.ForOffer(id);
+                    string titleText = (id >= 0 && id < names.Length && !string.IsNullOrEmpty(names[id])) ? names[id] : ("#" + id);
+                    if ((id == RunProgress.StatAtk || id == RunProgress.StatAs) && offer.WeaponId >= 0
+                        && offer.WeaponId < names.Length && !string.IsNullOrEmpty(names[offer.WeaponId]))
+                        titleText = names[offer.WeaponId] + "\u00b7" + titleText;
+                    string descText = (id >= 0 && id < descriptions.Length) ? descriptions[id] : "";
+                    if ((id == RunProgress.StatAtk || id == RunProgress.StatAs) && offer.WeaponId >= 0
+                        && offer.WeaponId < names.Length && !string.IsNullOrEmpty(names[offer.WeaponId]))
+                    {
+                        string wname = names[offer.WeaponId];
+                        descText = id == RunProgress.StatAtk
+                            ? ("\u53ea\u63d0\u9ad8\u300c" + wname + "\u300d\u7684\u4f24\u5bb3")
+                            : ("\u53ea\u63d0\u9ad8\u300c" + wname + "\u300d\u7684\u653b\u51fb\u901f\u5ea6");
+                    }
+                    if (id == RunProgress.StatShield)
+                        descText = "立即获得护盾，受伤优先消耗\n可叠加，仅本局有效";
+                    var title = view.Title;
+                    if (create) title = view.Title = TextAt(inner.transform, titleText, 22, new Vector2(.275f, .70f), new Vector2(.97f, .98f), new Color(1, .93f, .80f));
+                    title.text = titleText;
+                    title.alignment = TextAlignmentOptions.Left;
+                    FitText(title, 13, 22, false);
+                    var desc = view.Description;
+                    if (create) desc = view.Description = TextAt(inner.transform, descText, 14, new Vector2(.275f, .25f), new Vector2(.97f, .68f), new Color(.65f, .73f, .78f));
+                    desc.text = descText;
+                    desc.alignment = TextAlignmentOptions.Left;
+                    FitText(desc, 11, 14, id != RunProgress.StatShield);
+                    var preview = view.Preview;
+                    if (create) preview = view.Preview = TextAt(inner.transform, Preview(id, offer.Rarity, progress, offer.WeaponId), 15, new Vector2(.275f, .01f), new Vector2(.97f, .23f), accent);
+                    preview.text = Preview(id, offer.Rarity, progress, offer.WeaponId);
+                    preview.color = accent;
+                    preview.alignment = TextAlignmentOptions.Left;
+                    FitText(preview, 10, 15, false);
+                    string label = RarityLabel(offer, progress);
+                    var rarityLabel = view.Rarity;
+                    if (create) rarityLabel = view.Rarity = TextAt(shadeTop.transform, label, 11, new Vector2(0.02f, 0.02f), new Vector2(0.98f, 0.25f), accent);
+                    rarityLabel.text = label;
+                    rarityLabel.color = accent;
+                    rarityLabel.enableAutoSizing = true;
+                    rarityLabel.fontSizeMin = 8;
+                    rarityLabel.fontSizeMax = 11;
+                    rarityLabel.overflowMode = TextOverflowModes.Overflow;
+                    rarityLabel.enableWordWrapping = false;
 
-            if (refreshFace == null)
-            {
-                refreshFace = Box("Refresh", root.transform, new Vector2(.25f, .015f), new Vector2(.75f, .055f), Color.white);
-                refreshLabel = TextAt(refreshFace.transform, "", 16, Vector2.zero, Vector2.one, Gold);
-                refreshButton = refreshFace.gameObject.AddComponent<Button>();
-                refreshButton.targetGraphic = refreshFace;
-                refreshButton.onClick.AddListener(() => { if (!choosing && canRefresh) refresh?.Invoke(); });
+                    var button = view.Button;
+                    if (create) button = view.Button = card.gameObject.AddComponent<Button>();
+                    button.interactable = true;
+                    button.targetGraphic = card;
+                    var colors = button.colors;
+                    colors.highlightedColor = new Color(1.12f, 1.12f, 1.12f);
+                    colors.pressedColor = new Color(.9f, .9f, .9f);
+                    button.colors = colors;
+                    view.Offer = offer;
+                    if (create)
+                    {
+                        view.Motion = card.gameObject.AddComponent<EmberCardMotion>();
+                        button.onClick.AddListener(() =>
+                        {
+                            if (choosing || !root.activeInHierarchy || !view.Button.interactable) return;
+                            EmberAudio.Ensure().PlayUiClick();
+                            choosing = true;
+                            foreach (var other in cards) other.Button.interactable = false;
+                            if (refreshButton != null) refreshButton.interactable = false;
+                            var callback = onSelect;
+                            var selected = view.Offer;
+                            view.Motion.Select(() => callback?.Invoke(selected));
+                        });
+                    }
+                    view.Motion.Initialize(i * .05f, card);
+                }
+
+                if (refreshFace == null)
+                {
+                    refreshFace = Box("Refresh", root.transform, new Vector2(.25f, .015f), new Vector2(.75f, .055f), Color.white);
+                    refreshLabel = TextAt(refreshFace.transform, "", 16, Vector2.zero, Vector2.one, Gold);
+                    refreshButton = refreshFace.gameObject.AddComponent<Button>();
+                    refreshButton.targetGraphic = refreshFace;
+                    refreshButton.onClick.AddListener(() => { if (!choosing && canRefresh) refresh?.Invoke(); });
+                }
+                canRefresh = onRefresh != null && progress.RefreshesRemaining > 0;
+                refreshFace.gameObject.SetActive(onRefresh != null);
+                refreshFace.color = canRefresh ? new Color(.20f, .28f, .36f) : new Color(.10f, .12f, .14f);
+                refreshLabel.text = canRefresh ? ("刷新（剩 " + progress.RefreshesRemaining + "）") : "无刷新";
+                refreshLabel.color = canRefresh ? Gold : new Color(.4f, .45f, .5f);
+                refreshButton.interactable = canRefresh;
+                root.transform.SetAsLastSibling();
+                root.SetActive(true);
             }
-            canRefresh = onRefresh != null && progress.RefreshesRemaining > 0;
-            refreshFace.gameObject.SetActive(onRefresh != null);
-            refreshFace.color = canRefresh ? new Color(.20f, .28f, .36f) : new Color(.10f, .12f, .14f);
-            refreshLabel.text = canRefresh ? ("刷新（剩 " + progress.RefreshesRemaining + "）") : "无刷新";
-            refreshLabel.color = canRefresh ? Gold : new Color(.4f, .45f, .5f);
-            refreshButton.interactable = canRefresh;
-            root.transform.SetAsLastSibling();
-            root.SetActive(true);
         }
 
         // Separate title, two-line explanation and numeric preview so fitting one cannot overlap another.

@@ -359,47 +359,52 @@ namespace Emberlight
 
         public void PlayBossBurst(Vector2 point) { if (effects != null) effects.Nova(point, 1.2f); }
 
+        static readonly Unity.Profiling.ProfilerMarker SpawnEnemyMarker = new Unity.Profiling.ProfilerMarker("Ember.Combat.SpawnEnemy");
+
         void SpawnEnemy(bool boss, int forcedKind = -1, Vector2? position = null, bool forceAffix = false)
         {
-            if (config == null) config = LevelConfig.Default;
-            int kind = boss ? 3 : forcedKind >= 0 ? forcedKind : config.RollKind(wave, random);
-            float a = (float)random.NextDouble() * Mathf.PI * 2;
-            Vector2 p = (Vector2)player.position + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * 10;
-            p = position ?? EmberWorld.Clamp(p, .8f);
-            if (boss) p = EmberWorld.Clamp((Vector2)player.position + new Vector2(0, 2), 1);
-            Color color = kind == 4 ? new Color(.45f, .22f, .65f) : kind == 5 ? new Color(.4f, .5f, .22f) : kind == 6 ? new Color(.55f, .7f, .22f) : kind == 7 ? new Color(.25f, .4f, .49f) : kind == 8 ? new Color(.8f, .29f, .13f) : kind == 1 ? new Color(.65f, .29f, .46f) : kind == 2 ? new Color(.39f, .31f, .57f) : new Color(.29f, .30f, .39f);
-            var view = pool.RentEnemy(boss ? "boss" : "shade", world, color);
-            var silhouette = view.GetComponent<EmberEnemySilhouette>();
-            if (silhouette == null) silhouette = view.gameObject.AddComponent<EmberEnemySilhouette>();
-            silhouette.Apply(kind, color);
-            view.position = p;
-            float size = boss ? 2.7f : kind == 6 ? .40f : kind == 5 ? 1.25f : kind == 7 ? 1.2f : kind == 8 ? .65f : kind == 2 ? 1.3f : kind == 1 ? .65f : 1;
-            view.localScale = Vector3.one * size;
-            float hp = boss ? config.BossHpForWave(wave) : config.TrashHp(wave, kind);
-            enemies.Add(new Enemy
+            using (SpawnEnemyMarker.Auto())
             {
-                view = view,
-                hp = hp,
-                speed = boss ? .8f : config.EnemySpeed(kind),
-                radius = .32f * size,
-                kind = kind,
-                parts = view.GetComponentsInChildren<SpriteRenderer>()
-            });
-            var added = enemies[enemies.Count - 1];
-            added.maxHp = added.hp;
-            if (!boss)
-            {
-                added.behavior = CreateBehavior(kind);
-                Vector2 delta = (Vector2)player.position - p;
-                added.facing = Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg;
-                if (kind != 6 && (forceAffix || random.NextDouble() < config.AffixChance(wave)))
-                    added.affix = (EnemyAffix)(1 + random.Next(3));
-                added.visual = new EmberEnemyVisual(added, world);
+                if (config == null) config = LevelConfig.Default;
+                int kind = boss ? 3 : forcedKind >= 0 ? forcedKind : config.RollKind(wave, random);
+                float a = (float)random.NextDouble() * Mathf.PI * 2;
+                Vector2 p = (Vector2)player.position + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * 10;
+                p = position ?? EmberWorld.Clamp(p, .8f);
+                if (boss) p = EmberWorld.Clamp((Vector2)player.position + new Vector2(0, 2), 1);
+                Color color = kind == 4 ? new Color(.45f, .22f, .65f) : kind == 5 ? new Color(.4f, .5f, .22f) : kind == 6 ? new Color(.55f, .7f, .22f) : kind == 7 ? new Color(.25f, .4f, .49f) : kind == 8 ? new Color(.8f, .29f, .13f) : kind == 1 ? new Color(.65f, .29f, .46f) : kind == 2 ? new Color(.39f, .31f, .57f) : new Color(.29f, .30f, .39f);
+                var view = pool.RentEnemy(boss ? "boss" : "shade", world, color);
+                var silhouette = view.GetComponent<EmberEnemySilhouette>();
+                if (silhouette == null) silhouette = view.gameObject.AddComponent<EmberEnemySilhouette>();
+                silhouette.Apply(kind, color);
+                view.position = p;
+                float size = boss ? 2.7f : kind == 6 ? .40f : kind == 5 ? 1.25f : kind == 7 ? 1.2f : kind == 8 ? .65f : kind == 2 ? 1.3f : kind == 1 ? .65f : 1;
+                view.localScale = Vector3.one * size;
+                float hp = boss ? config.BossHpForWave(wave) : config.TrashHp(wave, kind);
+                enemies.Add(new Enemy
+                {
+                    view = view,
+                    hp = hp,
+                    speed = boss ? .8f : config.EnemySpeed(kind),
+                    radius = .32f * size,
+                    kind = kind,
+                    parts = view.GetComponentsInChildren<SpriteRenderer>()
+                });
+                var added = enemies[enemies.Count - 1];
+                added.maxHp = added.hp;
+                if (!boss)
+                {
+                    added.behavior = CreateBehavior(kind);
+                    Vector2 delta = (Vector2)player.position - p;
+                    added.facing = Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg;
+                    if (kind != 6 && (forceAffix || random.NextDouble() < config.AffixChance(wave)))
+                        added.affix = (EnemyAffix)(1 + random.Next(3));
+                    added.visual = new EmberEnemyVisual(added, world);
+                }
+                added.bar = new EmberEnemyBar(view, boss);
+                if (boss) { added.ai = new EmberBoss(game, view, world, config.BossTier(wave), FireBossVolley); bossEnemy = added; }
+                added.colors = new Color[added.parts.Length];
+                for (int k = 0; k < added.parts.Length; k++) added.colors[k] = added.parts[k].color;
             }
-            added.bar = new EmberEnemyBar(view, boss);
-            if (boss) { added.ai = new EmberBoss(game, view, world, config.BossTier(wave), FireBossVolley); bossEnemy = added; }
-            added.colors = new Color[added.parts.Length];
-            for (int k = 0; k < added.parts.Length; k++) added.colors[k] = added.parts[k].color;
         }
 
         void SetEnemyContext(Enemy e)

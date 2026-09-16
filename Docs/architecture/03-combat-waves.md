@@ -161,3 +161,20 @@ Loading → Menu → SelectLength → SelectDifficulty → SelectSlots → Selec
 | 表现层反向依赖（`FindObjectOfType<EmberGame>`）是否改为注入 | 构造注入 / 事件契约 / 维持 | 影响可测性与生命周期正确性 | xiaoCoder |
 | `LevelConfig.ApplyWorld()` 重复调用是否收敛为一次 | 仅 `BeginRun` 调用 / 维持 | 幂等，暂无实际危害 | xiaoCoder |
 | `PlayingGate` 未赋值字段是否删除 | 删除 / 保留 | 死字段增加误读 | xiaoCoder |
+
+## 性能定位标记（2026-09-16）
+
+使用静态 ProfilerMarker 和 Auto 作用域，正常返回及异常路径均自动结束采样。仅增加观测，不调整刷怪、对象池和选卡规则。
+
+| 标记 | 范围 |
+|---|---|
+| Ember.Combat.SpawnEnemy | 单次刷怪全流程 |
+| Ember.Pool.RentEnemy | 敌人取池与状态恢复 |
+| Ember.Pool.Create | 池空时执行对象创建工厂（从父节点区分敌人或特效） |
+| Ember.Pool.Reuse | 命中缓存后的重挂父节点与激活 |
+| Ember.Enemy.Silhouette.Initialize | 首次剪影初始化 |
+| Ember.Enemy.Silhouette.BuildRoles | 多种角色装饰构建 |
+| Ember.Enemy.Visual.Initialize | 战斗提示与外观辅助对象构建 |
+| Ember.UI.Upgrade.Show | 显示/刷新选卡，包括初始化阶段的预建 |
+
+在 Development Build 中采集并在 CPU Hierarchy 搜索 Ember.；父子时间包含关系不应重复相加。对照 Calls、Time ms、GC Alloc 判断批量调用与单次开销。

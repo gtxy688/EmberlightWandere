@@ -76,7 +76,7 @@ M8(音频) ──► 无玩法依赖（Resources 自加载）
 | 专属 / 质变 / 进化 / 连发 / 燎原 / 日冕 | M2 + M4 | `02-run-progression.md` → `04-weapon-system.md` |
 | 结算 / Score / 余烬 / 击杀计分 | M2 | `02-run-progression.md` |
 | 护盾 / 回血道具 / 掉落率 | M2 + M5 | `02-run-progression.md` |
-| 波次 / 清波 / 精英挑战 / 遭遇事件 / 阶段 Boss | M3 | `03-combat-waves.md` |
+| 波次 / 清波 / 精英挑战 / 遭遇事件 / 阶段 Boss / Profiler 标记 / 刷怪尖峰 | M3 | `03-combat-waves.md` |
 | 暗弹 / 齐射 / 半血狂怒 / Boss 招式 | M3 | `03-combat-waves.md` |
 | 受伤 / 无敌帧 / 护盾吸收顺序 | M3 | `03-combat-waves.md` |
 | 火球 / 环火 / 燃地 / 穿透火矢 / 回旋烬蝶 / 天降火雨 | M4 | `04-weapon-system.md` |
