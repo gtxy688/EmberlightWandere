@@ -29,7 +29,7 @@ namespace Emberlight
             "\u706b\u7403", "\u73af\u706b", "\u71c3\u5730",
             "\u7a7f\u900f\u706b\u77e2", "\u56de\u65cb\u70ec\u8776", "\u5929\u964d\u706b\u96e8"
         };
-        // Kept byte-identical to EmberGame.UpgradeDetails[10..15]: the starter screen and the
+        // Kept byte-identical to EmberCopy.UpgradeDetails[10..15]: the starter screen and the
         // in-run weapon card must read the same. Verified, not assumed.
         public static readonly string[] RosterDescs = {
             "自动发射火球\n攻击最近的敌人",

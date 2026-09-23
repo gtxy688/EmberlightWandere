@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第 3 课 · 一局游戏的状态，藏在两个地方</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<main>
+
+<p class="kicker">EmberlightWandere 架构课 · 第 3 课</p>
+<h1>一局游戏的状态，藏在两个地方</h1>
+
+<p class="lede">
+你上一条说的是「状态转移没有单一出口」。这个判断是对的。
+这一课我把代码里<b>缺的那张图</b>补出来给你——然后你会发现一件更麻烦的事：
+<b>这张图只画了一半，另一半的状态根本不在 <code>Mode</code> 里。</b>
+</p>
+
+<div class="promise">
+  <b>本课唯一目标：</b>能说出「这个游戏的状态记在哪两个地方」，并讲清那个「所有 Boss 被跳过」的 bug 是怎么来的。
+  <br><small>这是全课程最接近「真实工程」的一课——你会看到一个状态位重载，如何吃掉五个提交。</small>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2><span class="num">1</span>第一处：<code>Mode</code> 的 11 个状态</h2>
+
+<p>
+<code>EmberGame.cs:9</code> 定义了 11 个状态。而它们的<b>转移</b>散布在 11 处赋值里，我替你拼成了这张表：
+</p>
+
+<table>
+  <thead><tr><th>从</th><th>到</th><th>谁来触发</th><th>代码</th></tr></thead>
+  <tbody>
+    <tr><td>—</td><td><code>Loading</code></td><td>引擎调用 <code>Start()</code></td><td><code>:189</code></td></tr>
+    <tr><td><code>Loading</code></td><td><code>Menu</code></td><td>字体加载完成（<code>EmberIntro</code> 回调）</td><td><code>:208</code></td></tr>
+    <tr><td><code>Menu</code></td><td><code>SelectLength</code></td><td>点「点亮旅程」→ <code>BeginRun</code></td><td><code>:256</code></td></tr>
+    <tr><td><code>SelectLength</code></td><td><code>SelectDifficulty</code></td><td>选 25 / 50 波</td><td><code>:268</code></td></tr>
+    <tr><td><code>SelectDifficulty</code></td><td><code>SelectSlots</code></td><td>选难度</td><td><code>:281</code></td></tr>
+    <tr><td><code>SelectSlots</code></td><td><code>SelectRoster</code></td><td>选槽位 N</td><td><code>:288</code></td></tr>
+    <tr><td><code>SelectRoster</code></td><td><code>Playing</code></td><td>选完起始武器 → <code>SetPlaying</code></td><td><code>:346</code></td></tr>
+    <tr><td><code>Playing</code></td><td><code>Upgrade</code></td><td>清波 / Boss 被击败 → <code>OfferUpgrade</code></td><td><code>:455</code></td></tr>
+    <tr><td><code>Upgrade</code></td><td><code>Playing</code></td><td>选完卡 → <code>SetPlaying</code></td><td><code>:346</code></td></tr>
+    <tr><td><code>Playing</code></td><td><code>Paused</code></td><td><code>Esc</code> / 切后台 / 失焦 → <code>Pause</code></td><td><code>:507</code></td></tr>
+    <tr><td><code>Paused</code></td><td><code>Playing</code></td><td>「继续战斗」→ <code>SetPlaying</code></td><td><code>:346</code></td></tr>
+    <tr><td><code>Playing</code></td><td><code>Won</code></td><td>最终波 Boss 被击败 → <code>EndRun(true)</code></td><td><code>:553</code></td></tr>
+    <tr><td><code>Playing</code></td><td><code>Lost</code></td><td>血量归零 → <code>EndRun(false)</code></td><td><code>:553</code></td></tr>
+    <tr><td><code>Won</code> / <code>Lost</code></td><td><code>SelectLength</code></td><td>「再战一次」→ <code>BeginRun</code></td><td><code>:256</code></td></tr>
+    <tr><td><code>Won</code> / <code>Lost</code></td><td><code>Menu</code></td><td>「返回营地」→ <code>ShowMainMenu</code></td><td><code>:218</code></td></tr>
+    <tr><td><code>Paused</code></td><td><code>Menu</code></td><td>设置页「返回营地」→ <code>ReturnToCamp</code></td><td><code>EmberGame.cs:519</code></td></tr>
+  </tbody>
+</table>
+
+<div class="note">
+  <span class="tag">读这张表，能读出两件代码里看不出来的事</span>
+  <p><b>一、<code>Playing</code> 有 4 条入口路径</b>（<code>SetPlaying</code> 共 5 个调用点：选完起始武器 <code>:338</code>、清波但不刷卡 <code>:448</code>、选完卡 <code>:501</code>、从暂停恢复 <code>:514</code> / <code>:516</code> 两个分支）。所以「回到 Playing」不是一条路径。</p>
+  <p><b>二、<code>Paused</code> 只能从 <code>Playing</code> 进</b>——因为 <code>Pause()</code> 第一行就是 <code>if (State != Mode.Playing) return;</code>。在选卡界面按 Esc 是没反应的，这不是 bug，是设计。</p>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2><span class="num">2</span>第二处：<code>EmberCombat</code> 里那 14 个私有状态位</h2>
+
+<p>
+上面那张表<b>只讲了一半</b>。真正决定「这一波打到哪了」的东西，一个字都不在 <code>Mode</code> 里——它们在 <code>EmberCombat</code> 的私有字段里：
+</p>
+
+<table>
+  <thead><tr><th>管什么</th><th>字段</th><th>行</th></tr></thead>
+  <tbody>
+    <tr><td>波次进度</td><td><code>wave</code> · <code>waveQuota</code> · <code>waveSpawned</code> · <code>waveKilled</code> · <code>extraSpawned</code></td><td><code>:59-62, :43</code></td></tr>
+    <tr><td><b>Boss 节奏</b></td><td><code>bossSpawned</code> · <code>bossWarning</code> · <code>bossEnemy</code></td><td><code>:55, :58, :52</code></td></tr>
+    <tr><td><b>清波协调</b></td><td><code>awaitingUpgrade</code></td><td><code>:55</code></td></tr>
+    <tr><td>遭遇事件</td><td><code>eventTriggered</code> · <code>encounterTimer</code> · <code>encounterText</code></td><td><code>:40-42</code></td></tr>
+    <tr><td>计时与缓存</td><td><code>spawnTimer</code> · <code>burningTimer</code> · <code>hasLastPlayerPos</code></td><td><code>:54, :41, :35</code></td></tr>
+  </tbody>
+</table>
+
+<p>看清楚这件事的后果——<code>Tick</code> 里那句「现在该不该刷怪」的判断：</p>
+
+<pre><code>if (!awaitingUpgrade &amp;&amp; !bossSpawned &amp;&amp; wave &lt; config.BossWave
+    &amp;&amp; waveSpawned &lt; waveQuota &amp;&amp; enemies.Count &lt; config.EnemyLimit)</code></pre>
+
+<div class="note key">
+  <span class="tag">这就是你上一条感受到的那件事</span>
+  <p>一个决策依赖 <b>5 个条件</b>，其中 <b>2 个是隐藏状态位</b>。而 <code>Mode</code> 完全不知道它们的存在——切到 <code>Upgrade</code> 时，<code>awaitingUpgrade</code> 是真是假、<code>bossSpawned</code> 是真是假，<code>Mode</code> 一概不知。</p>
+  <p><b>所以「游戏现在是什么状态」这个问题，没有单一答案。</b>这就是转移集中化真正要解决的东西——不只是把 11 处赋值收拢，还要把这两处的状态合并成一个来源。</p>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2><span class="num">3</span>一个位、两种含义：那个吃掉五个提交的 bug</h2>
+
+<p>
+上一条我说过「你在这份代码里看到的每一道门，都是有人曾经踩过的坑」。<code>bossSpawned</code> 就是最大那个坑，而且<b>它的注释还留在代码里</b>（<code>EmberCombat.cs:213-218</code>）：
+</p>
+
+<blockquote>
+「<code>bossSpawned</code> means "this wave is a Boss wave", not "the Boss object exists". …leaving it false through the lead-in let them read the empty Boss wave as already cleared and advance the wave: <b>the Boss was skipped before it could spawn and the advance cascaded through every following wave.</b>」
+</blockquote>
+
+<p>翻译一下：这个字段<b>名字叫「Boss 已生成」，但它实际的含义是「这一波是 Boss 波」</b>。这两种意思在 Boss 出现之前是相反的——名字说「还没生成」，代码却需要它说「已经是 Boss 波了」。</p>
+
+<p>于是：预警的 3 秒里，波次清理逻辑看到 <code>bossSpawned == false</code>、场上又没敌人，判定「这波已经清完了」→ 推进波次 → Boss 还没出场就被跳过 → 而这次推进又级联到后面每一波。</p>
+
+<div class="note bug">
+  <span class="tag">这个坑是完整的，五个提交都在仓库里</span>
+  <ol style="margin:.5rem 0 0;padding-left:1.3rem;font-size:.87rem;line-height:1.75">
+    <li><code>5ef7d51</code> Restore the keeper shadow, <b>warn before Boss waves</b><br>
+      <span style="color:var(--ink-soft)">← 为了加「Boss 预警横幅」引入了 <code>bossWarning</code>，同时让 <code>bossSpawned</code> 提前置位。坑挖好了。</span></li>
+    <li><code>73ada9f</code> Add combat state dump and pre-boss jump <b>for diagnosing the Boss wave</b><br>
+      <span style="color:var(--ink-soft)">← 发现 Boss 不对劲，先加诊断工具。</span></li>
+    <li><code>be8386a</code> Fix the boss probe hotkeys: read them from the game, not an editor hook<br>
+      <span style="color:var(--ink-soft)">← 诊断工具自己有 bug，先修工具。</span></li>
+    <li><code>6a1a215</code> Trace StartWave callers: <b>the wave counter runs away on its own</b><br>
+      <span style="color:var(--ink-soft)">← 顺着调用者找到根因：波次计数器在自己乱跑。</span></li>
+    <li><code>528a40f</code> <b>Fix the runaway wave counter that also skipped every Boss</b><br>
+      <span style="color:var(--ink-soft)">← 修复：明确 <code>bossSpawned</code> 从「已经生成」改义为「这一波是 Boss 波」。</span></li>
+  </ol>
+</div>
+
+<div class="note key">
+  <span class="tag">这一课真正要你带走的东西</span>
+  <p><b>一个状态位承担两种含义，代价是四个提交的调试。</b></p>
+  <p>它不报错、不崩溃、编译全绿——只是某个分支永远走不到。而「某个分支永远走不到」在游戏里表现为「Boss 莫名其妙不出现」，
+  你没有任何线索指向那个布尔值。</p>
+  <p>以后你写状态位时，只有一条规则：<b>字段名必须能完整说出它唯一的那一种含义。</b>说不出来，就拆成两个。</p>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2><span class="num">4</span>动手 · 亲眼确认状态在两个地方（约 10 分钟）</h2>
+
+<p>这次不加探针了，用更直接的方式：<b>看 Inspector 看不了的运行时状态。</b></p>
+
+<ol class="steps">
+  <li>
+    <b>先确认第一处。</b>打开 <code>EmberGame.cs</code>，看 <code>Mode</code> 的定义（第 9 行）。数一下确实是 11 个。
+  </li>
+  <li>
+    <b>再确认第二处。</b>打开 <code>EmberCombat.cs</code>，跳到第 35～62 行。这不到 30 行里全是状态字段。
+    <p><b>关键动作</b>：把 <code>bossSpawned</code>（第 55 行）和 <code>awaitingUpgrade</code> 圈出来。它们和 <code>wave</code>（59 行）一样，都是「游戏进行到哪了」的一部分——但它们不在 <code>Mode</code> 里。</p>
+  </li>
+  <li>
+    <b>找到那句五条件的判断。</b>在 <code>Tick</code> 里（第 250 行附近），你会看到那句 <code>if (!awaitingUpgrade &amp;&amp; !bossSpawned &amp;&amp; …)</code>。
+  </li>
+  <li>
+    <b>读那段注释。</b><code>EmberCombat.cs:213-218</code>。这是全项目最有价值的一段注释——它把一个真实 bug 的根因留在了现场。
+  </li>
+  <li>
+    <b>跑一次验证。</b>Play → 进战斗 → 打到第 10 波（Boss 波）。
+    <p>你会看到「守卫试炼 · 暗影来袭」的预警横幅，3 秒后 Boss 出现。<b>那 3 秒就是 <code>bossWarning</code> 的倒计时</b>——也就是当年让波次计数器失控的那 3 秒。</p>
+  </li>
+  <li>
+    <b>看一眼提交。</b>在项目根目录执行：
+    <pre><code>git log --oneline --reverse | Select-String "BOSS|Boss|boss|wave"</code></pre>
+    <p>你会看到上面那五个提交排在一起。这是一个真实 bug 的完整考古现场。</p>
+  </li>
+</ol>
+
+<div class="note key">
+  <span class="tag">你从这一步拿到的结论</span>
+  <p><b>「游戏现在是什么状态」在这个项目里没有单一答案</b>——它被拆在 <code>EmberGame.Mode</code> 和 <code>EmberCombat</code> 的 14 个私有字段里。</p>
+  <p>而当初那个 bug，就是从这两处状态交界的缝隙里钻出来的。</p>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2><span class="num">5</span>闭卷三题</h2>
+
+<section class="quiz">
+
+  <div class="q" data-why="除了 <code>EmberGame.Mode</code>，<code>EmberCombat</code> 自己还存着 14 个状态字段（<code>wave</code> / <code>waveSpawned</code> / <code>bossSpawned</code> / <code>awaitingUpgrade</code> / <code>eventTriggered</code> …）。<code>Mode</code> 对它们一无所知，而刷怪决策却同时依赖两处。">
+    <p class="q-stem">除了 <code>Mode</code>，游戏的「打到哪了」还记在什么地方？</p>
+    <div class="q-opts">
+      <button type="button" class="q-opt" data-ok>战斗对象自己的一批私有字段</button>
+      <button type="button" class="q-opt">场景里几个隐藏物体上的参数</button>
+      <button type="button" class="q-opt">一个静态类按帧号记的日志</button>
+      <button type="button" class="q-opt">存档文件里按局号存的状态</button>
+    </div>
+  </div>
+
+  <div class="q" data-why="字段名说「Boss 已经生成」，但它真正的含义是「这一波是 Boss 波」。预警的 3 秒里 Boss 还没生成，名字说 <code>false</code>、逻辑却要求 <code>true</code>，于是清波判定把空场读成「已清完」，推进波次、跳过 Boss，并级联到后面每一波。">
+    <p class="q-stem"><code>bossSpawned</code> 这个字段，为什么成了 bug 的根源？</p>
+    <div class="q-opts">
+      <button type="button" class="q-opt" data-ok>名字与它的真实含义不一致</button>
+      <button type="button" class="q-opt">两个不同线程会同时写入它</button>
+      <button type="button" class="q-opt">波次开始的时候忘了重置它</button>
+      <button type="button" class="q-opt">字段的类型选错了导致溢出</button>
+    </div>
+  </div>
+
+  <div class="q" data-why="它不会崩、不会报错、编译全绿，只是让两处逻辑各自得出错误结论——一处以为波清完了，一处以为 Boss 已经在了。这种错误没有任何线索指向那个布尔值，所以花了四个提交才定位。">
+    <p class="q-stem">为什么「一个状态位有两种含义」比「代码写得丑」更危险？</p>
+    <div class="q-opts">
+      <button type="button" class="q-opt" data-ok>它会同时骗过两处判断逻辑</button>
+      <button type="button" class="q-opt">它会让某个分支永远走不到</button>
+      <button type="button" class="q-opt">它会让编译器无法给出警告</button>
+      <button type="button" class="q-opt">它会只在真机上才暴露出来</button>
+    </div>
+  </div>
+
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2><span class="num">6</span>所以，「该改什么」有答案了</h2>
+
+<p>
+你在上一条里说的「状态转移没有单一出口」，到这里可以升级成一句更准的话：
+</p>
+
+<div class="note key">
+  <span class="tag">一句话诊断</span>
+  <p><b>这个项目的问题不是「状态机写得丑」，是「状态记在两个地方，而且其中一处的一个位还兼着两种含义」。</b></p>
+  <p>要修的话，第一步不是引入 HFSM 框架，而是<b>先把 <code>EmberCombat</code> 那 14 个字段里的「准状态」（<code>bossSpawned</code> / <code>awaitingUpgrade</code> / <code>eventTriggered</code>）收进状态机</b>。框架可以之后再谈。</p>
+</div>
+
+<div class="ask">
+  <span class="tag">我是你的老师，随时打断我</span>
+  <p>这一课有点重——它同时讲了三件事：转移图、隐藏状态、真实 bug。如果哪一段没跟上，直接说，我可以把它拆成两课重讲。</p>
+  <p><b>下一课</b>：回到那条主线。既然我们知道了「中心驱动者 + 两个状态源」，下一课讲<b>伤害是怎么从一颗火球算到血条上的</b>——那是全项目设计得最好的一段，
+  也是面试里最能体现你懂设计的地方。</p>
+</div>
+
+<nav class="lesson-nav">
+  <a href="0001-meet-the-project.html">第 1 课 · 打开项目，你几乎什么都看不到</a>
+  <a href="0002-one-heartbeat.html">第 2 课 · 一个心跳，三道门</a>
+  <a href="../reference/002-resume-vs-code.html">参考 002 · 架构体检</a>
+  <a href="../reference/glossary.html">术语表</a>
+</nav>
+
+</main>
+<footer>
+  EmberlightWandere 架构课 · 第 3 课 · 所有行号与提交号均已在当前代码库上核对
+</footer>
+<script src="../assets/quiz.js"></script>
+</body>
+</html>

@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第 2 课 · 一个心跳，三道门</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<main>
+
+<p class="kicker">EmberlightWandere 架构课 · 第 2 课</p>
+<h1>一个心跳，三道门</h1>
+
+<p class="lede">
+上一课你确认了：整个项目在场景里只挂了<b>一个</b>脚本——<code>EmberGame</code>。
+那这一课的问题就很自然了：<b>它凭什么能驱动六千六百行、四十六个文件？</b>
+答案是它每帧只做一件事，而那一件事牵出了整条链。
+</p>
+
+<div class="promise">
+  <b>本课唯一目标：</b>能画出 <code>EmberGame.Update()</code> 这条调用链，并解释链上每一道 <code>if (…) return;</code> 为什么必须存在。
+  <br><small>第 3 节（三道门）是本课最难的一段。如果读着吃力，先把第 1、2 节和动手练习做完，那一节留到下次也行。</small>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<div class="note bug">
+  <span class="tag">先结上一课的账 · 你答错了，而且错得很有价值</span>
+  <p>上一课留的问题是：<b><code>Main Camera</code> 上没挂任何脚本，镜头为什么还跟着主角跑？</b><br>
+  你答的是「Unity 自己给 Camera 挂了个组件」。<b>不是。</b></p>
+  <p>真相是：相机上<b>一个脚本都没有</b>。它是<b>被别人推着走的</b>——</p>
+  <pre><code>// EmberGame.cs:192 —— Start() 里先拿到相机的引用
+cam = Camera.main;
+
+// EmberGame.cs:440 —— 然后每帧直接改它的位置
+void UpdateCamera()
+{
+    cam.transform.position = new Vector3(player.position.x, player.position.y, -10);
+}</code></pre>
+  <p>没有任何东西在「驱动相机」。是 <code>EmberGame</code> 每帧伸手过去，把相机的位置设成主角的位置。</p>
+</div>
+
+<h3>这个错误值得记住，因为它指向了这个项目最核心的一件事</h3>
+
+<p>把两件事分开：<b>「会不会自己动」</b> 和 <b>「会不会动」</b>。它们是两回事。</p>
+
+<table>
+  <thead><tr><th>东西</th><th>自己身上有会跑的脚本吗</th><th>那它是怎么动的</th></tr></thead>
+  <tbody>
+    <tr><td><code>Main Camera</code></td><td><strong>没有</strong></td><td><code>EmberGame</code> 每帧直接改它的位置</td></tr>
+    <tr><td>主角 <code>Keeper</code></td><td>有一个，但<b>只做外观</b></td><td><code>EmberGame.Update()</code> 改它的位置；那个脚本只是<b>读取</b>位移来做摆动</td></tr>
+    <tr><td>敌人</td><td>有一个，但<b>没有生命周期函数</b></td><td><code>EmberCombat.Tick()</code> 遍历它们，逐个调用行为类</td></tr>
+    <tr><td>火球 · 暗弹</td><td><strong>没有</strong></td><td>武器 <code>Tick</code> 里手动推进坐标（而武器是被 <code>EmberCombat</code> 调的）</td></tr>
+  </tbody>
+</table>
+
+<div class="note key">
+  <span class="tag">本课真正要给你的东西</span>
+  <p>这个项目<b>几乎没有「自治的组件」</b>。所有会动的东西都是<b>被动的</b>，由一个中心驱动者每帧推着走。这与 Unity 教程里「每个物体挂个脚本自己管自己」的风格正好相反。</p>
+  <p>那个中心驱动者就是 <code>EmberGame.Update()</code>。<b>看懂它 = 看懂整个游戏的运转方式</b>——这就是本课要做的事。</p>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2><span class="num">1</span>先破除一个错觉：这个项目没有 <code>main()</code></h2>
+
+<p>
+大部分语言的程序都有一个明确的起点——<code>main()</code>。你顺着它往下读，就能读完整个程序。Unity 不是这样：
+引擎自己写好了 <code>main()</code>，它每帧做的事情是<b>去你的脚本里找几个名字固定的方法，然后调用它们</b>。这些方法叫<b>生命周期函数</b>。
+</p>
+
+<p>
+上一课你只看到 1 个脚本被挂上去。但那 1 个脚本里，有哪些方法会被引擎主动叫到？下面这个漏斗把 46 个文件一路收敛到 1 个方法：
+</p>
+
+<table>
+  <thead>
+    <tr><th>层级</th><th>数量</th><th>含义</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>.cs</code> 文件</td><td><strong>46</strong></td><td>40 个运行时 + 6 个编辑器脚本</td></tr>
+    <tr><td>继承 <code>MonoBehaviour</code> 的类</td><td><strong>10</strong></td><td>只有它们能被挂到 GameObject 上、被引擎叫醒</td></tr>
+    <tr><td>Unity 生命周期函数</td><td><strong>11</strong></td><td>真正会被引擎主动调用的方法</td></tr>
+    <tr><td>其中每帧都跑的</td><td><strong>5</strong></td><td><code>Update</code> ×4 + <code>LateUpdate</code> ×1</td></tr>
+    <tr><td><b>其中推进玩法的</b></td><td><strong>1</strong></td><td><code>EmberGame.Update()</code></td></tr>
+  </tbody>
+</table>
+
+<p>那 11 个分别是谁，在干什么：</p>
+
+<table>
+  <thead>
+    <tr><th>生命周期函数</th><th>位置</th><th>职责</th><th>模块</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>Awake()</code></td><td><code>EmberAudio.cs:99</code></td><td>音频总线自举</td><td>M8</td></tr>
+    <tr><td><code>Start()</code></td><td><code>EmberGame.cs:182</code></td><td><strong>全场唯一的总装线</strong></td><td>M6</td></tr>
+    <tr><td><code>Update()</code></td><td><code>EmberGame.cs:358</code></td><td><strong>全场唯一的玩法心跳</strong></td><td>M3 驱动</td></tr>
+    <tr><td><code>OnApplicationPause()</code></td><td><code>EmberGame.cs:547</code></td><td>切到后台就自动暂停</td><td>M6</td></tr>
+    <tr><td><code>OnApplicationFocus()</code></td><td><code>EmberGame.cs:548</code></td><td>失去焦点就自动暂停</td><td>M6</td></tr>
+    <tr><td><code>OnDestroy()</code></td><td><code>EmberGame.cs:214</code></td><td>退出时把 <code>timeScale</code> 复位</td><td>M6</td></tr>
+    <tr><td><code>Update()</code></td><td><code>EmberIntro.cs:149</code></td><td>加载页进度</td><td>M7</td></tr>
+    <tr><td><code>Update()</code></td><td><code>EmberEffects.cs:33</code></td><td>粒子存活</td><td>M7</td></tr>
+    <tr><td><code>LateUpdate()</code></td><td><code>EmberKeeperAnimation.cs:44</code></td><td>主角骨架摆动</td><td>M7</td></tr>
+    <tr><td><code>Update()</code></td><td><code>EmberCardMotion.cs:12</code></td><td>卡牌飞入动画</td><td>M6</td></tr>
+    <tr><td><code>OnDisable()</code></td><td><code>EmberCardMotion.cs:11</code></td><td>卡牌被关掉时停协程</td><td>M6</td></tr>
+  </tbody>
+</table>
+
+<div class="note key">
+  <span class="tag">第一个洞察</span>
+  <p>剩下 <b>36 个文件根本不会被引擎当生命周期叫醒</b>。它们是纯 C# 类，必须有人手动 <code>new</code> 出来再调用。<code>EmberCombat</code> 就是这样——它连 <code>MonoBehaviour</code> 都不是，全靠 <code>EmberGame</code> 每帧手动 <code>Tick</code>。</p>
+  <p>所以「看懂这个项目」从来不需要读完 46 个文件。你需要的是找到这 11 个入口，然后顺着往下走。</p>
+</div>
+
+<div class="note">
+  <span class="tag">两处容易漏掉的入口</span>
+  <p><b>一、</b>另有 4 个 <code>MonoBehaviour</code>（<code>EmberEnemySilhouette</code>、<code>EmberGodsSelectPanel</code>、<code>EmberUpgradePanel</code>、<code>EmberSettingsPanel</code>）<b>一个生命周期函数都没有</b>——它们只是被当作「能挂在物体上的容器」在用。可见继承 <code>MonoBehaviour</code> 不等于会被引擎驱动。</p>
+  <p><b>二、</b><code>EmberCardMotion</code> 还实现了 <code>IPointerDownHandler</code> 等接口，Unity 是通过接口方法（<code>OnPointerDown</code>）回调它的。这不算生命周期函数，但同样是引擎驱动的路径。查入口时别只顾着搜 <code>Update</code>。</p>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2><span class="num">2</span>第二层：那条链</h2>
+
+<p>
+<code>Start()</code> 是总装线——它 <code>new</code> 出 <code>EmberCombat</code>、<code>EmberMenuUi</code>，建好 <code>Run world</code> 和 <code>Keeper</code>，把 <code>EmberEffects</code> 交给战斗。
+跑完 <code>Start()</code>，线就接好了。之后每一帧，只有 <b>一件事</b>在推进玩法：
+</p>
+
+<pre class="trace"><code>EmberGame.Update()  <span class="c-s">· 全场唯一的玩法心跳</span>
+│
+├─ 检查安全区有没有变
+├─ <span class="c-g">if (State != Playing) return;</span>          <span class="c-s">· 门 ①</span>
+├─ Elapsed += dt;   hurtTimer -= dt;
+├─ ReadInput()                             <span class="c-s">· 按 Esc 会 Pause()，State 变了</span>
+├─ <span class="c-g">if (State != Playing) return;</span>          <span class="c-s">· 门 ②</span>
+├─ 移动主角 → EmberWorld.Clamp → UpdateCamera
+│
+├─ combat.Tick(dt)                         <span class="c-m">· 战斗推进 · M3</span>
+│   │
+│   ├─ <span class="c-g">if (game.State != Playing) return;</span>   <span class="c-s">· 门</span>
+│   ├─ 刷怪 / Boss 预警倒计时 / 遭遇事件
+│   ├─ 每个敌人：behavior.Tick(dt, enemyCtx)
+│   │    └─ <span class="c-w">game.HurtPlayer(…)</span>  <span class="c-s">· 血量归零会 EndRun(false) → State = Lost</span>
+│   ├─ 灼烧光环结算
+│   ├─ 把 PlayerSpeed / Progress / Elapsed / Pool 填进 weaponCtx
+│   ├─ 每把武器：weapons[w].Tick(dt, weaponCtx)   <span class="c-m">· 武器 · M4</span>
+│   │    └─ ctx.DealDamage(i, dmg, from)
+│   │         └─ EmberCombat.ApplyDamageFrom() → <span class="c-s">e.hp -= amount</span>
+│   ├─ enemyProjectiles.HitPlayer(…)
+│   └─ ResolveDeaths()
+│        └─ <span class="c-w">game.OnWaveCleared(wave)</span>  <span class="c-s">· 清波了</span>
+│             └─ Progress.OfferChoices() → OfferUpgrade() → State = Upgrade
+│
+├─ <span class="c-g">if (State != Playing) return;</span>          <span class="c-s">· 门 ③</span>
+└─ UpdateHud()</code></pre>
+
+<p>
+把这张图从下往上读一遍，再从下往上读一遍。<b>这就是整个游戏的骨架。</b>
+M1–M9 那九个模块只是贴在这条链各个节点上的标签；这条链本身才是「整体框架」。
+</p>
+
+<div class="note">
+  <span class="tag">注意最后一列</span>
+  <p>每往下走一层，就换一个模块：M6 的 <code>Update</code> 驱动 M3 的 <code>Tick</code>，M3 再驱动 M4 的 <code>Tick</code>，伤害最后落回 M3 的 <code>ApplyDamageFrom</code>。<b>依赖是单向往下的</b>——这就是为什么这个项目好读。</p>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2><span class="num">3</span>第三层：为什么到处都是 <code>if (…) return;</code></h2>
+
+<p>
+再看一眼 <code>EmberCombat.Tick()</code>。同一种写法出现了 <b>六次以上</b>：
+</p>
+
+<pre><code>for (int w = 0; w &lt; weapons.Count; w++)
+{
+    if (game.State != EmberGame.Mode.Playing) return;   // ← 每调一把都再问一遍
+    weapons[w].Tick(dt, weaponCtx);
+}</code></pre>
+
+<p>为什么要反复问？因为<b>被你调用的东西，会中途把状态改掉</b>：</p>
+
+<table>
+  <thead><tr><th>链上的调用</th><th>它可能把 <code>State</code> 改成</th></tr></thead>
+  <tbody>
+    <tr><td><code>ReadInput()</code> 里按了 <kbd>Esc</kbd></td><td><code>Paused</code></td></tr>
+    <tr><td><code>HurtPlayer()</code> 里血量归零</td><td><code>Lost</code></td></tr>
+    <tr><td><code>ResolveDeaths()</code> 清完一波</td><td><code>Upgrade</code></td></tr>
+    <tr><td>Boss 被击败且是最终波</td><td><code>Won</code></td></tr>
+  </tbody>
+</table>
+
+<p>
+一旦进了 <code>Upgrade</code>，选卡面板已经弹出来了，后面的代码<b>绝不能再跑</b>——否则你会一边选卡一边挨打。
+所以这个项目管理状态机的办法不是一个大 <code>switch</code>，而是：
+<b>每个可能改状态的调用点后面，都补一道早退门。</b>
+你在这份代码里看到的每一道 <code>if (State != Playing) return;</code>，都是有人曾经踩过的坑。
+</p>
+
+<div class="note bug">
+  <span class="tag">真实证据 · 就在你的仓库里</span>
+  <p><code>EmberCombat.StartWave()</code> 里留着一段注释（<code>EmberCombat.cs:213-218</code>），讲的就是漏掉一道门会发生什么：</p>
+  <p>「…leaving it false through the lead-in let them read the empty Boss wave as already cleared and advance the wave: <b>the Boss was skipped before it could spawn and the advance cascaded through every following wave.</b>」</p>
+  <p>对应的提交是 <code>528a40f Fix the runaway wave counter that also skipped every Boss</code>——<b>波次计数器一路狂飙、所有 Boss 被跳过</b>，根因就是一道门的位置不对。</p>
+</div>
+
+<div class="note warn">
+  <span class="tag">这条规则以后会反复用到</span>
+  <p>在这个项目里加新逻辑时，先问自己一句：<b>「我这段代码，可能在哪个调用里被改状态？」</b> 如果想不出来，就去看它前面那道门在哪。</p>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2><span class="num">4</span>练习一 · 闭卷四题</h2>
+
+<p>不要往回翻。凭记忆答，答错比答对更有价值——错的那条链，才是你下次要重走的地方。</p>
+
+<section class="quiz">
+
+  <div class="q" data-why="因为链上的调用会中途改 State（暂停、死亡、清波、胜利）。一旦状态变了，后面的代码就不能再跑，所以每调一次都要重新确认。这不是防御性编程的习惯，是状态机的实现方式。">
+    <p class="q-stem">「三道门」存在的根本原因是什么？</p>
+    <div class="q-opts">
+      <button type="button" class="q-opt" data-ok>被调用的方法可能中途改掉状态</button>
+      <button type="button" class="q-opt">引擎每帧的时长一直在上下浮动</button>
+      <button type="button" class="q-opt">多个线程并发会写坏共享的数据</button>
+      <button type="button" class="q-opt">对象池回收以后引用会变成空值</button>
+    </div>
+  </div>
+
+  <div class="q" data-why="<code>combat.Tick</code> 是最外层，它在里面遍历武器调用 <code>weapons[w].Tick</code>；而伤害结算发生在武器内部——火球命中时调用 <code>ctx.DealDamage</code>，最终落到 <code>EmberCombat.ApplyDamageFrom</code>。所以是「战斗包住武器，武器里结算伤害」。">
+    <p class="q-stem">从 <code>EmberGame.Update()</code> 到「一颗火球打中敌人」，顺序是？</p>
+    <div class="q-opts">
+      <button type="button" class="q-opt" data-ok>战斗 Tick → 武器 Tick → 结算伤害</button>
+      <button type="button" class="q-opt">武器 Tick → 战斗 Tick → 结算伤害</button>
+      <button type="button" class="q-opt">结算伤害 → 战斗 Tick → 武器 Tick</button>
+      <button type="button" class="q-opt">战斗 Tick → 结算伤害 → 武器 Tick</button>
+    </div>
+  </div>
+
+  <div class="q" data-why="这正是 <code>EmberWeaponContext</code> 存在的理由：它把「游戏还在进行吗」包成一个委托 <code>StillPlaying</code> 递下去（<code>EmberCombat.cs:160</code>），武器调用它即可，全程不认识 <code>EmberGame</code>。另外三条路都会让 M4 反向依赖 M3/M6，破坏仓库里最干净的那条边界。">
+    <p class="q-stem">一把武器想只在「游戏还在进行」时开火，它应该怎么做？</p>
+    <div class="q-opts">
+      <button type="button" class="q-opt" data-ok>通过上下文里的委托问宿主状态</button>
+      <button type="button" class="q-opt">直接去读游戏宿主上的静态属性</button>
+      <button type="button" class="q-opt">用查找实例的方法反查游戏宿主</button>
+      <button type="button" class="q-opt">读时间缩放判断游戏有没有暂停</button>
+    </div>
+  </div>
+
+  <div class="q" data-why="正常情况下依赖应该是「上层知道下层、下层不知道上层」。M7 是表现层，<code>EmberGame</code> 在它上面，底层反过来读上层状态，依赖图就不再是单向的树，改动影响也就无法推导了。这是总览文档「已知边界问题」表里明确记着的一条技术债。">
+    <p class="q-stem">表现层（M7）读 <code>EmberGame.State</code> 为什么被列为问题？</p>
+    <div class="q-opts">
+      <button type="button" class="q-opt" data-ok>底层反过来依赖了上层方向错了</button>
+      <button type="button" class="q-opt">每帧都读状态会让性能明显下降</button>
+      <button type="button" class="q-opt">状态变化不会通知到表现层那边</button>
+      <button type="button" class="q-opt">引擎不允许跨模块访问别的组件</button>
+    </div>
+  </div>
+
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2><span class="num">5</span>练习二 · 亲手把这条链看一遍（约 15 分钟）</h2>
+
+<p>不要只读。要亲眼看见「门」把代码挡住了——看见一次，胜过读十遍。</p>
+
+<ol class="steps">
+  <li>
+    <b>加第一个探针。</b>打开 <code>Assets/Scripts/Core/EmberGame.cs</code>，找到 <code>void Update()</code>（第 358 行），
+    <b>在它花括号后的第一行</b>插入：
+    <pre><code>if (Input.GetKeyDown(KeyCode.F1)) Debug.Log("Update 在跑，State = " + State);</code></pre>
+    <p>注意必须放在<b>最顶上</b>，要在门 ① 之前——这样无论什么状态它都会打印。</p>
+  </li>
+  <li>
+    <b>加第二个探针。</b>打开 <code>Assets/Scripts/Combat/EmberCombat.cs</code>，找到 <code>public void Tick(float dt)</code>（第 244 行），
+    <b>在那道门（第 246 行）之后</b>插入：
+    <pre><code>if (Input.GetKeyDown(KeyCode.F2)) Debug.Log("战斗 Tick 跑到了，波次 " + wave);</code></pre>
+    <p>这个放在门<b>后面</b>——这正是关键。</p>
+  </li>
+  <li>回到 Unity，等编译完，确认 Console 没有报红。</li>
+  <li><b>Play</b> →「点亮旅程」→ 选 25 波 → 标准 → 选槽位 → 选 1 把武器 → 进战斗。</li>
+  <li>在战斗中按 <kbd>F1</kbd>，再按 <kbd>F2</kbd>。
+    <p>Console 应该各出一行：<code>Update 在跑，State = Playing</code> 和 <code>战斗 Tick 跑到了，波次 1</code>。</p>
+  </li>
+  <li>
+    <b>关键一步。</b>清掉一波，让选卡面板弹出来。然后：先按 <kbd>F2</kbd>，再按 <kbd>F1</kbd>。
+    <ul>
+      <li><kbd>F2</kbd> <b>什么都不打印</b>——证明 <code>combat.Tick</code> 被门挡住了，玩法停住了。</li>
+      <li><kbd>F1</kbd> 打印 <code>Update 在跑，State = Upgrade</code>——证明 <code>Update</code> <b>还在每帧运行</b>，只是提前 <code>return</code> 了。</li>
+    </ul>
+  </li>
+  <li>顺手再试一次：按 <kbd>Esc</kbd> 暂停，重复第 6 步。结论一样。</li>
+  <li><b>验完删掉这两行探针</b>，别提交上去。</li>
+</ol>
+
+<div class="note key">
+  <span class="tag">你从这一步拿到的结论</span>
+  <p><code>Update</code> 每帧都在跑，玩法只在 <code>Playing</code> 时跑。<br>
+  换句话说：<b>「游戏停了」不等于「代码停了」。</b>——这就是为什么要门，也是为什么读这份代码必须先看 <code>State</code>。</p>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2><span class="num">6</span>练习三 · 用自己的话说出来</h2>
+
+<p>
+不查代码，直接回答我（写下来，或者就在对话里说）：
+</p>
+
+<div class="ask">
+  <span class="tag">回答这两问，我就知道你这一课过没过</span>
+  <p><b>①</b> 一句话说清：<code>EmberGame.Update()</code> 和 <code>EmberCombat.Tick()</code> 是什么关系？</p>
+  <p><b>②</b> 我要加一个「每 5 秒自动回血」的效果。它该加在哪一层？为什么不能塞进 <code>EmberCardMotion</code>（那个管卡牌飞入动画的）里？</p>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2><span class="num">7</span>本课首推资源</h2>
+
+<p>
+<a href="https://docs.unity3d.com/Manual/ExecutionOrder.html">Unity 官方手册 · Order of execution for event functions</a><br>
+生命周期函数的权威顺序表。看 <code>Update</code> 那一行的前后邻居，你就明白这个项目为什么把心跳放在 <code>Update</code>，而不是 <code>FixedUpdate</code> 或 <code>LateUpdate</code>。
+</p>
+
+<div class="note">
+  <span class="tag">配套参考</span>
+  <p><a href="../reference/glossary.html">术语表</a>——本课程所有术语（心跳 / 门 / 上帝类 / 服务定位器…）的定义都在这里，往后每一课只用这套词。<br>
+  <a href="../../architecture/00-overview.md">项目架构总览</a>——仓库自己的权威模块文档。<b>现在再去读它，会顺很多</b>：你已经知道 M1–M9 是怎么被那条链串起来的了。</p>
+</div>
+
+<div class="ask">
+  <span class="tag">我是你的老师，随时打断我</span>
+  <p>哪一句没看懂、想让我把某个类展开讲、想要更难的题、或者觉得这一课太浅/太深——直接说。
+  下一课我打算讲<b>开局那四步是怎么变成 <code>Mode</code> 状态机的</b>（也就是那条链没跑起来之前，游戏在干什么），但如果你现在更想搞清别的，告诉我，我改。</p>
+</div>
+
+<nav class="lesson-nav">
+  <a href="0001-meet-the-project.html">← 第 1 课 · 打开项目，你几乎什么都看不到</a>
+  <a href="0003-where-state-lives.html">第 3 课 · 一局游戏的状态，藏在两个地方 →</a>
+  <a href="../reference/glossary.html">术语表</a>
+  <a href="../../architecture/00-overview.md">项目架构总览</a>
+</nav>
+
+</main>
+<footer>
+  EmberlightWandere 架构课 · 第 2 课 · 课程样式与组件见 <code>assets/</code>
+</footer>
+<script src="../assets/quiz.js"></script>
+</body>
+</html>

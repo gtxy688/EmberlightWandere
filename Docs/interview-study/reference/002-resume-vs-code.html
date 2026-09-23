@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>架构体检：简历条目 vs 代码事实 · EmberlightWandere 架构课</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<main>
+
+<p class="kicker">参考 · Reference 002</p>
+<h1>架构体检：简历条目 vs 代码事实</h1>
+
+<p class="lede">
+你的判断是「项目并没有解耦，所有逻辑都耦合在一起，还用了一大堆 if-else」。
+我把每一条都拿去代码里量了。<b>结论：你的不适感是对的，但归因错了两个地方——而错的这两处，
+恰好是面试官最容易追下去的地方。</b>
+</p>
+
+<div class="promise">
+  <b>一句话结论：</b>这不是「没架构」，是<b>「状态机是手写的，而且转移没有单一出口」</b>。
+  另外，if 确实多，但它们<b>不是 if-else 分支</b>——577 个 if 里只有 51 个配了 else。
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2><span class="num">1</span>先看硬数据</h2>
+
+<div class="stat-row">
+  <div class="stat"><b>6,519</b><span>行 C#（46 个文件）</span></div>
+  <div class="stat"><b>577</b><span>个 <code>if</code></span></div>
+  <div class="stat hot"><b>51</b><span>个 <code>else</code>（含 else if）</span></div>
+  <div class="stat"><b>20</b><span>个 <code>switch</code></span></div>
+  <div class="stat"><b>30</b><span>处 <code>State</code> 比较</span></div>
+</div>
+
+<div class="note key">
+  <span class="tag">最关键的一个数字</span>
+  <p><b>577 个 <code>if</code>，只有 51 个有 <code>else</code>——91% 的 <code>if</code> 是「单边」的。</b></p>
+  <p>这是<b>守卫子句（guard clause）</b>的特征，不是「if-else 分支地狱」的特征。分支地狱长这样：<code>if…else if…else if…else…</code> 层层嵌套，一个方法里五六条并列的互斥路径。</p>
+  <p>守卫子句长这样：<code>if (clip == null) return;</code> —— 提前退出，让主体保持平铺。</p>
+</div>
+
+<p>最密集的 <code>EmberAudio.cs</code>（每百行 18.4 个 <code>if</code>、只有 2 个 <code>else</code>）就是典型：它在做<b>缺资源静默降级</b>——音频 clip 找不到就跳过、只警告一次、不崩。那不是逻辑分支，那是防御。</p>
+
+<p>所以「一大堆 if-else」这个描述，<b>数字上不成立</b>。真正的问题是另一个（见第 4 节）。</p>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2><span class="num">2</span>这个项目其实有三种状态/行为组织方式</h2>
+
+<p>你说另一个项目用了 HFSM。那先确认一件事：<b>这个项目也有状态机，而且不止一个。</b>它只是没引入框架。</p>
+
+<table>
+  <thead><tr><th>机制</th><th>位置</th><th>状态数</th><th>转移写在哪</th><th>谁保证「只有当前状态运行」</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><code>EmberGame.Mode</code></td><td><code>EmberGame.cs:9</code></td>
+      <td>11（扁平）</td>
+      <td><b>散落在 10 个方法、11 处赋值</b></td>
+      <td><b>手写早退门</b></td>
+    </tr>
+    <tr>
+      <td><code>EmberBoss.AttackState</code></td><td><code>EmberBoss.cs:8</code></td>
+      <td>6（扁平）</td>
+      <td><b>集中在 <code>Tick</code> 的一条 if-else-if 链里</b></td>
+      <td>同一条链天然保证</td>
+    </tr>
+    <tr>
+      <td><code>IEnemyBehavior</code></td><td><code>EmberEnemyBehavior.cs:7</code></td>
+      <td>—</td>
+      <td colspan="2"><b>不是状态机，是策略模式</b>（Chase 基类 + Shooter / Split / Shield / Bomber）</td>
+    </tr>
+    <tr>
+      <td><code>EnemyAffix</code></td><td><code>EmberEnemyBehavior.cs:5</code></td>
+      <td>4</td>
+      <td colspan="2">标记位（None / Burning / Wind / Rebirth），不是状态机</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="note">
+  <span class="tag">值得为 <code>EmberBoss</code> 说句公道话</span>
+  <p>它是<b>教科书式的扁平状态机</b>：显式 enum、6 个状态、转移全部集中在一个 <code>Tick</code> 的 if-else-if 链里，一眼能读完。整个文件 <b>78 行，还包含了所有预警圈和皇冠的美术构建</b>。</p>
+  <p>给这 6 个状态套一层 HFSM 框架，是<b>过度设计</b>。这里手写是对的。</p>
+</div>
+
+<div class="note">
+  <span class="tag">敌人行为用策略而不是状态机，也是对的</span>
+  <p><code>ShooterBehavior</code> 内部确实有「接近 → 蓄力 → 开火」三阶段。但它用一个 <code>charge</code> 浮点数表示，没有硬套状态机——<b>三阶段的内部时序，用一个计时器比建三个状态类更划算</b>。</p>
+  <p>该用状态机的地方用，不该用的地方不用，这是判断力，不是偷懒。</p>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2><span class="num">3</span>与 HFSM 的诚实对比</h2>
+
+<div class="versus">
+  <div>
+    <h4>HFSM（你另一个项目）</h4>
+    <ul>
+      <li>状态是对象/类，<b>可以嵌套</b></li>
+      <li>转移通常<b>显式声明</b>，能当表读</li>
+      <li>父状态统一声明<b>对全部子状态生效</b>的转移（任意状态 → 眩晕 / 死亡），一处声明处处生效</li>
+      <li>「只有当前状态运行」由<b>框架保证</b></li>
+      <li>新增状态 = <b>加一个状态类</b></li>
+      <li>状态可<b>单独实例化测试</b></li>
+      <li>代价：抽象层、对象分配、调用栈变深</li>
+    </ul>
+  </div>
+  <div>
+    <h4>本项目（手写）</h4>
+    <ul>
+      <li>状态是 <code>enum</code> 值，<b>扁平</b></li>
+      <li>转移<b>散落在赋值处</b>：11 处赋值分布在 10 个方法</li>
+      <li>共享转移<b>必须逐处手写</b>——这正是那 30 处 <code>State</code> 检查和 8 道门的由来</li>
+      <li>「只有当前状态运行」靠<b>人手补门</b></li>
+      <li>新增状态 = <b>加 enum 值 + 满仓库找门</b></li>
+      <li>状态<b>无法单独测试</b>（必须先造出整个 <code>EmberGame</code>）</li>
+      <li>收益：零抽象开销、一个调用栈、断点打在哪都看得见</li>
+    </ul>
+  </div>
+</div>
+
+<div class="note key">
+  <span class="tag">HFSM 真正能解决的那一条</span>
+  <p>不是「把 if 换成多态」，而是<b>转移集中化</b>。</p>
+  <p>本项目最大的结构问题是：<b>没有任何一个地方能让你读出「运行时合法的状态转移有哪些」。</b>
+  想看全貌，你得把 <code>EmberGame.cs</code> 六百行的 11 处 <code>State = …</code> 找齐，再理解每处的触发条件。
+  HFSM 的转移表会把这个答案变成一张可读的表。</p>
+  <p><b>这才是你该在面试里讲的那句话。</b>它比「全都解耦了」强十倍——因为它证明你能定位问题，而不是只会给结论。</p>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2><span class="num">4</span>真正的技术债（都有证据）</h2>
+
+<table>
+  <thead><tr><th>问题</th><th>证据</th><th>代价</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><b>界面流程与玩法循环共用一个状态机</b><br><span class="v v-false">最严重</span></td>
+      <td><code>EmberGame.cs</code> 603 行：<b>162 行纯文案常量</b>（27%）+ <b>187 行界面流程控制</b>（31%），只有 247 行（41%）与玩法有关。面板各自是独立类（<code>EmberUpgradePanel</code> 322 / <code>EmberSettingsPanel</code> 298 / <code>EmberGodsSelectPanel</code> 239 / <code>EmberMenuUi</code> 209），<b>但流程控制没有分出去</b>。前 6 个 <code>Mode</code> 是菜单，后 5 个是游戏，共享同一个枚举</td>
+      <td><b>直接造成 <code>EmberCombat</code> 里那 8 道 <code>State != Playing</code> 门</b>——纯战斗模块被迫理解 <code>Upgrade</code> / <code>Paused</code> / <code>Menu</code> 这些 UI 词汇。第 3 课那个 5 提交的 Boss bug 就发生在这层</td>
+    </tr>
+    <tr>
+      <td><b>状态转移无单一出口</b></td>
+      <td><code>State = Mode.X</code> 共 <b>11 处</b>，散布在 <b>10 个方法</b>（<code>EmberGame.cs</code>）</td>
+      <td>新增状态要全仓库找门；无法一眼看出合法转移</td>
+    </tr>
+    <tr>
+      <td><b><code>EmberGame</code> 是上帝类</b></td>
+      <td>11 态状态机 + 36 项文案表 + 开局四步 + 血量 + HUD 驱动，一个文件担 M6/M2/M3 三种职责</td>
+      <td>改 UI 可能影响战斗；无法单独测试任何一块</td>
+    </tr>
+    <tr>
+      <td><b>战斗层与游戏层双向依赖</b></td>
+      <td><code>EmberCombat</code> 持有 <code>EmberGame</code>，<b>22 个调用点</b>（8 道状态门、3 次 <code>HurtPlayer</code>、<code>OnWaveCleared</code>、<code>EndRun</code>、<code>RegisterKill</code>、<code>Progress</code>、<code>Elapsed</code>）</td>
+      <td>不是单向依赖，是环。<code>EmberCombat</code> 无法脱离 <code>EmberGame</code> 存在</td>
+    </tr>
+    <tr>
+      <td><b>表现层反向依赖游戏层</b></td>
+      <td><code>EmberKeeperAnimation.cs:42</code> 用 <code>FindObjectOfType&lt;EmberGame&gt;()</code> 反查，<code>:49</code> 读 <code>game.State</code>；<code>EmberEffects.cs:35</code> 读 <code>game.State</code></td>
+      <td>服务定位器把依赖藏起来；读构造签名看不出来</td>
+    </tr>
+    <tr>
+      <td><b>无程序集边界</b></td>
+      <td>全项目 <b>0 个 <code>.asmdef</code></b>，全部进 <code>Assembly-CSharp</code></td>
+      <td>所有模块边界只靠纪律维持，编译器不会拦任何违规依赖</td>
+    </tr>
+    <tr>
+      <td><b>死代码</b></td>
+      <td><code>EmberPulseWeapon</code>（<code>WavePower</code> 只在 <code>RunProgress.cs:158</code> 被设为 0，无处递增）；<code>RunProgress</code> 的 <code>ScoreMult</code> 恒返回 1.0、<code>HasEvolved</code> / <code>FullRoster</code> / <code>HealAmount</code> 零调用点</td>
+      <td>增加误读成本；面试时别主动提</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="note warn">
+  <span class="tag">一句提醒</span>
+  <p>以上六条<b>全部写在你自己的 <code>Docs/architecture/00-overview.md</code> 里</b>（「已知边界问题」表）。</p>
+  <p>这说明一件对面试很有利的事：<b>这个项目的问题是被记录、被承认的，不是被你藏起来的。</b>面试里主动说出已知缺陷 + 你打算怎么改，比假装没有问题可信得多。</p>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2><span class="num">5</span>简历逐条对账</h2>
+
+<h3>条目一 · 战斗系统架构</h3>
+
+<blockquote>
+「将单局流程、战斗逻辑、武器系统与表现层解耦，抽象统一武器接口及战斗上下文，完成 6 种差异化武器，支持独立攻击逻辑、伤害结算及可扩展强化效果，降低新增武器的功能耦合。」
+</blockquote>
+
+<table>
+  <thead><tr><th>子主张</th><th>判定</th><th>证据</th></tr></thead>
+  <tbody>
+    <tr><td>抽象统一武器接口</td><td><span class="v v-true">成立</span></td><td><code>abstract class EmberWeapon { abstract void Tick(float dt, EmberWeaponContext ctx); }</code></td></tr>
+    <tr><td>统一战斗上下文</td><td><span class="v v-true">成立</span></td><td><code>EmberWeaponContext</code>；武器<b>零</b> <code>EmberGame</code> 引用</td></tr>
+    <tr><td>降低新增武器耦合</td><td><span class="v v-true">成立</span></td><td>新增武器 = 继承 <code>EmberWeapon</code> + 在 <code>EmberCombat</code> 构造函数注册一行</td></tr>
+    <tr><td>武器系统解耦</td><td><span class="v v-true">成立</span></td><td>仓库里最干净的一条边界，当之无愧</td></tr>
+    <tr><td>战斗逻辑解耦</td><td><span class="v v-half">半真</span></td><td><code>EmberCombat</code> ⇄ <code>EmberGame</code> <b>双向</b>，22 个调用点。是环，不是单向依赖</td></tr>
+    <tr><td>单局流程解耦</td><td><span class="v v-false">不成立</span></td><td>单局流程<b>就是</b> <code>EmberGame</code> 本身</td></tr>
+    <tr><td>表现层解耦</td><td><span class="v v-false">反了</span></td><td>表现层<b>反向依赖</b>游戏层，两处：<code>EmberKeeperAnimation</code> 反查 + 读 <code>State</code>；<code>EmberEffects</code> 读 <code>State</code></td></tr>
+  </tbody>
+</table>
+
+<div class="note bug">
+  <span class="tag">这条是最大风险</span>
+  <p>「解耦」三个字下面挂着 4 项，其中 2 项为真、1 项半真、2 项不成立——<b>而且不成立的那两项方向正好相反</b>（表现层不是被解耦，它是反向依赖）。</p>
+  <p>懂行的面试官只要问一句「表现层怎么拿到游戏状态的？」，就会碰到 <code>FindObjectOfType</code>。</p>
+</div>
+
+<h3>条目二 · Roguelike 构筑系统</h3>
+
+<blockquote>
+「实现武器槽位、稀有度加权随机、候选词条去重、刷新及新武器获取逻辑；支持单武器属性成长、全局属性增幅和机制型进化效果。」
+</blockquote>
+
+<p><span class="v v-true">成立</span> <b>逐项都能在 <code>RunProgress.cs</code> 里指到实体：</b></p>
+
+<table>
+  <thead><tr><th>主张</th><th>代码</th></tr></thead>
+  <tbody>
+    <tr><td>武器槽位</td><td><code>WeaponSlots</code> / <code>ConfigureRun(int[] slotWeapons, int slots)</code> / <code>EmptySlots</code></td></tr>
+    <tr><td>稀有度加权随机</td><td><code>Choices(Random, waveCleared)</code> + <code>EmberRarity</code> + <code>Luck</code>（<code>MaxLuck = 120</code>）</td></tr>
+    <tr><td>去重</td><td><code>OwnsWeapon</code> / <code>HasMetamorph</code> / <code>HasExclusive</code> 三重门控候选</td></tr>
+    <tr><td>刷新</td><td><code>TryRefresh(random, wave, out offers)</code> / <code>FreeRefreshes = 2</code> / <code>RefreshesRemaining</code></td></tr>
+    <tr><td>新武器获取</td><td><code>Choose(offer, out bool grantedNewWeapon)</code> / <code>OwnedWeaponCount</code></td></tr>
+    <tr><td>单武器属性成长</td><td><code>WeaponMagnitude(id)</code> / <code>WeaponAttackSpeed(id)</code>——<b>按武器 id</b>，不是全局</td></tr>
+    <tr><td>全局属性增幅</td><td><code>DamageAmp</code>（→ <code>DamageMul = 1 + DamageAmp</code>）/ <code>ExtraShots</code></td></tr>
+    <tr><td>机制型进化</td><td><code>MetaBasic…MetaMeteor</code>（6 个）+ <code>ExclBasic…ExclMeteor</code>（6 个）</td></tr>
+  </tbody>
+</table>
+
+<p><b>这条可以放心讲。</b>唯一注意：别主动提 <code>ScoreMult</code> / <code>HasEvolved</code> / <code>FullRoster</code> / <code>HealAmount</code>——它们是零调用点的死代码。</p>
+
+<h3>条目三 · 敌人系统与性能优化</h3>
+
+<blockquote>
+「基于可配置行为实现追踪、远程攻击、分裂、自爆及阶段 Boss 等敌人类型；使用对象池统一管理敌人、投射物与特效，减少高频 Instantiate/Destroy 带来的 GC 与运行时开销。」
+</blockquote>
+
+<table>
+  <thead><tr><th>子主张</th><th>判定</th><th>证据</th></tr></thead>
+  <tbody>
+    <tr><td>追踪 / 远程 / 分裂 / 自爆</td><td><span class="v v-true">成立</span></td><td><code>ChaseBehavior</code> / <code>ShooterBehavior</code> / <code>SplitBehavior</code> / <code>BomberBehavior</code></td></tr>
+    <tr><td>（还有一个盾卫）</td><td><span class="v v-na">简历漏了</span></td><td><code>ShieldBehavior</code> 带正面减伤与转向，是第 5 种，<b>简历没写可惜了</b></td></tr>
+    <tr><td>阶段 Boss</td><td><span class="v v-true">成立</span></td><td><code>EmberBoss.AttackState</code> 6 态 + <code>tier</code> 分级 + 半血狂怒</td></tr>
+    <tr><td>可配置行为</td><td><span class="v v-true">成立</span></td><td><code>IEnemyBehavior</code> + <code>LevelConfig</code> 驱动全部数值</td></tr>
+    <tr><td>减少 Instantiate/Destroy</td><td><span class="v v-true">成立</span></td><td><code>EmberPool.Rent/Release</code> + <code>maxPerKey</code> 上限 + <code>ProfilerMarker</code></td></tr>
+    <tr><td>对象池<b>统一</b>管理特效</td><td><span class="v v-false">不成立</span></td><td><b>有两套独立实现</b>：<code>EmberPool</code>（敌人/火球/灼烧/预警）与 <code>EmberEffects</code> 内部的 <code>Stack&lt;Particle&gt;</code>（粒子上限 120）。「统一」二字一追就露</td></tr>
+  </tbody>
+</table>
+
+<h3>条目四 · 移动端工程化</h3>
+
+<blockquote>
+「基于 UGUI + TextMeshPro 完成竖屏 UI、中文字体、安全区与触控摇杆适配；处理应用暂停/恢复、返回营地及音量数据持久化，并完成 IL2CPP + ARM64/ARMv7 Android 构建与 APK 真机验证。」
+</blockquote>
+
+<table>
+  <thead><tr><th>子主张</th><th>判定</th><th>证据</th></tr></thead>
+  <tbody>
+    <tr><td>UGUI + TMP</td><td><span class="v v-true">成立</span></td><td><code>EmberMenuUi.Build</code> 运行时造 <code>Canvas</code> + <code>CanvasScaler</code> + <code>GraphicRaycaster</code></td></tr>
+    <tr><td>竖屏 540×960</td><td><span class="v v-true">成立</span></td><td><code>referenceResolution = new Vector2(540, 960)</code>；<code>defaultScreenOrientation: 0</code>，仅允许 Portrait</td></tr>
+    <tr><td>安全区</td><td><span class="v v-true">成立</span></td><td><code>UpdateSafeArea()</code> 读 <code>Screen.safeArea</code></td></tr>
+    <tr><td>触控摇杆</td><td><span class="v v-true">成立</span></td><td><code>ReadInput()</code> 手写 <code>Touch</code> 处理（没用现成摇杆组件，是加分项）</td></tr>
+    <tr><td>暂停 / 恢复</td><td><span class="v v-true">成立</span></td><td><code>OnApplicationPause</code> / <code>OnApplicationFocus</code></td></tr>
+    <tr><td>音量持久化</td><td><span class="v v-true">成立</span></td><td><code>PlayerPrefs</code> 存 music/sfx（<code>EmberAudio.cs:61-62 / 73-74 / 112-114</code>）；倍速与提示也持久化</td></tr>
+    <tr><td>IL2CPP</td><td><span class="v v-true">成立</span></td><td><code>scriptingBackend.Android = 1</code>（IL2CPP）、<code>il2cppCompilerConfiguration.Android = 1</code>（Release）</td></tr>
+    <tr><td>ARM64 / ARMv7</td><td><span class="v v-true">成立</span></td><td><code>AndroidTargetArchitectures = 3</code>（= ARMv7 | ARM64 的位标志）</td></tr>
+    <tr><td>APK 真机验证</td><td><span class="v v-na">代码无法证明</span></td><td>这是人工行为。简历上没风险，但<b>你得能说出具体验了什么</b>（帧率？机型？发热？崩溃？）</td></tr>
+  </tbody>
+</table>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2><span class="num">6</span>面试怎么讲</h2>
+
+<p>不要试图辩解「其实解耦了」。改成一个<b>有判断力的版本</b>：</p>
+
+<div class="note key">
+  <span class="tag">推荐说法</span>
+  <p>「这个项目的架构是<b>一个中心驱动者 + 手写状态机</b>。底部三层是干净的：武器只通过 <code>EmberWeaponContext</code> 拿服务，全程不认识 <code>EmberGame</code>；敌人行为是策略模式；<code>RunProgress</code> 零 <code>UnityEngine</code> 依赖，是唯一可以脱离 Unity 单测的部分。</p>
+  <p>债在上面：<code>EmberGame</code> 把<b>界面流程和玩法循环装进了同一个状态机</b>——前 6 个 <code>Mode</code> 是菜单，后 5 个是游戏。代价很具体：<code>EmberCombat</code> 里那 8 道 <code>State != Playing</code> 门，存在的唯一原因就是战斗层不得不去问「玩家现在是在菜单里还是在游戏里」。</p>
+  <p>所以我会<b>先把界面流程从玩法循环里拆出去</b>（让战斗层只知道「开始跑 / 被停住」，不需要认识 <code>Upgrade</code> / <code>Paused</code> / <code>Menu</code>），<b>然后把局长的状态转移集中到一处</b>——现在 11 处 <code>State</code> 赋值散在 10 个方法里，没有任何地方能读出合法的状态转移。这两步做完，再谈要不要引入显式状态机。」</p>
+</div>
+
+<div class="note warn">
+  <span class="tag">三个别踩的坑</span>
+  <p><b>①</b> 别说「全都解耦了」。一问表现层就穿帮。</p>
+  <p><b>②</b> 别说「没有 if-else 地狱」然后就完了——要说清 <b>577 个 if 里 91% 是守卫子句</b>，这个数字是你的证据。</p>
+  <p><b>③</b> 别把 HFSM 当成「更高级所以更好」。要能说出<b>它解决了哪一条</b>（转移集中化）<b>、以及为什么 <code>EmberBoss</code> 那 6 个状态不值得上框架</b>。能说清「什么时候不该用」，比会用更有说服力。</p>
+</div>
+
+<nav class="lesson-nav">
+  <a href="../lessons/0001-meet-the-project.html">第 1 课 · 打开项目，你几乎什么都看不到</a>
+  <a href="../lessons/0002-one-heartbeat.html">第 2 课 · 一个心跳，三道门</a>
+  <a href="glossary.html">术语表</a>
+</nav>
+
+</main>
+<footer>
+  EmberlightWandere 架构课 · 参考 002 · 所有结论均已在 2026-09 的代码上核对
+</footer>
+</body>
+</html>

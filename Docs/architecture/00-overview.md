@@ -92,7 +92,7 @@ M8(音频) ──► 无玩法依赖（Resources 自加载）
 | 中文字体 / TMP 图集 / 字体预热 / 加载页 | M7 | `07-art-presentation.md` |
 | 音效 / BGM / 音量 / 播放节流 / 音效素材 | M8 | `08-audio.md` |
 | 音效素材授权 / CC0 来源 | 参考资料 | `../reference/audio-credits.md` |
-| Android 打包 / APK / keystore / PlayerSettings | M9 | `09-build-platform.md` |
+| Android 打包 / APK / keystore / PlayerSettings / 包依赖 / 本地工具清理 | M9 | `09-build-platform.md` |
 | 性能 / 对象池 / 粒子上限 / 帧率 | M9 + M7 | `09-build-platform.md` |
 | 项目总览 / 模块依赖 / 任务归属 | 总览 | `00-overview.md` |
 | 数值口径 / 产品行为 / 不做什么 | 需求 | `../requirements.md` |

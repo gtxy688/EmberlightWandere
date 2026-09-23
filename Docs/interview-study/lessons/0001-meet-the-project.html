@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第 1 课 · 打开项目，你几乎什么都看不到</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<main>
+
+<p class="kicker">EmberlightWandere 架构课 · 第 1 课</p>
+<h1>打开项目，你几乎什么都看不到</h1>
+
+<p class="lede">
+你说代码是 AI 写完的、你一直没管。这不是你一个人的问题——<b>这个项目在设计上就没打算让人看懂</b>：
+打开 Unity，你找不到任何可以「点进去看看」的东西。
+这一课先解决这件事：让你在编辑器里看见它真实的样子。
+</p>
+
+<div class="promise">
+  <b>本课唯一目标：</b>在 Unity 里指出 <code>Emberlight Game</code> 这个物体，并说出它上面挂着哪个脚本、这个脚本负责什么。
+  <br><small>本课<b>不</b>要求你读懂那个脚本里的一行代码。那是下一课的事。</small>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2><span class="num">1</span>先说结论：场景里只有 3 个物体</h2>
+
+<p>
+打开主场景 <code>Assets/Scenes/Emberlight.unity</code>，Hierarchy 窗口里是这样：
+</p>
+
+<table>
+  <thead><tr><th>物体名</th><th>上面挂了什么组件</th><th>说明</th></tr></thead>
+  <tbody>
+    <tr><td><code>Main Camera</code></td><td><code>Transform</code> + <code>Camera</code><br><strong>没有任何脚本</strong></td><td>正交相机，视野高度 8，位于 z = −10</td></tr>
+    <tr><td><code>Emberlight Game</code></td><td><code>Transform</code> +<br><strong><code>EmberGame</code>（唯一的脚本）</strong></td><td><b>整个游戏的唯一入口</b></td></tr>
+    <tr><td><code>Main Light</code></td><td><code>Transform</code> + <code>Light</code><br><strong>没有任何脚本</strong></td><td>新建 3D 项目时 Unity 默认送的平行光；这是个 2D 精灵游戏，用不上，只是没删</td></tr>
+  </tbody>
+</table>
+
+<div class="note key">
+  <span class="tag">这就是你「看不懂」的第一个原因</span>
+  <p>打开场景，你看到的是一个几乎空的编辑器。没有 Player、没有 Enemy、没有 HUD、没有按钮——<b>没有任何东西可以点进去、顺着找到代码</b>。</p>
+  <p>教程里的项目，Hierarchy 里摆着一堆物体，你点一个就能看到管它的脚本。这个项目把这条路堵死了。</p>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2><span class="num">2</span>为什么「没挂上去」等于「不会跑」</h2>
+
+<p>
+Unity 有一条最基础、但这个项目把它用到极致的规则：
+</p>
+
+<div class="note warn">
+  <span class="tag">Unity 的基本规则</span>
+  <p>你写的 <code>.cs</code> 文件本身是<b>死的</b>。它必须被<b>挂到某个 GameObject 上</b>、成为一个<b>组件</b>，Unity 才会去调用它的 <code>Start()</code>、<code>Update()</code> 这些方法。</p>
+  <p>没挂上去的类，就是一份普通代码，等着别人 <code>new</code> 它。</p>
+</div>
+
+<p>
+现在把这条规则和你项目里的数字对一下：
+</p>
+
+<table>
+  <thead><tr><th></th><th>数量</th><th>后果</th></tr></thead>
+  <tbody>
+    <tr><td><code>Assets</code> 下的 <code>.cs</code> 文件</td><td><strong>46</strong></td><td>40 个运行时 + 6 个编辑器脚本</td></tr>
+    <tr><td>能挂到物体上的类（继承 <code>MonoBehaviour</code>）</td><td><strong>10</strong></td><td>只有它们具备「被引擎调用」的资格</td></tr>
+    <tr><td><b>场景里实际挂上去的脚本</b></td><td><strong>1</strong></td><td><b><code>EmberGame</code></b>——就它一个</td></tr>
+  </tbody>
+</table>
+
+<p>
+也就是说：<b>按下 Play 之前，除 <code>EmberGame</code> 以外的整个世界都还不存在。</b>
+</p>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2><span class="num">3</span>那游戏里的东西是哪来的？</h2>
+
+<p>
+答案：<b>全部是运行时用代码造出来的。</b>你按下 Play 的那一刻，<code>EmberGame</code> 才开始一行一行地把这个世界 <code>new</code> 出来。
+</p>
+
+<table>
+  <thead><tr><th>你在游戏里看到的</th><th>它是在哪儿被造出来的</th></tr></thead>
+  <tbody>
+    <tr><td>主菜单的标题、说明、几个按钮</td><td><code>EmberMenuUi.cs:85-91</code>，一路 <code>new GameObject(...)</code></td></tr>
+    <tr><td>左下角那个虚拟摇杆</td><td><code>EmberMenuUi.cs:51-62</code></td></tr>
+    <tr><td>血条、波次横幅（HUD）</td><td><code>EmberMenuUi.cs:47</code> · <code>new EmberHud(Safe, font, pause)</code></td></tr>
+    <tr><td>选卡面板、开局四步面板、设置页</td><td><code>EmberMenuUi.cs:43-49</code> · <code>AddComponent&lt;…&gt;()</code></td></tr>
+    <tr><td>加载页</td><td><code>EmberGame.cs:205</code> · <code>AddComponent&lt;EmberIntro&gt;()</code></td></tr>
+    <tr><td>主角</td><td><code>EmberGame.cs:323</code> · <code>new GameObject("Keeper")</code></td></tr>
+    <tr><td>地图边界、地上那 160 块废墟石头</td><td><code>EmberGame.cs:327-334</code>，一个普通的 <code>for</code> 循环</td></tr>
+    <tr><td>敌人、火球、暗弹</td><td><code>EmberPool</code> 对象池按需取用（<code>EmberCombat.cs:375</code>）</td></tr>
+  </tbody>
+</table>
+
+<div class="note key">
+  <span class="tag">第二个洞察</span>
+  <p>下面这张表就是你的「代码地图」：<b>游戏里每一样东西，都能在代码里指到它的出生地。</b></p>
+  <p>以后你想改任何东西，第一步永远是同一个动作：<b>先找到它是谁造出来的。</b></p>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2><span class="num">4</span>动手 · 亲眼看见它长出来（约 10 分钟）</h2>
+
+<p>这一课的核心体验只有一个：<b>看见一棵树从无到有长出来，再看着它消失。</b>请真的打开 Unity 走一遍。</p>
+
+<ol class="steps">
+  <li>
+    <b>打开主场景。</b>在 Project 窗口里找到 <code>Assets/Scenes/Emberlight.unity</code>，双击。
+  </li>
+  <li>
+    <b>数一数 Hierarchy。</b>确认只有 3 项：<code>Main Camera</code>、<code>Emberlight Game</code>、<code>Main Light</code>。
+    <p>如果层级窗口里东西很多，说明你开的不是这个场景（另一个 <code>SampleScene.unity</code> 没有启用，忽略它）。</p>
+  </li>
+  <li>
+    <b>点中 <code>Emberlight Game</code></b>，看 Inspector。确认里面的组件只有 <code>Transform</code> 和 <code>EmberGame</code>。
+  </li>
+  <li>
+    <b>做那个以后要用几百次的动作：</b>在 Inspector 里<b>双击 <code>EmberGame</code> 这个组件名</b>（或者右键 → Edit Script）。
+    Unity 会打开 <code>Assets/Scripts/Core/EmberGame.cs</code>。
+    <p><b>这就是「从游戏里的东西找到管它的代码」。</b>这个项目只有一次练习机会（就这一个脚本），但思路是通用的。</p>
+  </li>
+  <li>
+    <b>顺手确认另外两个物体没有脚本。</b>分别点中 <code>Main Camera</code> 和 <code>Main Light</code>，看 Inspector——都只有内建组件，没有 <code>MonoBehaviour</code>。
+  </li>
+  <li>
+    <b>按 Play。</b>等加载页过去、进到主菜单之后，<b>回来再看 Hierarchy</b>。
+    <p><code>Emberlight Game</code> 左边出现了展开箭头，下面长出了一整棵 UI 树。</p>
+  </li>
+  <li>
+    <b>把树展开看一遍。</b><code>Emberlight Game</code> → <code>Emberlight UI</code> → <code>Safe area</code>，你会看到
+    <code>Overlay</code>、<code>Joystick</code>，以及挂在 <code>Safe area</code> 上的几个面板组件。
+    <b>这些在 Play 之前一个都不存在。</b>
+  </li>
+  <li>
+    <b>停止 Play。</b>Hierarchy 缩回 3 项。
+    <p>因为运行时造出来的东西不会被保存——它们是临时的。</p>
+  </li>
+</ol>
+
+<div class="note key">
+  <span class="tag">你从这一步拿到的结论</span>
+  <p><b>编辑器里空旷 ≠ 项目简单。</b>这个项目的复杂度全部藏在代码里，不在场景里。</p>
+  <p>也正因为如此，「没看过代码」在这里等于「完全不知道游戏是怎么做出来的」——这不是懒，是这个项目的结构决定的。</p>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2><span class="num">5</span>闭卷三题</h2>
+
+<p>不要往回翻。凭刚才看到的画面回答。</p>
+
+<section class="quiz">
+
+  <div class="q" data-why="场景里只有 3 个物体、1 个脚本。UI 树是 <code>EmberMenuUi.Build()</code> 在运行时用 <code>new GameObject(...)</code> 一个个造出来的（<code>EmberMenuUi.cs:32-91</code>），所以 Play 之前根本不存在。">
+    <p class="q-stem">游戏画面上的按钮和血条，是哪来的？</p>
+    <div class="q-opts">
+      <button type="button" class="q-opt" data-ok>运行时由代码创建出来的</button>
+      <button type="button" class="q-opt">打开场景时就预先摆好的</button>
+      <button type="button" class="q-opt">从预制体资源里实例化的</button>
+      <button type="button" class="q-opt">从别的场景里加载进来的</button>
+    </div>
+  </div>
+
+  <div class="q" data-why="Unity 只调用「挂在 GameObject 上的组件」的方法。这个项目 46 个文件里只有 10 个继承 <code>MonoBehaviour</code>，而场景里只挂了 1 个。<b>其余 45 个文件全靠代码互相调用</b>——比如 <code>EmberCombat</code> 根本不是 <code>MonoBehaviour</code>，是 <code>EmberGame</code> 每帧手动调它。">
+    <p class="q-stem">这个项目里绝大多数的类，为什么不会被 Unity 自动调用？</p>
+    <div class="q-opts">
+      <button type="button" class="q-opt" data-ok>它们没挂到任何物体上去</button>
+      <button type="button" class="q-opt">它们都写在了命名空间里面</button>
+      <button type="button" class="q-opt">它们的代码在别的文件里</button>
+      <button type="button" class="q-opt">它们都没有公开构造函数</button>
+    </div>
+  </div>
+
+  <div class="q" data-why="运行时创建的对象不属于场景资产，Unity 不会把它们序列化进 <code>.unity</code> 文件。所以停止 Play 就全部消失，下次 Play 再从代码重新造一遍。<b>这也意味着：你在编辑器里手改那些 UI 是白改的</b>——下次运行会被代码覆盖。">
+    <p class="q-stem">按 Play 后 Hierarchy 长出一棵树，停止后它消失了。为什么？</p>
+    <div class="q-opts">
+      <button type="button" class="q-opt" data-ok>它们是运行时创建的没被存下来</button>
+      <button type="button" class="q-opt">它们默认隐藏停止后会自己恢复</button>
+      <button type="button" class="q-opt">它们属于另一个场景被卸载掉了</button>
+      <button type="button" class="q-opt">它们被对象池回收等下次再复用</button>
+    </div>
+  </div>
+
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2><span class="num">6</span>这一课之后，你应该知道的三件事</h2>
+
+<ul class="check">
+  <li>场景 <code>Emberlight.unity</code> 里只有 3 个物体，只有 <code>Emberlight Game</code> 上挂了脚本。</li>
+  <li>那个脚本叫 <code>EmberGame</code>，是<b>整个游戏唯一的入口</b>。</li>
+  <li>除它以外的一切（UI、主角、敌人、子弹）都是运行时由代码创建的。</li>
+</ul>
+
+<p>
+现在再回头看你之前听到的那些名字——<code>EmberCombat</code>、<code>RunProgress</code>、<code>EmberWeapon</code>——它们都是<b>被 <code>EmberGame</code> 叫起来干活的对象</b>，不是引擎驱动的。
+</p>
+
+<div class="note">
+  <span class="tag">还有一件事值得注意</span>
+  <p>全项目 10 个 <code>MonoBehaviour</code> 里，有 4 个（<code>EmberEnemySilhouette</code>、<code>EmberGodsSelectPanel</code>、<code>EmberUpgradePanel</code>、<code>EmberSettingsPanel</code>）<b>连一个生命周期函数都没有</b>。它们继承 <code>MonoBehaviour</code> 只是为了「能被 <code>AddComponent</code> 挂上去」，并不是想让引擎每帧叫它们。</p>
+  <p>所以「继承 <code>MonoBehaviour</code>」≠「会被引擎驱动」。判断一个类会不会自己动，要看它有没有 <code>Start</code> / <code>Update</code> 这类方法。</p>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<h2><span class="num">7</span>本课首推资源</h2>
+
+<p>
+<a href="https://docs.unity3d.com/Manual/CreatingAndUsingScripts.html">Unity 官方手册 · Creating and Using Scripts</a><br>
+讲清「脚本文件 → 挂到 GameObject → 成为组件 → 被引擎调用」这条链路。本课第 2 节说的那条规则，官方原话在这里。
+</p>
+
+<div class="note">
+  <span class="tag">配套参考</span>
+  <p><a href="../reference/glossary.html">术语表</a>——本课程所有术语的定义都在这里，往后每一课只用这套词。<br>
+  <a href="../../architecture/00-overview.md">项目架构总览</a>——仓库自己的模块文档。<b>建议现在先别读</b>，它假设你已经知道本课这些事实；等下一课之后再回来看会顺很多。</p>
+</div>
+
+<div class="ask">
+  <span class="tag">我是你的老师，随时打断我</span>
+  <p>这一课的节奏还合适吗？如果哪一步在 Unity 里没找到、或者哪个词你不确定，直接说，我据此调下一课的深度。</p>
+  <p><b>下一课</b>：既然 <code>EmberGame</code> 是唯一的入口，那它到底是怎么用<b>一个方法</b>驱动六千六百行代码的？我们会追那条每帧都在跑的调用链。</p>
+</div>
+
+<nav class="lesson-nav">
+  <a href="0002-one-heartbeat.html">第 2 课 · 一个心跳，三道门 →</a>
+  <a href="../reference/glossary.html">术语表</a>
+  <a href="../../architecture/00-overview.md">项目架构总览</a>
+</nav>
+
+</main>
+<footer>
+  EmberlightWandere 架构课 · 第 1 课 · 课程样式与组件见 <code>assets/</code>
+</footer>
+<script src="../assets/quiz.js"></script>
+</body>
+</html>

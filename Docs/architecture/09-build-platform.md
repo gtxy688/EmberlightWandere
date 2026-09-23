@@ -114,11 +114,13 @@ Unity.exe -batchmode -projectPath <项目> `
 ### 已知取舍
 
 - **粒子 GC**：`EmberEffects` 池空时仍 `new Particle`，长跑需盯 GC（上限 120）。
-- **本地包依赖**：`Packages/manifest.json` 引用 `.codely.packages` 与 `.codely-cli` 的 `file:` 依赖，这两个目录**已 gitignore**。**新机器克隆后需先装 Codely CLI**，否则 Unity 解析不到包会报错。
+- **开发工具包**：项目包清单不依赖机器本地的 AI 工具安装目录；克隆后无需额外安装该类 CLI。
 - `Assets/Audio/Sfx/Candidates/` 已删除（零引用）；`TJGenerators/History/` 保留为音效源头。
 - `Assets/Audio/_download/` 原始素材包保留，**上架前可删除以减小包体**。
 
 ## 对外契约
+
+- 包清单与锁文件不得引用已删除的本地开发工具目录。
 
 | 名称 | 类型 | 输入 | 输出 | 保证 |
 |------|------|------|------|------|
