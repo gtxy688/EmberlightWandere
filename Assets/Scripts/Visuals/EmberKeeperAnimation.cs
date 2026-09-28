@@ -6,12 +6,17 @@ namespace Emberlight
     {
         Transform body, cloak, face, lantern;
         SpriteRenderer glow;
-        EmberGame game;
+        System.Func<EmberRunPhase> phase;
         Vector3 previous;
         Vector2 drift;
-        float phase, moving;
-        public void Initialize()
+        float phaseClock, moving;
+        /// <summary>
+        /// 注入阶段闸门。原先这里用 `FindObjectOfType&lt;EmberGame&gt;()` 反查游戏实例——
+        /// 表现层反向依赖游戏层，还隐藏了依赖关系；现在由组合根在创建灯芯时传入。
+        /// </summary>
+        public void Initialize(System.Func<EmberRunPhase> phaseProvider)
         {
+            phase = phaseProvider;
             body = new GameObject("Floating keeper").transform;
             body.SetParent(transform,false);
             // Ground shadow. Parented to the keeper root, not to body: it is a ground shadow, so
@@ -39,25 +44,24 @@ namespace Emberlight
             EmberArt.Fire(lantern,new Vector2(0,-.18f),.11f,9);
             glow=EmberVisuals.Shape("Lantern light",lantern,new Vector2(0,-.18f),Vector2.one*.65f,new Color(1f,.5f,.1f,.12f),2);glow.sprite=EmberArt.Glow;
             previous=transform.position;
-            game=Object.FindObjectOfType<EmberGame>();
         }
         void LateUpdate()
         {
             Vector3 delta=transform.position-previous;previous=transform.position;
             float dt=Time.deltaTime;if(dt<=0||body==null)return;
 
-            if(game!=null && game.State!=EmberGame.Mode.Playing)return;
+            if(phase!=null && phase()!=EmberRunPhase.Playing)return;
             Vector2 velocity=delta.sqrMagnitude<1f?(Vector2)delta/dt:Vector2.zero;
             float blend=1f-Mathf.Exp(-dt*9f);
             drift=Vector2.Lerp(drift,Vector2.ClampMagnitude(velocity/3.3f,1),blend);
             moving=Mathf.Lerp(moving,Mathf.Clamp01(velocity.magnitude/3.3f),blend);
-            phase+=dt*(2.4f+moving*2f);
-            body.localPosition=new Vector3(0,.025f*Mathf.Sin(phase),0);
+            phaseClock+=dt*(2.4f+moving*2f);
+            body.localPosition=new Vector3(0,.025f*Mathf.Sin(phaseClock),0);
             body.localRotation=Quaternion.Euler(0,0,-drift.x*5f);
-            cloak.localScale=new Vector3(.66f*(1f+.025f*Mathf.Sin(phase)),.78f*(1f-.018f*Mathf.Sin(phase)),1);
+            cloak.localScale=new Vector3(.66f*(1f+.025f*Mathf.Sin(phaseClock)),.78f*(1f-.018f*Mathf.Sin(phaseClock)),1);
             face.localPosition=new Vector3(drift.x*.035f,.21f+drift.y*.016f,0);
-            lantern.localRotation=Quaternion.Euler(0,0,Mathf.Sin(phase*.85f)*(3f+moving*9f)+drift.x*9f);
-            glow.color=new Color(1f,.5f,.1f,.12f+.015f*Mathf.Sin(phase*2.3f));
+            lantern.localRotation=Quaternion.Euler(0,0,Mathf.Sin(phaseClock*.85f)*(3f+moving*9f)+drift.x*9f);
+            glow.color=new Color(1f,.5f,.1f,.12f+.015f*Mathf.Sin(phaseClock*2.3f));
         }
     }
 }

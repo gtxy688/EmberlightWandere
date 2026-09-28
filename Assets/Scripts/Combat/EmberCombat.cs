@@ -24,7 +24,7 @@ namespace Emberlight
             public Color[] colors;
         }
 
-        readonly EmberGame game;
+        readonly IEmberCombatHost host;
         readonly List<Enemy> enemies = new List<Enemy>();
         readonly List<EmberWeapon> weapons = new List<EmberWeapon>();
         readonly EmberTrailWeapon trailWeapon = new EmberTrailWeapon();
@@ -80,11 +80,11 @@ namespace Emberlight
         }
         public int WaveKillsRemaining { get { return Mathf.Max(0, waveQuota + extraSpawned - waveKilled); } }
 
-        public EmberCombat(EmberGame owner)
+        public EmberCombat(IEmberCombatHost owner)
         {
-            game = owner;
+            host = owner;
             enemyProjectiles = new EmberEnemyProjectiles(pool);
-            healingDrops = new EmberHealingDrops(pool, game);
+            healingDrops = new EmberHealingDrops(pool, host);
             // Register all weapon modules; Tick gates on OwnedWeapons / WavePower (Gods-Select-v3: slot weapons at Begin).
             weapons.Add(new EmberBasicShotWeapon());
             weapons.Add(new EmberOrbitWeapon());
@@ -157,7 +157,7 @@ namespace Emberlight
             weaponCtx.DamageFrom = DamageFrom;
             weaponCtx.ContactDamageFrom = (i, amount, source) => ApplyDamageFrom(i, amount, source, false);
             weaponCtx.Intercept = enemyProjectiles.Intercept;
-            weaponCtx.StillPlaying = () => game.State == EmberGame.Mode.Playing;
+            weaponCtx.StillPlaying = () => host.Phase == EmberRunPhase.Playing;
             weaponCtx.SpawnBurnPatch = (pos, scale) =>
             {
                 if (world != null) trailWeapon.SpawnPatch(pos, world, scale, pool);
@@ -243,8 +243,8 @@ namespace Emberlight
 
         public void Tick(float dt)
         {
-            if (game.State != EmberGame.Mode.Playing) return;
-            var progress = game.Progress;
+            if (host.Phase != EmberRunPhase.Playing) return;
+            var progress = host.Progress;
             if (config == null) config = LevelConfig.Default;
 
             if (!awaitingUpgrade && !bossSpawned && wave < config.BossWave && waveSpawned < waveQuota && enemies.Count < config.EnemyLimit)
@@ -289,7 +289,7 @@ namespace Emberlight
                 {
                     e.reviveTimer = Mathf.Max(0, e.reviveTimer - dt);
                     if (e.reviveTimer == 0) { e.hp = e.maxHp * config.RebirthHpFraction; e.bar.Set(config.RebirthHpFraction); }
-                    if (e.visual != null) e.visual.Tick(game.Elapsed, config);
+                    if (e.visual != null) e.visual.Tick(host.Elapsed, config);
                     continue;
                 }
                 Vector2 before = e.view.position;
@@ -299,16 +299,16 @@ namespace Emberlight
                     SetEnemyContext(e);
                     e.behavior.Tick(dt, enemyCtx);
                 }
-                if (game.State != EmberGame.Mode.Playing) return;
+                if (host.Phase != EmberRunPhase.Playing) return;
                 e.moveDirection = ((Vector2)e.view.position - before).normalized;
-                if (e.visual != null) e.visual.Tick(game.Elapsed, config);
+                if (e.visual != null) e.visual.Tick(host.Elapsed, config);
                 if (!e.Targetable) continue;
                 float distance = Vector2.Distance(player.position, e.view.position);
                 if (e.affix == EnemyAffix.Burning && distance <= config.BurningRadius) inBurningAura = true;
-                if (distance < e.radius + .32f && game.HurtReady)
+                if (distance < e.radius + .32f && host.HurtReady)
                 {
-                    game.HurtPlayer(e.kind == 3 ? 24 : 9);
-                    if (game.State != EmberGame.Mode.Playing) return;
+                    host.HurtPlayer(e.kind == 3 ? 24 : 9);
+                    if (host.Phase != EmberRunPhase.Playing) return;
                 }
             }
             // One shared pulse prevents overlapping auras scaling damage with enemy count.
@@ -316,8 +316,8 @@ namespace Emberlight
             if (burningTimer >= 1f)
             {
                 burningTimer -= 1f;
-                game.HurtPlayer(config.BurningDamage);
-                if (game.State != EmberGame.Mode.Playing) return;
+                host.HurtPlayer(config.BurningDamage);
+                if (host.Phase != EmberRunPhase.Playing) return;
             }
 
             // Tick weapons (basic / orbits / trail / pulse / unlockables).
@@ -330,7 +330,7 @@ namespace Emberlight
             hasLastPlayerPos = true;
 
             weaponCtx.Progress = progress;
-            weaponCtx.Elapsed = game.Elapsed;
+            weaponCtx.Elapsed = host.Elapsed;
             weaponCtx.Player = player;
             weaponCtx.World = world;
             weaponCtx.Cam = cam;
@@ -338,12 +338,12 @@ namespace Emberlight
             weaponCtx.Pool = pool;
             for (int w = 0; w < weapons.Count; w++)
             {
-                if (game.State != EmberGame.Mode.Playing) return;
+                if (host.Phase != EmberRunPhase.Playing) return;
                 weapons[w].Tick(dt, weaponCtx);
             }
-            if (game.State != EmberGame.Mode.Playing) return;
-            enemyProjectiles.HitPlayer(player.position, game.HurtPlayer);
-            if (game.State != EmberGame.Mode.Playing) return;
+            if (host.Phase != EmberRunPhase.Playing) return;
+            enemyProjectiles.HitPlayer(player.position, host.HurtPlayer);
+            if (host.Phase != EmberRunPhase.Playing) return;
             ResolveDeaths();
         }
 
@@ -401,7 +401,7 @@ namespace Emberlight
                     added.visual = new EmberEnemyVisual(added, world);
                 }
                 added.bar = new EmberEnemyBar(view, boss);
-                if (boss) { added.ai = new EmberBoss(game, view, world, config.BossTier(wave), FireBossVolley); bossEnemy = added; }
+                if (boss) { added.ai = new EmberBoss(host, view, world, config.BossTier(wave), FireBossVolley); bossEnemy = added; }
                 added.colors = new Color[added.parts.Length];
                 for (int k = 0; k < added.parts.Length; k++) added.colors[k] = added.parts[k].color;
             }
@@ -430,7 +430,7 @@ namespace Emberlight
         void Explode(Vector2 position, float radius, float damage)
         {
             effects.Nova(position, radius);
-            if (Vector2.Distance(player.position, position) <= radius) game.HurtPlayer(damage);
+            if (Vector2.Distance(player.position, position) <= radius) host.HurtPlayer(damage);
         }
 
         void Damage(int index, float amount) { DamageFrom(index, amount, player.position); }
@@ -485,15 +485,15 @@ namespace Emberlight
                 healingDrops.OnDeath(e.view.position, e.kind, e.affix, random);
                 ReleaseEnemyView(e);
                 enemies.RemoveAt(i);
-                game.RegisterKill();
-                game.Progress.AddScore(boss ? 30 : e.kind == 6 ? 0 : e.affix != EnemyAffix.None ? 3 : 1);
+                host.RegisterKill();
+                host.Progress.AddScore(boss ? 30 : e.kind == 6 ? 0 : e.affix != EnemyAffix.None ? 3 : 1);
                 if (boss)
                 {
                     bossEnemy = null;
                     enemyProjectiles.Clear();
                     awaitingUpgrade = true;
-                    if (wave == config.BossWave) game.EndRun(true);
-                    else game.OnWaveCleared(wave);
+                    if (wave == config.BossWave) host.EndRun(true);
+                    else host.OnWaveCleared(wave);
                     return;
                 }
                 waveKilled++;
@@ -514,7 +514,7 @@ namespace Emberlight
                 awaitingUpgrade = true;
                 enemyProjectiles.Clear();
                 encounterTimer = 0;
-                game.OnWaveCleared(wave);
+                host.OnWaveCleared(wave);
             }
         }
 

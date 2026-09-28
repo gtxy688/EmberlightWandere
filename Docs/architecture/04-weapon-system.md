@@ -152,7 +152,7 @@ public abstract class EmberWeapon
 
 ## 影响与回归范围
 
-- **直接影响模块**：M3（伤害投递与 context）、M2（读取加成）、M6（卡面名称与说明文案由 `EmberGame.UpgradeNames/Details` 提供）、M7（弹体外观）、M8（开火音效接线点）。
+- **直接影响模块**：M3（伤害投递与 context）、M2（读取加成）、M6（卡面名称与说明文案由 `EmberCopy.UpgradeNames/Details` 提供）、M7（弹体外观）、M8（开火音效接线点）。
 - **必须复验的契约**：伤害乘区公式、`OwnsWeapon` 门控、专属/质变形态替换、穿透静止门控、同怪环火满伤规则。
 - **回归触发条件**：任何 `EmberWeaponContext` 字段变更、`RunProgress` 加成接口变更、`EmberPool` key 变更。
 

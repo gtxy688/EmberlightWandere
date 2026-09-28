@@ -1,47 +1,64 @@
 using UnityEngine;
-using TMPro;
 
 namespace Emberlight
 {
-    /// <summary>Run director: Gods-Select-v3 pre-run (N + roster), wave offers, compensation, refreshes.</summary>
-    public sealed class EmberGame : MonoBehaviour, IEmberMenuHost
+    /// <summary>
+    /// 组合根：本作唯一的入口脚本，挂在主场景的常驻对象上。
+    ///
+    /// 它只做四件事——持有阶段与本局状态、装配各单元、驱动每帧顺序、把各单元的回调接起来。
+    /// 具体规则分别属于：血量结算 <see cref="EmberKeeperVitals"/>、选卡推进
+    /// <see cref="RunFlowController"/>、开局界面流程 <see cref="EmberMenuFlow"/>、
+    /// 战斗与波次 <see cref="EmberCombat"/>、构筑与卡池 <see cref="RunProgress"/>。
+    ///
+    /// 不要在这里重新堆业务规则：这个文件在 2026-09 的重构前是 361 行的上帝类
+    /// （11 态状态机 + 摇杆输入 + 相机 + 血量 + HUD + 选卡编排），拆开就是为了不让它再长回去。
+    /// </summary>
+    public sealed class EmberGame : MonoBehaviour, IEmberMenuHost, RunFlowController.Host, IEmberCombatHost, EmberInput.Presenter
     {
-        public enum Mode { Loading, Menu, SelectLength, SelectDifficulty, SelectSlots, SelectRoster, Playing, Upgrade, Paused, Lost, Won }
+        // ── UI 只读 API ───────────────────────────────────────────────────────────────────
+        /// <summary>当前局长阶段。</summary>
+        public EmberRunPhase Phase { get; private set; }
+        /// <summary>本局数据；不在局内时为 null。生命结算经 <see cref="EmberRunState.Vitals"/> 访问。</summary>
+        public EmberRunState Run { get; private set; }
 
+        // ── 转发给战斗模块的常用只读项（等价于 Run 上的字段，省掉一层解引用） ──────────────
+        /// <summary>本局已进行的游戏内秒数。</summary>
+        public float Elapsed { get { return Run.Elapsed; } }
+        /// <summary>本局构筑进度；未开局时为 null。</summary>
+        public RunProgress Progress { get { return Run.Progress; } }
 
-        public Mode State { get; private set; }
-        public RunProgress Progress { get; private set; }
-        public float Elapsed { get; private set; }
-        public int Kills { get; private set; }
-        public float Health { get; private set; }
-        public bool HurtReady { get { return hurtTimer <= 0; } }
-        public int EnemyCount { get { return combat != null ? combat.EnemyCount : 0; } }
-
-        /// <summary>UI API: refreshes left this run.</summary>
-        public int RefreshRemaining { get { return Progress != null ? Progress.RefreshesRemaining : 0; } }
-        /// <summary>UI API: current luck.</summary>
-        public float LuckValue { get { return Progress != null ? Progress.Luck : 0f; } }
-        /// <summary>UI API: last offered cards.</summary>
+        /// <summary>UI API：本局剩余刷新次数。</summary>
+        public int RefreshRemaining { get { return Run.Progress != null ? Run.Progress.RefreshesRemaining : 0; } }
+        /// <summary>UI API：当前幸运值。</summary>
+        public float LuckValue { get { return Run.Progress != null ? Run.Progress.Luck : 0f; } }
+        /// <summary>UI API：最近一次发到桌面上的候选。</summary>
         public EmberOffer[] CurrentOffers { get { return offered; } }
 
         EmberCombat combat;
         EmberMenuUi ui;
         EmberMenuFlow menuFlow;
-        int pendingWavePicks;
-        LevelConfig runLevel = LevelConfig.Default;
-        Transform world, player;
-        Camera cam;
-        float hurtTimer;
-        int pointer = -1;
-        Vector2 origin, stick;
-        EmberOffer[] offered = new EmberOffer[0];
+        RunFlowController flow;
+        /// <summary>战斗 HUD 的唯一推送点；在 `EmberMenuUi.Build` 之后才有目标可推。</summary>
+        EmberHudPresenter hud;
+        EmberInput input;
         readonly System.Random random = new System.Random();
-        int lastClearedWave;
-        bool compensationPick;
-        int lastScreenWidth, lastScreenHeight;
-        Rect lastSafeArea;
+        EmberOffer[] offered = new EmberOffer[0];
 
-        float MaxHealth { get { return 100 + (Progress != null ? Progress.BonusMaxHealth : 0); } }
+        // ── RunFlowController.Host ────────────────────────────────────────────────────────
+        EmberRunState RunFlowController.Host.Run { get { return Run; } }
+        EmberRunPhase RunFlowController.Host.Phase { get { return Phase; } }
+        EmberOffer[] RunFlowController.Host.Offers { get { return offered; } }
+        void RunFlowController.Host.RequestChoices() { offered = Run.Progress.Choices(random, Run.Level != null ? Run.Level.BossWave : 0); }
+        void RunFlowController.Host.OnUpgradeOffered(EmberOffer[] offers) { ShowUpgradeNotice(offers); }
+        void RunFlowController.Host.OnUpgradeSequenceFinished() { ReturnToPlay(); }
+        void RunFlowController.Host.OnKeeperDown() { End(false); }
+
+        void Awake()
+        {
+            Run = new EmberRunState(() => Phase);
+            flow = new RunFlowController(this, random);
+            input = new EmberInput(this);
+        }
 
         void Start()
         {
@@ -50,11 +67,11 @@ namespace Emberlight
             QualitySettings.vSyncCount = 0;
             Application.targetFrameRate = 60;
             EmberAudio.Ensure();
-            State = Mode.Loading;
+            Phase = EmberRunPhase.Loading;
             combat = new EmberCombat(this);
             ui = new EmberMenuUi();
             menuFlow = new EmberMenuFlow(ui, this);
-            cam = Camera.main;
+            var cam = Camera.main;
             if (cam == null)
             {
                 cam = new GameObject("Main Camera").AddComponent<Camera>();
@@ -64,60 +81,85 @@ namespace Emberlight
             cam.orthographicSize = 8;
             cam.clearFlags = CameraClearFlags.SolidColor;
             cam.backgroundColor = new Color(.055f, .085f, .12f);
+            Run.Cam = cam;
             // Start the camp ambience while the loading page is visible. ShowMainMenu
             // calls this again, but EmberAudio keeps the current track playing.
             EmberAudio.Ensure().PlayMenuMusic();
             gameObject.AddComponent<EmberIntro>().Begin(loadedFont =>
             {
                 ui.Build(transform, loadedFont, Pause);
-                State = Mode.Menu;
+                ui.WatchSafeArea();
+                hud = new EmberHudPresenter(ui.BattleHud, Run, combat, () => Phase);
+                Phase = EmberRunPhase.Menu;
                 ui.Overlay.SetActive(false);
                 ui.BattleHud.Show(false);
             }, () => menuFlow.ShowMainMenu());
         }
 
-        void OnDestroy() { Time.timeScale = 1; }
+        void OnDestroy()
+        {
+            if (ui != null) ui.UnwatchSafeArea();
+            Time.timeScale = 1;
+        }
+
+        // ── 每帧 ──────────────────────────────────────────────────────────────────────────
+
+        void Update()
+        {
+            if (Phase != EmberRunPhase.Playing) return;
+            float dt = Time.deltaTime;
+            Run.Elapsed += dt;
+            Run.Vitals.Tick(dt);
+            input.Tick();
+            if (Phase != EmberRunPhase.Playing) return;
+
+            EmberKeeperMotion.Step(Run, input.Stick, dt);
+
+            combat.Tick(dt);
+            if (Phase != EmberRunPhase.Playing) return;
+            hud.Push();
+        }
+
+        // ── 开局：装配一局 ────────────────────────────────────────────────────────────────
 
         void StartRunWith(int[] weapons, int slots)
         {
             if (ui == null || ui.BattleHud == null) return;
-            runLevel = LevelConfig.Create(menuFlow.SelectedDifficulty, menuFlow.SelectedWaves);
-            pendingWavePicks = 0;
+            Run.Level = LevelConfig.Create(menuFlow.SelectedDifficulty, menuFlow.SelectedWaves);
+            flow.Reset();
             if (ui.GodsSelect != null) ui.GodsSelect.Hide();
-            if (world != null)
+            if (Run.World != null)
             {
-                world.gameObject.SetActive(false);
-                Destroy(world.gameObject);
+                Run.World.gameObject.SetActive(false);
+                Destroy(Run.World.gameObject);
             }
             combat.TearDown();
-            world = new GameObject("Run world").transform;
-            var effects = world.gameObject.AddComponent<EmberEffects>();
-            effects.Initialize(this);
-            Progress = new RunProgress();
-            Progress.ConfigureRun(weapons, slots);
-            Health = MaxHealth;
-            Elapsed = 0;
-            Kills = 0;
-            hurtTimer = 0;
-            compensationPick = false;
+            Run.World = new GameObject("Run world").transform;
+            Run.Effects = Run.World.gameObject.AddComponent<EmberEffects>();
+            Run.Effects.Initialize(() => Phase);
+            Run.Progress = new RunProgress();
+            Run.Progress.ConfigureRun(weapons, slots);
+            Run.Kills = 0;
+            Run.Vitals.Reset();
             // The keeper rig belongs to EmberKeeperAnimation (hood rim, narrow eyes, swinging
             // lantern); EmberVisuals.Character only builds the plain shade silhouette.
-            player = new GameObject("Keeper").transform;
-            player.SetParent(world, false);
-            player.gameObject.AddComponent<EmberKeeperAnimation>().Initialize();
+            Run.Keeper = new GameObject("Keeper").transform;
+            Run.Keeper.SetParent(Run.World, false);
+            Run.Keeper.gameObject.AddComponent<EmberKeeperAnimation>().Initialize(() => Phase);
             var deco = new System.Random(73);
             for (int i = 0; i < 160; i++)
             {
                 Vector2 p = new Vector2((float)deco.NextDouble() * 46 - 23, (float)deco.NextDouble() * 46 - 23);
-                EmberVisuals.Shape("Ruin stone", world, p, new Vector2(.3f + (float)deco.NextDouble(), .18f), new Color(.10f, .15f, .19f), 0);
+                EmberVisuals.Shape("Ruin stone", Run.World, p, new Vector2(.3f + (float)deco.NextDouble(), .18f), new Color(.10f, .15f, .19f), 0);
             }
-            var level = runLevel;
+            var level = Run.Level;
             level.ApplyWorld();
-            EmberWorld.BuildBoundary(world);
+            EmberWorld.BuildBoundary(Run.World);
             // Begin activates only weapons in slots (OwnsWeapon gate).
-            combat.Begin(world, player, cam, effects, level);
-            UpdateCamera();
+            combat.Begin(Run.World, Run.Keeper, Run.Cam, Run.Effects, level);
+            EmberKeeperMotion.Follow(Run);
             SetPlaying();
+            hud.Push();
         }
 
         void SetPlaying()
@@ -125,169 +167,64 @@ namespace Emberlight
             if (ui.UpgradePanel != null) ui.UpgradePanel.Hide();
             if (ui.GodsSelect != null) ui.GodsSelect.Hide();
             if (ui.SettingsPanel != null) ui.SettingsPanel.Hide();
-            State = Mode.Playing;
+            Phase = EmberRunPhase.Playing;
             // Restore the player's chosen speed; teardown and the editor reset timeScale to 1.
             GameSpeed.Apply();
             EmberAudio.Ensure().PlayCombatMusic();
             ui.Overlay.SetActive(false);
             ui.BattleHud.Show(true);
-            UpdateHud();
-            pointer = -1;
-            stick = Vector2.zero;
+            input.Reset();
             ui.StickBase.gameObject.SetActive(false);
         }
 
-        void Update()
+        // ── 选卡：规则在 RunFlowController，这里只做呈现与音频 ────────────────────────────
+
+        /// <summary>进入 Upgrade 阶段并把候选画出来。</summary>
+        void ShowUpgradeNotice(EmberOffer[] offers)
         {
-            // Safe area only changes on a resolution / orientation change, so this is driven by
-            // the event instead of being polled every frame by every state, including the ones
-            // that return immediately below.
-            if (Screen.width != lastScreenWidth || Screen.height != lastScreenHeight ||
-                Screen.safeArea != lastSafeArea)
-            {
-                lastScreenWidth = Screen.width;
-                lastScreenHeight = Screen.height;
-                lastSafeArea = Screen.safeArea;
-                ui.UpdateSafeArea();
-            }
-            if (State != Mode.Playing) return;
-            float dt = Time.deltaTime;
-            Elapsed += dt;
-            hurtTimer -= dt;
-            ReadInput();
-            if (State != Mode.Playing) return;
-
-            Vector2 move = Vector2.ClampMagnitude(new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical")) + stick, 1);
-            player.position += (Vector3)(move * (3.3f * (1 + Progress.MoveSpeedBonus) * dt));
-            player.position = EmberWorld.Clamp(player.position);
-            UpdateCamera();
-
-            combat.Tick(dt);
-            if (State != Mode.Playing) return;
-            UpdateHud();
-        }
-
-
-        void UpdateHud()
-        {
-            if (ui == null || ui.BattleHud == null || Progress == null) return;
-            int wave = combat != null ? combat.Wave : 1;
-            int remaining = combat != null ? combat.WaveRemaining : 0;
-            int quota = combat != null ? combat.WaveQuota : 0;
-            ui.BattleHud.Set(Health, MaxHealth, Progress, Elapsed, Kills, wave, remaining, quota);
-            ui.BattleHud.Stage(wave, runLevel.BossWave, LevelConfig.DifficultyName(runLevel.Difficulty), runLevel.WaveName(wave));
-            ui.BattleHud.Encounter(combat.EncounterText);
-            var boss = combat.Boss;
-            ui.BattleHud.Boss(
-                boss == null ? 0 : boss.hp / boss.maxHp,
-                boss == null ? "" : boss.ai.Phase,
-                boss != null && State == Mode.Playing);
-        }
-
-        public bool NeedsHealing { get { return State == Mode.Playing && Health < MaxHealth; } }
-        public static float HealedHealth(float current, float maximum, float amount)
-        { return Mathf.Min(maximum, current + Mathf.Max(0, amount)); }
-        public bool HealPlayer(float amount)
-        {
-            if (!NeedsHealing || amount <= 0) return false;
-            Health = HealedHealth(Health, MaxHealth, amount);
-            UpdateHud();
-            return true;
-        }
-        /// <summary>Monster heal drop: pickable at any HP. Heal only; overflow discarded (shield is trait-only).</summary>
-        public bool PickHealingDrop(float amount)
-        {
-            if (State != Mode.Playing || amount <= 0) return false;
-            if (Health < MaxHealth)
-                Health = HealedHealth(Health, MaxHealth, amount);
-            UpdateHud();
-            EmberAudio.Ensure().PlayPickupHeal();
-            return true;
-        }
-
-        public void HurtPlayer(float damage)
-        {
-            if (State != Mode.Playing || hurtTimer > 0 || damage <= 0) return;
-            Health = Mathf.Max(0, Health - Progress.AbsorbDamage(damage * runLevel.DamageMultiplier));
-            EmberAudio.Ensure().PlayHurt();
-            hurtTimer = .65f;
-            UpdateHud();
-            if (Health <= 0) EndRun(false);
-        }
-
-        public void PlayBossBurst(Vector2 point) { combat.PlayBossBurst(point); }
-        public void RegisterKill() { Kills++; }
-        public void EndRun(bool won) { End(won); }
-
-        void UpdateCamera() { cam.transform.position = new Vector3(player.position.x, player.position.y, -10); }
-
-        public void OnWaveCleared(int clearedWave)
-        {
-            if (State != Mode.Playing || Progress == null) return;
-            lastClearedWave = clearedWave;
-            compensationPick = false;
-            pendingWavePicks = runLevel.PicksAfterWave(clearedWave);
-            if (pendingWavePicks == 0) { combat.AdvanceAfterUpgrade(); SetPlaying(); return; }
-            Progress.OfferChoices();
-            OfferUpgrade(clearedWave);
-        }
-
-        public void OfferUpgrade(int clearedWave)
-        {
-            State = Mode.Upgrade;
+            offered = offers;
+            Phase = EmberRunPhase.Upgrade;
             EmberAudio.Ensure().PlayCardOpen();
             ui.BattleHud.Show(false);
-            stick = Vector2.zero;
-            lastClearedWave = clearedWave;
-            offered = Progress.Choices(random, clearedWave);
+            input.Reset();
             ui.Overlay.SetActive(false);
             ui.StickBase.gameObject.SetActive(false);
-            ui.UpgradePanel.Show(offered, Progress, EmberCopy.UpgradeNames, EmberCopy.UpgradeDetails, SelectUpgrade, TryRefreshOffer);
+            ui.UpgradePanel.Show(offered, Run.Progress, EmberCopy.UpgradeNames, EmberCopy.UpgradeDetails, SelectUpgrade, TryRefreshOffer);
         }
 
-        /// <summary>UI API: spend a free refresh and rebuild the offer panel.</summary>
+        /// <summary>选卡序列走完：开始下一波并回到战斗。</summary>
+        void ReturnToPlay()
+        {
+            combat.AdvanceAfterUpgrade();
+            SetPlaying();
+            hud.Push();
+        }
+
+        /// <summary>界面回流：清波后请求发卡。</summary>
+        public void OnWaveCleared(int clearedWave) { flow.OnWaveCleared(clearedWave); }
+
+        /// <summary>UI API：扣一次免费刷新并重绘候选面板。</summary>
         public bool TryRefreshOffer()
         {
-            if (State != Mode.Upgrade || Progress == null) return false;
-            EmberOffer[] next;
-            if (!Progress.TryRefresh(random, lastClearedWave, out next) || next == null) return false;
-            offered = next;
-            ui.UpgradePanel.Show(offered, Progress, EmberCopy.UpgradeNames, EmberCopy.UpgradeDetails, SelectUpgrade, TryRefreshOffer);
+            if (!flow.TryRefresh()) return false;
+            ui.UpgradePanel.Show(offered, Run.Progress, EmberCopy.UpgradeNames, EmberCopy.UpgradeDetails, SelectUpgrade, TryRefreshOffer);
             return true;
         }
 
+        /// <summary>UI 回调：玩家点了一张卡。</summary>
         public void SelectUpgrade(EmberOffer offer)
         {
-            if (State != Mode.Upgrade) return;
-            bool ok = false;
-            for (int i = 0; i < offered.Length; i++)
-                if (offered[i].Id == offer.Id && offered[i].Rarity == offer.Rarity && offered[i].WeaponId == offer.WeaponId) { ok = true; break; }
-            if (!ok) return;
-            bool grantedNew;
-            if (!Progress.Choose(offer, out grantedNew)) return;
+            if (!flow.Choose(offer)) return;
             EmberAudio.Ensure().PlayCardPick();
-
-            if (!compensationPick) pendingWavePicks = Mathf.Max(0, pendingWavePicks - 1);
-            // New weapon → one immediate compensation per scheduled choice.
-            if (grantedNew && !compensationPick)
-            {
-                compensationPick = true;
-                Progress.OfferChoices();
-                OfferUpgrade(lastClearedWave);
-                return;
-            }
-
-            compensationPick = false;
-            if (pendingWavePicks > 0) { Progress.OfferChoices(); OfferUpgrade(lastClearedWave); return; }
-            combat.AdvanceAfterUpgrade();
-            SetPlaying();
         }
+
+        // ── 暂停 / 收局 ───────────────────────────────────────────────────────────────────
 
         public void Pause()
         {
-            if (State != Mode.Playing) return;
-            State = Mode.Paused;
-            stick = Vector2.zero;
+            if (Phase != EmberRunPhase.Playing) return;
+            Phase = EmberRunPhase.Paused;
+            input.Reset();
             ui.BattleHud.Show(false);
             ui.StickBase.gameObject.SetActive(false);
             if (ui.UpgradePanel != null) ui.UpgradePanel.Hide();
@@ -301,10 +238,8 @@ namespace Emberlight
         void ReturnToCamp()
         {
             Time.timeScale = 1f;
-            pointer = -1;
-            stick = Vector2.zero;
-            pendingWavePicks = 0;
-            compensationPick = false;
+            input.Reset();
+            flow.Reset();
 
             if (ui != null)
             {
@@ -315,81 +250,95 @@ namespace Emberlight
             }
 
             if (combat != null) combat.TearDown();
-            if (world != null)
+            if (Run.World != null)
             {
-                world.gameObject.SetActive(false);
-                Destroy(world.gameObject);
+                Run.World.gameObject.SetActive(false);
+                Destroy(Run.World.gameObject);
             }
-            world = null;
-            player = null;
-            Progress = null;
+            Run.Clear();
             menuFlow.ShowMainMenu();
+        }
+
+        void End(bool won)
+        {
+            if (Phase == EmberRunPhase.Won || Phase == EmberRunPhase.Lost || Run.Progress == null) return;
+            Phase = won ? EmberRunPhase.Won : EmberRunPhase.Lost;
+            EmberAudio.Ensure().PlayMenuMusic();
+            var level = Run.Level;
+            ui.Show(won ? EmberCopy.WinTitle : EmberCopy.LoseTitle,
+                LevelConfig.DifficultyName(level.Difficulty) + " · " + level.BossWave + " 波征程"
+                + "\n到达第 " + combat.Wave + " 波 · 生存 " + Run.Elapsed.ToString("0") + " 秒"
+                + "\n击杀 " + Run.Kills + " · 余烬 " + Run.Progress.FinalScore(),
+                new[] { EmberCopy.RestartChoice, EmberCopy.ReturnChoice }, new UnityEngine.Events.UnityAction[] { menuFlow.BeginRun, menuFlow.ShowMainMenu });
         }
 
         void OnApplicationPause(bool paused) { if (paused) Pause(); }
         void OnApplicationFocus(bool focused) { if (!focused) Pause(); }
 
-        void End(bool won)
+        // ── 输入 ──────────────────────────────────────────────────────────────────────────
+
+        // ── EmberInput.Presenter ──────────────────────────────────────────────────────────
+
+        /// <summary>摇杆状态交给界面摆放底盘；输入解析本身在 <see cref="EmberInput"/>。</summary>
+        void EmberInput.Presenter.OnStick(bool active, Vector2 screenOrigin, Vector2 stick)
         {
-            if (State == Mode.Won || State == Mode.Lost || Progress == null) return;
-            State = won ? Mode.Won : Mode.Lost;
-            EmberAudio.Ensure().PlayMenuMusic();
-            ui.Show(won ? EmberCopy.WinTitle : EmberCopy.LoseTitle,
-                LevelConfig.DifficultyName(runLevel.Difficulty) + " · " + runLevel.BossWave + " 波征程"
-                + "\n到达第 " + combat.Wave + " 波 · 生存 " + Elapsed.ToString("0") + " 秒"
-                + "\n击杀 " + Kills + " · 余烬 " + Progress.FinalScore(),
-                new[] { EmberCopy.RestartChoice, EmberCopy.ReturnChoice }, new UnityEngine.Events.UnityAction[] { menuFlow.BeginRun, menuFlow.ShowMainMenu });
+            if (ui != null) ui.SetStick(active, screenOrigin, stick);
         }
 
-        void ReadInput()
+        /// <summary>Esc 等暂停请求。</summary>
+        void EmberInput.Presenter.OnPauseRequested() { Pause(); }
+
+        // ── 战斗与掉落反过来调用的入口 ────────────────────────────────────────────────────
+
+        /// <summary>UI 与战斗共用：无敌帧是否已结束。</summary>
+        public bool HurtReady { get { return Run.Vitals.HurtReady; } }
+
+        /// <summary>UI 与掉落共用：是否处在"残血且战斗中"。</summary>
+        public bool NeedsHealing { get { return Run.Vitals.NeedsHealing; } }
+
+        /// <summary>受伤入口：结算护盾与生命，生命归零则收局。</summary>
+        public void HurtPlayer(float damage)
         {
-            if (Input.touchCount > 0)
-            {
-                for (int i = 0; i < Input.touchCount; i++)
-                {
-                    Touch t = Input.GetTouch(i);
-                    if (t.phase == TouchPhase.Began && pointer == -1 && t.position.y < Screen.height * .7f)
-                    {
-                        pointer = t.fingerId;
-                        origin = t.position;
-                    }
-                    if (t.fingerId == pointer)
-                    {
-                        stick = Vector2.ClampMagnitude((t.position - origin) / (Screen.width * .14f), 1);
-                        if (t.phase == TouchPhase.Ended || t.phase == TouchPhase.Canceled)
-                        {
-                            pointer = -1;
-                            stick = Vector2.zero;
-                        }
-                    }
-                }
-            }
-            else
-            {
-                if (Input.GetMouseButtonDown(0) && Input.mousePosition.y < Screen.height * .7f)
-                {
-                    pointer = -2;
-                    origin = Input.mousePosition;
-                }
-                if (pointer == -2) stick = Vector2.ClampMagnitude(((Vector2)Input.mousePosition - origin) / (Screen.width * .14f), 1);
-                if (Input.GetMouseButtonUp(0))
-                {
-                    pointer = -1;
-                    stick = Vector2.zero;
-                }
-            }
-            ui.SetStick(pointer != -1, origin, stick);
-            if (Input.GetKeyDown(KeyCode.Escape)) Pause();
+            if (Run.Vitals.Hurt(damage) == EmberVitalOutcome.Rejected) return;
+            hud.Push();
+            if (Run.Vitals.CommitHealthChange()) End(false);
         }
 
-        // ── IEmberMenuHost：界面流程的回调宿主 ─────────────────────────────
+        /// <summary>治疗入口（护盾词条之外的唯一回血来源）。</summary>
+        public bool HealPlayer(float amount)
+        {
+            var outcome = Run.Vitals.Heal(amount);
+            if (outcome == EmberVitalOutcome.Rejected) return false;
+            hud.Push();
+            return true;
+        }
+
+        /// <summary>怪物治疗掉落：任意血量可拾取，溢出丢弃。</summary>
+        public bool PickHealingDrop(float amount)
+        {
+            if (Run.Vitals.PickHealingDrop(amount) == EmberVitalOutcome.Rejected) return false;
+            hud.Push();
+            EmberAudio.Ensure().PlayPickupHeal();
+            return true;
+        }
+
+        /// <summary>Boss 爆发特效转发（Boss 招式落在世界里）。</summary>
+        public void PlayBossBurst(Vector2 point) { combat.PlayBossBurst(point); }
+
+        /// <summary>记一次击杀。</summary>
+        public void RegisterKill() { Run.Kills++; }
+
+        /// <summary>收局入口：胜利由最终 Boss 死亡触发。</summary>
+        public void EndRun(bool won) { End(won); }
+
+        // ── IEmberMenuHost：开局界面流程的回调宿主 ────────────────────────────────────────
         // 状态与玩法仍归 EmberGame；界面流程只通过这三个入口请求动作。
 
         /// <summary>界面流程请求切换局长阶段。</summary>
-        public void EnterMode(Mode mode) { State = mode; }
+        public void EnterMode(EmberRunPhase mode) { Phase = mode; }
 
         /// <summary>界面流程回主菜单时，收起上一局的世界。</summary>
-        public void HideRunWorld() { if (world != null) world.gameObject.SetActive(false); }
+        public void HideRunWorld() { if (Run.World != null) Run.World.gameObject.SetActive(false); }
 
         /// <summary>起始武器选完，正式开一局。</summary>
         public void StartRun(int[] weapons, int slots) { StartRunWith(weapons, slots); }

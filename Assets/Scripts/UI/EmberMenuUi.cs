@@ -22,6 +22,7 @@ namespace Emberlight
         GameObject brandRoot;
         GameObject hintRoot;
         TextMeshProUGUI hintText;
+        bool watchingSafeArea;
 
         public void Build(Transform host, TMP_FontAsset loadedFont, System.Action pause)
         {
@@ -98,6 +99,25 @@ namespace Emberlight
             Safe.anchorMin = new Vector2(area.x / Screen.width, area.y / Screen.height);
             Safe.anchorMax = new Vector2(area.xMax / Screen.width, area.yMax / Screen.height);
             Safe.offsetMin = Safe.offsetMax = Vector2.zero;
+        }
+
+        /// <summary>
+        /// 订阅安全区变化。原先这份判断每帧跑在 `EmberGame.Update()` 顶部；现在由
+        /// <see cref="EmberSafeAreaWatcher"/> 统一观察，UI 只在真的变化时才重排。
+        /// </summary>
+        public void WatchSafeArea()
+        {
+            if (watchingSafeArea) return;
+            watchingSafeArea = true;
+            EmberSafeAreaWatcher.Changed += UpdateSafeArea;
+        }
+
+        /// <summary>取消订阅，避免静态事件留住已销毁的面板。</summary>
+        public void UnwatchSafeArea()
+        {
+            if (!watchingSafeArea) return;
+            watchingSafeArea = false;
+            EmberSafeAreaWatcher.Changed -= UpdateSafeArea;
         }
 
         public void SetStick(bool active, Vector2 screenOrigin, Vector2 stick)

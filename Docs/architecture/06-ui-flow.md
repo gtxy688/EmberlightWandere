@@ -2,7 +2,10 @@
 
 > 相关需求：`../requirements.md` §2（主循环）、§4.1（开局四步）
 > 验收文档：`06-ui-flow-test.md`
-> 代码：`Assets/Scripts/UI/`（7 个文件）+ `Assets/Scripts/Core/EmberGame.cs`（11 态状态机）
+> 代码：`Assets/Scripts/UI/`（9 个文件）+ `Assets/Scripts/Core/EmberGame.cs`（组合根，持有阶段）
+>
+> 2026-09-23 变更：11 态状态机从 `EmberGame` 提为顶层 `EmberRunPhase`；HUD 推送点从 `EmberGame.UpdateHud()` 搬到 `EmberHudPresenter`；
+> 安全区轮询改为 `EmberSafeAreaWatcher` 事件。**UI 侧仍然零 `EmberGame` 引用**（硬约束 6），新增的 `EmberHudPresenter` 也只接收入参。
 
 ## 职责边界
 
@@ -12,7 +15,7 @@
   - 词条数值与卡池 → M2
   - 卡框/图标美术资源 → M7（本模块负责排版与映射）
 
-**最重要的边界约束**：UI 类**不持有 `EmberGame`**。`EmberHud`、`EmberUpgradePanel`、`EmberGodsSelectPanel`、`EmberSettingsPanel`、`EmberIntro`、`EmberMenuUi`、`EmberCardMotion` 中零处 `EmberGame` 引用（仅一处注释提及）。UI 通过**方法参数**接收 `RunProgress` 等只读数据。**改 UI 时不要引入 `EmberGame` 引用。**
+**最重要的边界约束**：UI 类**不持有 `EmberGame`**。`EmberHud`、`EmberHudPresenter`、`EmberUpgradePanel`、`EmberGodsSelectPanel`、`EmberSettingsPanel`、`EmberIntro`、`EmberMenuUi`、`EmberMenuFlow`、`EmberCardMotion`、`EmberSafeAreaWatcher` 中零处 `EmberGame` 类型引用（仅注释提及）。UI 通过**方法参数**接收 `RunProgress` 等只读数据。**改 UI 时不要引入 `EmberGame` 引用。**
 
 ## 依赖
 
@@ -23,8 +26,10 @@
 | M7 | `EmberArt` / `EmberUiArt` / `EmberCardFrames` / `EmberCardIcons` / `EmberWorldArt` | 全部精灵 | 缺图时回退程序化占位 |
 | M8 | `EmberAudio.PlayUiClick` / `PlayUiConfirm` / `PlayCardOpen` / `PlayCardPick` | 交互音 | clip 缺失静默跳过 |
 | M1 | `DifficultyName` / `WaveName` | 文案 | — |
+| M0 | 阶段委托（`System.Func<EmberRunPhase>`）作为 `EmberHudPresenter` 的构造入参 | Boss 条是否显示 | 委托为空时 Boss 条隐藏 |
 
-**回调方向**：UI 通过**委托/回调**把玩家意图交回 `EmberGame`（如 `SelectUpgrade(offer)`、`TryRefreshOffer()`、`Pause()`、`BeginRun()`），而不是自己改状态。
+**回调方向**：UI 通过**委托/回调**把玩家意图交回组合根（如 `SelectUpgrade(offer)`、`TryRefreshOffer()`、`Pause()`、`BeginRun()`），而不是自己改阶段。
+`EmberMenuFlow` 需要切阶段时走 `IEmberMenuHost.EnterMode(EmberRunPhase)`——**请求**，不是直接写。
 
 ## 设计与数据流
 
@@ -39,7 +44,11 @@ EmberMenuUi（UI 根容器，持有 Canvas 540×960 / EventSystem / 安全区 / 
    └─ EmberSettingsPanel  设置浮层（音乐/音效滑条 + 1x–5x 速度 + 继续/返回营地）
 ```
 
-`EmberGame.UpdateHud()` 是 UI 的**唯一推送点**：每帧把只读数值喂给 HUD，UI 不主动拉取。
+`EmberHudPresenter.Push()` 是 UI 的**唯一推送点**：每帧把只读数值喂给 `EmberHud`，UI 不主动拉取。
+它由组合根在 `EmberMenuUi.Build` 之后创建，只接收入参（`EmberHud` / `EmberRunState` / `EmberCombat` / 阶段委托），**不持有 `EmberGame`**。
+
+> 重构前这段逻辑是 `EmberGame.UpdateHud()`，且**每帧都会被调用**（含暂停与结算态）。现在只在 `Playing` 阶段推送。
+> 显示结果等价：暂停与结算时战斗栏本就处于隐藏态，且这些阶段的进入点各自会重绘界面。
 
 ### 开局四步（Gods-Select-v3）
 
@@ -120,7 +129,7 @@ EmberMenuUi（UI 根容器，持有 Canvas 540×960 / EventSystem / 安全区 / 
 
 以下三处文案会被 `EmberFonts` 预取字形，**改文案必须同步确认预热范围**，否则首次显示会触发运行时字形烘焙卡顿：
 
-- `EmberGame.UpgradeNames` / `UpgradeDetails`（36 项）
+- `EmberCopy.UpgradeNames` / `UpgradeDetails`（36 项）
 - `EmberGodsSelectPanel.RosterNames` / `RosterDescs`
 - `EmberRarityUtil.AllNames`（青铜/白银/黄金/钻石）
 
@@ -130,6 +139,9 @@ EmberMenuUi（UI 根容器，持有 Canvas 540×960 / EventSystem / 安全区 / 
 - 锚点按竖屏硬编码 → **横屏会错乱**，故 PlayerSettings 锁定仅 Portrait（见 M9）。
 - 面板的生命周期由 `EmberMenuUi` 统一持有；暂停与设置是浮层而非独立场景。
 - `EmberSettingsPanel` 与 `EmberUpgradePanel` 为 `MonoBehaviour`；其余为普通类或静态工厂。
+- **安全区变化**由 `EmberSafeAreaWatcher` 观察（`RuntimeInitializeOnLoadMethod` 安装常驻监听对象，`LateUpdate` 采样）。
+  `EmberMenuUi.Build` 后调用 `WatchSafeArea()` 订阅，`EmberGame.OnDestroy` 调用 `UnwatchSafeArea()` 退订。
+  静态事件在 `SubsystemRegistration` 阶段重置，避免关闭 Domain Reload 时残留。
 
 ## 影响与回归范围
 

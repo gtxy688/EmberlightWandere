@@ -3,36 +3,41 @@
 > 相关需求：`../requirements.md` §2（主循环）、§3.1–3.2、§3.5、§5
 > 验收文档：`03-combat-waves-test.md`
 > 代码：`Assets/Scripts/Combat/EmberCombat.cs`、`EmberBoss.cs`、`EmberWorld.cs`、`EmberPool.cs`、
-> `Assets/Scripts/Core/EmberGame.cs`（状态机与伤害入口）
+> `Assets/Scripts/Combat/IEmberCombatHost.cs`（本模块对宿主的契约）
 
 ## 职责边界
 
-- **本模块负责**：波次推进与清波判定、刷怪与遭遇事件、敌人实例的血量与死亡处理（分裂 / 重生 / 引爆）、伤害结算与命中判定、Boss 召唤与招式状态机、暗弹弹幕的宿主、对象池、竞技场边界、玩家受伤与结算入口、全局 11 态状态机。
+- **本模块负责**：波次推进与清波判定、刷怪与遭遇事件、敌人实例的血量与死亡处理（分裂 / 重生 / 引爆）、伤害结算与命中判定、Boss 召唤与招式状态机、暗弹弹幕的宿主、对象池、竞技场边界。
 - **本模块不负责**：
   - 波次数值与倍率 → M1（本模块只查询）
   - 选卡内容与发牌规则 → M2（本模块只触发时机）
   - 敌人行为策略与表现 → M5
   - 武器行为 → M4（本模块提供 `EmberWeaponContext` 的全部委托）
+  - **局长阶段与玩家生命结算 → M0**（本模块只经 `IEmberCombatHost` 请求）
 
-**关键定位**：`EmberCombat` 是战斗仿真的单点入口，**拥有全部 7 个武器实例**并在每个 `Tick` 中统一驱动。`EmberGame` 是全局状态机与玩家属性（生命、无敌帧、Score 入口）的持有者。
+**关键定位**：`EmberCombat` 是战斗仿真的单点入口，**拥有全部 7 个武器实例**并在每个 `Tick` 中统一驱动。
+它对宿主只依赖 `IEmberCombatHost`，**不持有 `EmberGame`**——
+重构前本模块直接读 `EmberGame.State` / `.Progress` / `.Elapsed`，使整个战斗模拟绑在 MonoBehaviour 上无法脱离场景验证。
 
 ## 依赖
 
 | 被依赖模块 | 只使用的公开契约 | 用途 | 缺失时的行为 |
 |------------|------------------|------|--------------|
 | M1 | `LevelConfig.QuotaForWave / SpawnInterval / RollKind / TrashHp / AffixChance / EnemySpeed / IsBossWave / IsEliteWave / BossHpForWave / BossTier / WaveName / PicksAfterWave` | 全部波次与数值决策 | `Begin` 有 `LevelConfig` 重载；无配置时用 `Default` |
-| M2 | `EmberGame.Progress`（`RunProgress`） | 注入武器 context 与结算伤害加成 | `Progress` 为 null 时须容忍（回营地后） |
+| M0 | `IEmberCombatHost`：`Phase` / `Elapsed` / `Progress` / `HurtReady` / `NeedsHealing` / `HurtPlayer` / `HealPlayer` / `PickHealingDrop` / `PlayBossBurst` / `RegisterKill` / `OnWaveCleared` / `EndRun` | 阶段门控、玩家伤害、计分与收局 | 宿主由组合根提供；**不需要是 `EmberGame`** |
+| M2 | `IEmberCombatHost.Progress`（`RunProgress`） | 注入武器 context 与结算伤害加成 | `Progress` 为 null 时须容忍（回营地后） |
 | M4 | `EmberWeapon.Tick(dt, ctx)`、`Reset()` | 每帧驱动全部武器 | 武器 `OwnsWeapon` 自我门控，未拥有则不动作 |
 | M5 | `IEnemyBehavior.Tick`、`EmberEnemyProjectiles`、`EmberEnemyVisual` | 敌人行为与表现 | 行为为空则退化为直线追击 |
 | M7 | `EmberEffects`（粒子）、`EmberPool`（池） | 打击反馈与对象复用 | 池空时丢弃，不报错 |
 | M8 | `EmberAudio` 各 `Play*` | 音效触发 | clip 缺失静默跳过 |
 
-**对外**：M3 通过 `EmberGame.State`、`OnWaveCleared`、`HurtPlayer`、`EnemyCount` 等被 M6 与 M7 读取；武器只经 `EmberWeaponContext` 与本模块交互，**不直接持有 `EmberGame`**。
+**对外**：M3 经 `IEmberCombatHost` 反向请求阶段、伤害与收局；M6/M7 只读 `EmberCombat.Wave / WaveQuota / WaveRemaining / Boss / BossAlive / EncounterText` 与 `IEmberRunPhaseSource`。
+武器只经 `EmberWeaponContext` 与本模块交互，**不直接持有 `EmberGame`**。
 
 ## 设计与数据流
 
 ```text
-EmberGame.Update()
+EmberGame.Update()                       ← 组合根只负责顺序（见 00-composition-root.md）
    └─ combat.Tick(dt)
         ├─ 刷怪：waveSpawned < QuotaForWave(wave) && enemies.Count < EnemyLimit
         │     └─ RollKind(wave, rng) → TrashHp(wave, kind) → AffixChance(wave)
@@ -41,12 +46,17 @@ EmberGame.Update()
         │     └─ ctx.Damage / DamageFrom / Intercept → 扣血、死亡、分裂、重生
         ├─ Boss 波：BossAlive ? boss.Tick(dt) : 生成 Boss
         └─ 清波：waveSpawned >= quota && enemies.Count == 0
-              └─ game.OnWaveCleared(wave)
-                    └─ PicksAfterWave == 0 ? 直接推进 : 发牌（M2 + M6）
-                          └─ game.SelectUpgrade → combat.AdvanceAfterUpgrade()
+              └─ host.OnWaveCleared(wave)          ← IEmberCombatHost
+                    └─ RunFlowController.OnWaveCleared   （M0，规则见 00-composition-root.md）
+                          └─ PicksAfterWave == 0 ? 直接推进 : 发牌（M2 + M6）
+                                └─ SelectUpgrade → combat.AdvanceAfterUpgrade()
 ```
 
-### 状态机（`EmberGame.Mode`，11 态）
+### 状态机（`EmberRunPhase`，11 态）
+
+> 阶段枚举已从 `EmberGame.Mode` 提为顶层 `EmberRunPhase`（`Assets/Scripts/Core/EmberRunPhase.cs`），
+> 取值与顺序不变；这样 M3/M7 读阶段时不必依赖 `EmberGame` 类型。
+> 阶段的所有权与写入规则见 `00-composition-root.md`「阶段所有权」。
 
 ```text
 Loading → Menu → SelectLength → SelectDifficulty → SelectSlots → SelectRoster
@@ -98,21 +108,21 @@ Loading → Menu → SelectLength → SelectDifficulty → SelectSlots → Selec
 
 | 名称 | 类型 | 输入 | 输出或事件 | 错误/生命周期保证 |
 |------|------|------|------------|-------------------|
-| `EmberGame.Mode` | 枚举（11 态） | — | — | 全项目以 `EmberGame.Mode.X` 引用 |
-| `EmberGame.State` | 属性 | — | 当前状态 | **唯一状态真相源**，被 M3/M5/M7 读取 |
-| `EmberGame.Progress` | 属性 | — | `RunProgress` 或 **null** | 回营地后为 null，消费方必须容忍 |
-| `EmberGame.Elapsed` / `Kills` / `Health` | 属性 | — | `float` / `int` / `float` | 供 HUD 与动画读取 |
-| `EmberGame.HurtReady` | 属性 | — | `bool` | 无敌帧门（0.65s） |
-| `EmberGame.HurtPlayer(float)` | 方法 | 原始伤害 | — | 内部应用难度倍率与护盾；致死则 `EndRun(false)` |
-| `EmberGame.RegisterKill()` | 方法 | — | — | 击杀计数 |
-| `EmberGame.OnWaveCleared(int)` | 方法 | 刚清完的波次 | — | **战斗 → 流程的唯一回调** |
-| `EmberGame.SelectUpgrade(EmberOffer)` | 方法 | 候选牌 | — | **防伪校验**：比对 `Id` + `Rarity` + `WeaponId` 三者才接受 |
+| `EmberRunPhase` | 枚举（11 态） | — | — | 顶层类型，全项目以 `EmberRunPhase.X` 引用；由 M0 持有并写入 |
+| `IEmberCombatHost.Phase` | 属性 | — | 当前阶段 | **M3 的唯一阶段入口**；不依赖 `EmberGame` |
+| `IEmberCombatHost.Progress` | 属性 | — | `RunProgress` 或 **null** | 回营地后为 null，消费方必须容忍 |
+| `IEmberCombatHost.Elapsed` | 属性 | — | `float` | 敌人动画与武器节奏用 |
+| `IEmberCombatHost.HurtReady` | 属性 | — | `bool` | 无敌帧门（0.65s） |
+| `IEmberCombatHost.HurtPlayer(float)` | 方法 | 原始伤害 | — | 难度倍率只乘一次、护盾先吸收；致死则收局 |
+| `IEmberCombatHost.RegisterKill()` | 方法 | — | — | 击杀计数 |
+| `IEmberCombatHost.OnWaveCleared(int)` | 方法 | 刚清完的波次 | — | **战斗 → 流程的唯一回调** |
+| `EmberGame.SelectUpgrade(EmberOffer)` | 方法 | 候选牌 | — | **防伪校验**：比对 `Id` + `Rarity` + `WeaponId` 三者才接受（实现在 `RunFlowController`） |
 | `EmberGame.TryRefreshOffer()` | 方法 | — | `bool` | 非 `Upgrade` 态返回 false |
-| `EmberGame.HealPlayer` / `PickHealingDrop` | 方法 | 回复量 | `bool` | 满血时 `HealPlayer` 返回 false |
-| `EmberGame.Pause()` / `ShowMainMenu()` / `BeginRun()` / `EndRun(bool)` | 方法 | — | — | 流程入口 |
+| `EmberKeeperVitals.Heal` / `PickHealingDrop` | 方法 | 回复量 | `EmberVitalOutcome` | 满血 `Heal` 返回 `Rejected`；满血拾取返回 `NoChange` 但仍算拾取 |
+| `EmberGame.Pause()` / `EmberGame.EndRun(bool)` / `EmberMenuFlow.ShowMainMenu()` / `.BeginRun()` | 方法 | — | — | 流程入口 |
 | `EmberCombat.Tick(float)` | 方法 | dt | — | 战斗唯一推进点 |
 | `EmberCombat.Begin(..., LevelConfig)` / `TearDown()` | 方法 | 场景引用、配置 | — | 成对调用；`TearDown` 清理池与弹幕 |
-| `EmberCombat.AdvanceAfterUpgrade()` | 方法 | — | — | 由 `EmberGame` 在选卡完成后调用 |
+| `EmberCombat.AdvanceAfterUpgrade()` | 方法 | — | — | 由组合根在选卡完成后调用（`ReturnToPlay`） |
 | `EmberCombat.Wave` / `WaveQuota` / `WaveSpawned` / `WaveKilled` / `WaveRemaining` / `EnemyCount` / `Boss` / `BossAlive` | 属性 | — | `int` / `Enemy` / `bool` | HUD 只读数据源；Boss 波 `WaveRemaining` 返回 0 |
 | `EmberCombat.Enemy`（嵌套类） | 类 | — | 敌人实例 | `Targetable` 是所有武器命中判定的统一门 |
 | `EmberWeaponContext` | 类 | — | 委托包 | 见下表；由本模块在 `Begin` 时**全部赋值** |

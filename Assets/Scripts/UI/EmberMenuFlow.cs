@@ -5,8 +5,8 @@ namespace Emberlight
     /// <summary>开局界面流程需要的宿主能力。EmberMenuFlow 不持有 EmberGame，只通过这里回调。</summary>
     public interface IEmberMenuHost
     {
-        /// <summary>请求把局长状态切到某个阶段。状态本身仍归 EmberGame 所有。</summary>
-        void EnterMode(EmberGame.Mode mode);
+        /// <summary>请求把局长阶段切到某个阶段。阶段本身归组合根持有。</summary>
+        void EnterMode(EmberRunPhase mode);
         /// <summary>回主菜单前，把上一局的世界收起来。</summary>
         void HideRunWorld();
         /// <summary>起始武器选完，交回宿主真正开一局。</summary>
@@ -15,7 +15,7 @@ namespace Emberlight
 
     /// <summary>
     /// 开局前的界面流程：主菜单 → 设置入口 → 选局长 → 选难度 → 选槽位 → 选起始武器。
-    /// 只负责「显示哪个界面、点了之后去哪」，不碰玩法；开一局通过 IEmberMenuHost.StartRun 交回 EmberGame。
+    /// 只负责「显示哪个界面、点了之后去哪」，不碰玩法；开一局通过 IEmberMenuHost.StartRun 交回组合根。
     /// </summary>
     public sealed class EmberMenuFlow
     {
@@ -40,7 +40,7 @@ namespace Emberlight
 
         public void ShowMainMenu()
         {
-            host.EnterMode(EmberGame.Mode.Menu);
+            host.EnterMode(EmberRunPhase.Menu);
             EmberAudio.Ensure().PlayMenuMusic();
             host.HideRunWorld();
             ui.Show(
@@ -76,7 +76,7 @@ namespace Emberlight
             ui.StickBase.gameObject.SetActive(false);
             pendingSlots = 2;
             pendingRoster = new int[0];
-            host.EnterMode(EmberGame.Mode.SelectLength);
+            host.EnterMode(EmberRunPhase.SelectLength);
             // Spells out the Boss schedule before the run starts: every 10th wave is a stage Boss
             // and the last one is the Nightwarden, so the final wave is not a surprise.
             ui.Show(EmberCopy.RunSetupTitle,
@@ -88,7 +88,7 @@ namespace Emberlight
         void ChooseLength(int waves)
         {
             selectedWaves = waves;
-            host.EnterMode(EmberGame.Mode.SelectDifficulty);
+            host.EnterMode(EmberRunPhase.SelectDifficulty);
             // One difficulty per line: a single wrapped sentence broke "精英" onto a line of its
             // own and pushed the closing 。with it.
             ui.Show(EmberCopy.DifficultyTitle, EmberCopy.DifficultyBody(selectedWaves),
@@ -101,14 +101,14 @@ namespace Emberlight
         {
             selectedDifficulty = difficulty;
             ui.Overlay.SetActive(false);
-            host.EnterMode(EmberGame.Mode.SelectSlots);
+            host.EnterMode(EmberRunPhase.SelectSlots);
             ui.GodsSelect.ShowSlots(OnSlotsChosen);
         }
 
         void OnSlotsChosen(int slots)
         {
             pendingSlots = slots;
-            host.EnterMode(EmberGame.Mode.SelectRoster);
+            host.EnterMode(EmberRunPhase.SelectRoster);
             ui.GodsSelect.ShowRoster(slots, OnRosterChosen);
         }
 

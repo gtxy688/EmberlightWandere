@@ -8,10 +8,10 @@ namespace Emberlight
         sealed class Drop { public SpriteRenderer view; public float life; }
         readonly List<Drop> drops = new List<Drop>(24);
         readonly EmberPool pool;
-        readonly EmberGame game;
+        readonly IEmberCombatHost host;
         Transform world;
         LevelConfig config;
-        public EmberHealingDrops(EmberPool pool, EmberGame game) { this.pool = pool; this.game = game; }
+        public EmberHealingDrops(EmberPool pool, IEmberCombatHost host) { this.pool = pool; this.host = host; }
         public void Bind(Transform root, LevelConfig level) { Clear(); world = root; config = level; }
         public static bool ShouldDrop(int kind, EnemyAffix affix, double roll, LevelConfig config)
         { return kind != 6 && roll < (kind == 3 ? 1f : affix != EnemyAffix.None ? config.EliteHealDropChance : config.HealDropChance); }
@@ -39,12 +39,12 @@ namespace Emberlight
                 d.view.transform.localScale = Vector3.one * (.62f * pulse / d.view.sprite.bounds.size.x);
                 d.view.color = new Color(1f, 1f, 1f, d.life < 5f ? .55f + .45f * Mathf.Sin(d.life * 10f) : 1f);
                 // Always attract/pick while playing; overflow heal discarded (no shield)
-                if (game.State != EmberGame.Mode.Playing) continue;
-                float attract = game.NeedsHealing ? 2.2f : 1.5f; // 残血吸得更远
-                float speed = game.NeedsHealing ? 7f : 5f;
+                if (host.Phase != EmberRunPhase.Playing) continue;
+                float attract = host.NeedsHealing ? 2.2f : 1.5f; // 残血吸得更远
+                float speed = host.NeedsHealing ? 7f : 5f;
                 if (Vector2.Distance(d.view.transform.position, player) <= attract)
                     d.view.transform.position = Vector2.MoveTowards(d.view.transform.position, player, dt * speed);
-                if (Vector2.Distance(d.view.transform.position, player) <= .5f && game.PickHealingDrop(config.HealDropAmount)) Remove(i);
+                if (Vector2.Distance(d.view.transform.position, player) <= .5f && host.PickHealingDrop(config.HealDropAmount)) Remove(i);
             }
         }
         void Remove(int index) { pool.Release("healing-drop", drops[index].view); drops.RemoveAt(index); }

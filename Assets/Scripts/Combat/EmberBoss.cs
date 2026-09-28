@@ -8,12 +8,12 @@ namespace Emberlight
         public enum AttackState { Pursuit, DashWarning, Dash, EruptionWarning, VolleyWarning, Recovery }
         public AttackState State {get;private set;}
         public string Phase {get{return enraged?"\u72c2\u6012\u0020\u00b7\u0020"+Label():Label();}}
-        readonly EmberGame game;readonly Transform body,world;readonly List<SpriteRenderer> warnings=new List<SpriteRenderer>();
+        readonly IEmberCombatHost host;readonly Transform body,world;readonly List<SpriteRenderer> warnings=new List<SpriteRenderer>();
         readonly int tier; readonly System.Action<Vector2,int> volley; readonly Transform adornment;
         Vector2 direction;float timer=2;bool enraged;int cycle;
-        public EmberBoss(EmberGame owner,Transform root,Transform arena,int tier=1,System.Action<Vector2,int> volley=null)
+        public EmberBoss(IEmberCombatHost owner,Transform root,Transform arena,int tier=1,System.Action<Vector2,int> volley=null)
         {
-            game=owner;body=root;world=arena;this.tier=tier;this.volley=volley;
+            host=owner;body=root;world=arena;this.tier=tier;this.volley=volley;
             adornment=new GameObject("Boss adornment").transform;adornment.SetParent(root,false);root=adornment;
             for(int i=-1;i<=1;i++)
             {
@@ -60,12 +60,12 @@ namespace Emberlight
             else if(State==AttackState.Dash)
             {
                 body.position=EmberWorld.Clamp((Vector2)body.position+direction*dt*8,.8f);
-                if(Vector2.Distance(body.position,player)<1.2f)game.HurtPlayer(22);
+                if(Vector2.Distance(body.position,player)<1.2f)host.HurtPlayer(22);
                 if(timer<=0){State=AttackState.Recovery;timer=1.5f;}
             }
             else if(State==AttackState.EruptionWarning&&timer<=0)
             {
-                foreach(var r in warnings){if(Vector2.Distance(r.transform.position,player)<1.2f)game.HurtPlayer(25);game.PlayBossBurst(r.transform.position);}
+                foreach(var r in warnings){if(Vector2.Distance(r.transform.position,player)<1.2f)host.HurtPlayer(25);host.PlayBossBurst(r.transform.position);}
                 Clear();State=AttackState.Recovery;timer=1.5f;
             }
             else if(State==AttackState.VolleyWarning&&timer<=0)

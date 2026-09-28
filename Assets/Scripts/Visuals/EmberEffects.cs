@@ -7,9 +7,10 @@ namespace Emberlight
         sealed class Particle { public SpriteRenderer sprite; public Vector2 velocity;public float age,life,size,growth;public Color color; }
         readonly List<Particle> active=new List<Particle>();
         readonly Stack<Particle> pool=new Stack<Particle>();
-        EmberGame game;
+        System.Func<EmberRunPhase> phase;
         public int ActiveCount {get{return active.Count;}}
-        public void Initialize(EmberGame owner){game=owner;}
+        /// <summary>注入阶段闸门：粒子只在 Play 阶段推进，升级/暂停/结算时冻结。</summary>
+        public void Initialize(System.Func<EmberRunPhase> phaseProvider){phase=phaseProvider;}
         public void Emit(Vector2 p,Vector2 velocity,float size,float life,Color color,bool ring=false,float growth=0)
         {
             if(active.Count>=120)return; // mobile particle cap
@@ -32,7 +33,7 @@ namespace Emberlight
         }
         void Update()
         {
-            if(game==null||game.State!=EmberGame.Mode.Playing)return;
+            if(phase==null||phase()!=EmberRunPhase.Playing)return;
             for(int i=active.Count-1;i>=0;i--)
             {
                 var p=active[i];p.age+=Time.deltaTime;

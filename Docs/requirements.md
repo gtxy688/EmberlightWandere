@@ -2,7 +2,7 @@
 
 > 本文件是**产品行为、约束与数值的唯一权威来源**。
 > 架构文档只描述"怎么实现"，不复制这里的数值；发现数值不一致时以本文件为准。
-> 最后核对：2026-09-14（已对照 `Assets/Scripts` 代码逐项验证）
+> 最后核对：2026-09-23（§7 中文字体与程序集口径已对照工作区代码修正；数值部分最后核对 2026-09-14）
 
 ## 1. 产品定位与范围
 
@@ -239,13 +239,19 @@
 | 渲染 | Built-in；正交相机 |
 | UI | uGUI + TextMeshProUGUI；竖屏 540×960 锚点 |
 | 输入 | 旧版 Input（`Input.GetKeyDown` 等）；虚拟摇杆为自绘 |
-| 中文 | `EmberFonts.CreateChinese()` 运行时从 `Fonts/NotoSansCJKsc-Regular.otf` 烘动态 SDF 图集 |
+| 中文 | **预烘静态图集优先**：`EmberFonts.CreateChinese()` 读取 `Resources/Fonts/NotoSansCJKsc-Regular SDF.asset`（由 `Emberlight.Editor.EmberFontBake.Bake` 烘制）；经 `EmberFonts.ValidateBaked` 闸门校验通过才使用，失败则**回落运行时动态 SDF 图集** |
 | 帧率 | `targetFrameRate = 60`、`vSyncCount = 0`（移动端默认封顶 30，必须显式设置） |
-| 程序集 | 当前**无 `.asmdef`**，全部编译进 `Assembly-CSharp` / `Assembly-CSharp-Editor` |
+| 程序集 | `Assets` 下**无自建 `.asmdef`**，全部编译进 `Assembly-CSharp` / `Assembly-CSharp-Editor`（`Packages/` 内第三方包的 asmdef 不计） |
 | 包名 / 版本 | `com.Emberlight.Wanderer` / `0.1.0`（versionCode 1） |
 | 最低 / 目标 API | 24 / 35；IL2CPP；ARM64 + ARMv7 |
 
-> ⚠️ **中文字体预烘是已知雷区**：两次尝试都导致 UI 全崩（详见 `architecture/07-art-presentation.md`）。`EmberFonts` **固定走动态图集**，不要改回预烘。
+> ⚠️ **中文字体预烘是已知雷区，但现行口径是用预烘、不是走动态图集**：
+>
+> - 历史上两次预烘导致 UI 全崩，根因已定位并修正（写入顺序 + 真实渲染校验），**结论不是"预烘不可行"**。
+> - **不要删掉 `EmberFonts.ValidateBaked` 那道运行时闸门**——它是"资产坏了就回落动态图集"的唯一保证。
+> - **静态图集不能追加字形**：改任何文案后必须重跑烘制，否则漏字会静默显示为空心方框。流程见 `AGENTS.md` 硬约束 1 与 `architecture/07-art-presentation.md`。
+>
+> 本节旧口径（「`EmberFonts` 固定走动态图集，不要改回预烘」）是 **2026-09-15 之前**的表述，已被预烘静态图集方案取代，不要再引用。
 
 ### UI 复用与状态栏呈现（2026-09-15）
 
@@ -271,3 +277,5 @@
 | 是否补齐自动化测试基础设施 | 建 asmdef + EditMode/PlayMode 测试程序集 / 维持现状纯手测 | 当前全部验收依赖手测，回归成本随规模上升 | jack |
 | 原 `Emberlight-Design.md` 是否彻底废弃 | 已归档至 `archive/` + 重写为本文 / 彻底删除 | 归档版本含过期数值（6 波节奏、旧血量倍率），虽已加作废头注仍可能被误读 | jack |
 | 冲击波是否恢复入口 | 恢复为不占槽的 Stat 词条 / 永久删除 | 涉及 `WavePower` 与 `EmberPulseWeapon` 死代码 | jack + xiaoPlanner |
+| `RunProgress` 的 8 个零调用点成员是否清理 | 直接删除 / 保留待用 | 清单见 `architecture/02-run-progression.md`；误当成契约会浪费排查时间 | jack + xiaoCoder |
+| `EmberRunState` 是否再拆为"纯数据 + 场景句柄" | 拆 / 维持现状 | 拆开后可脱离 Unity 单测的面更大，但多一层间接；当前 `EmberKeeperVitals` 与 `RunFlowController` 已可测 | jack + xiaoCoder |

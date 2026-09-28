@@ -11,8 +11,9 @@
 | 命名空间 | `Emberlight`；编辑器为 `Emberlight.Editor` |
 | 脚本根 | `Assets/Scripts/{Core,Combat,UI,Visuals,Audio}` + `Assets/Editor` |
 | 文档根 | `Docs/` |
-| 程序集 | **无 `.asmdef`** → 全部进 `Assembly-CSharp` / `Assembly-CSharp-Editor` |
+| 程序集 | **`Assets` 下无自建 `.asmdef`** → 全部进 `Assembly-CSharp` / `Assembly-CSharp-Editor`（`Packages/` 内第三方包的 asmdef 不计） |
 | 自动化测试 | **不存在**。当前验证手段只有编辑器编译 + 手动试玩 |
+| 离线编译校验 | `powershell -ExecutionPolicy Bypass -File Tools/compile-check.ps1`（Unity 开着也能跑；退出码 0 = 编译通过） |
 | GitHub | `https://github.com/gtxy688/EmberlightWandere.git` |
 
 > ⚠️ 旧路径 `Assets/Emberlight/Scripts/...` **已废弃**，以 `Assets/Scripts/...` 为准。
@@ -62,6 +63,8 @@
 | 粒子上限 | 180 | **120** |
 | 护盾数值 | 除以 2 | **250 / 500 / 750 / 1250** |
 | 死亡掉落 | 掉落余烬拾取物 | **已删除**，击杀直接记 Score |
+| 中文字体 | 「固定走动态图集，不要改回预烘」 | **预烘静态图集 + `ValidateBaked` 闸门 + 动态回落**（2026-09-23 裁定，`requirements.md` §7 已订正） |
+| 程序集 | 「无 `.asmdef`」 | **`Assets` 下无自建 asmdef**；`Packages/` 内第三方包的 asmdef 不计 |
 
 ## 硬约束（违反即事故）
 
@@ -76,9 +79,11 @@
 4. **开局不可跳过**：必须选 N 并单选 1 把武器；**禁止开局一次填满 N 槽**。
 5. **不要在 `Assets/Scripts/Combat/Weapons/` 里引用 `EmberGame`**。武器只能通过 `EmberWeaponContext` 与 `RunProgress` 工作——这是本仓库最干净的边界。
 6. **不要在 `Assets/Scripts/UI/` 里引用 `EmberGame`**。UI 通过方法参数接收只读数据。
-7. **四个图集 `.meta` 现在是真正的 sprite sheet，切片权威在那里**。四个 `AssetPostprocessor` 导入器（`Ember*ArtImporter`）负责把 `textureType` 设为 `Sprite`、`spriteImportMode` 设为 `Multiple`，**不要让它们改回 `Default`**——历史上它们强制 `Default`，导致每次重新导入都把切片清掉、UI 退回运行时切图。切图本身用 Sprite Editor 做，格子与命名保持「整格均分 + `<atlas>_<index>`（行主序，左上起）」。
-8. **新增音频后必须检查导入设置**为 `3D: 0` + `preloadAudioData: 1`（新 WAV 默认是 3D + 不预载，表现为"资源在但听不到"）。
-9. **UI 与字体改动必须在编辑器里真进一局确认**。资产校验替代不了真跑一遍。
+7. **`Assets/Scripts/Combat/`（含 Boss/掉落）与 `Assets/Scripts/Visuals/` 也不得引用 `EmberGame`**（2026-09-23 起）。战斗走 `IEmberCombatHost`，表现走构造时注入的阶段委托。`EmberGame` 是**组合根**：只做装配、阶段所有权与每帧顺序，**不要再往里加业务规则**。详见 `Docs/architecture/00-composition-root.md`。
+8. **四个图集 `.meta` 现在是真正的 sprite sheet，切片权威在那里**。四个 `AssetPostprocessor` 导入器（`Ember*ArtImporter`）负责把 `textureType` 设为 `Sprite`、`spriteImportMode` 设为 `Multiple`，**不要让它们改回 `Default`**——历史上它们强制 `Default`，导致每次重新导入都把切片清掉、UI 退回运行时切图。切图本身用 Sprite Editor 做，格子与命名保持「整格均分 + `<atlas>_<index>`（行主序，左上起）」。
+9. **新增音频后必须检查导入设置**为 `3D: 0` + `preloadAudioData: 1`（新 WAV 默认是 3D + 不预载，表现为"资源在但听不到"）。
+10. **UI 与字体改动必须在编辑器里真进一局确认**。资产校验替代不了真跑一遍。
+11. **改含中文的源文件不要用 PowerShell 的 `Get-Content -Raw` + `Set-Content`**：Windows PowerShell 5.1 按 ANSI 读 UTF-8 无 BOM 文件，会把中文注释写成乱码（2026-09-23 实际踩到）。用编辑工具，或显式 `-Encoding UTF8` + `[System.IO.File]::WriteAllText`。
 
 ## 改动约定
 
@@ -110,11 +115,14 @@
 
 ## 自检（改完至少做）
 
+- [ ] **先跑离线编译**：`powershell -ExecutionPolicy Bypass -File Tools/compile-check.ps1`（退出码 0）
+- [ ] 若改了文案：`python Tools/atlas_glyph_check.py`（退出码 0，见硬约束 1）
 - [ ] Unity 编译无报错；Console 进主菜单无错误
 - [ ] 能开一局：选长度 → 选难度 → 选槽位 → 选武器 → 升级 → 暂停 → 胜或负
 - [ ] 若动 Boss / 刷怪：波次推进与 Boss 出场符合 `requirements.md` §3
 - [ ] 若动选卡：候选数量、同屏唯一、补偿选卡、刷新次数符合 `requirements.md` §4
 - [ ] 若动 UI / 字体：在编辑器里真进一局，中文无方框、Console 干净
+- [ ] 若动 `Scripts/Combat` 或 `Scripts/Visuals`：确认其中零 `EmberGame` 引用（硬约束 7）
 - [ ] 已回写受影响的文档章节
 
 ## 角色

@@ -23,6 +23,7 @@
 
 | 编号 | 模块 | 核心职责 | 明确不负责 | 架构文档 | 验收文档 |
 |------|------|----------|------------|----------|----------|
+| M0 | 组合根 | 持有阶段与本局状态、装配各单元、驱动每帧顺序、接回调 | **不含任何业务规则**（规则分别归 M1–M8） | `00-composition-root.md` | `00-composition-root-test.md` |
 | M1 | 配置与调参 | 难度倍率、波次配额/间隔、Boss 与敌人基础数值、游戏速度 | 不含战斗逻辑与状态推进 | `01-config-tuning.md` | `01-config-tuning-test.md` |
 | M2 | 单局进度与构筑 | 槽位/拥有武器/通用属性、选卡池生成、品质 roll、刷新、结算分 | 不含战斗、不含 UI 呈现 | `02-run-progression.md` | `02-run-progression-test.md` |
 | M3 | 战斗与波次 | 刷怪、遭遇事件、伤害结算、死亡/分裂/重生、清波判定、Boss 招式 | 不含选卡内容、不含落卡 UI | `03-combat-waves.md` | `03-combat-waves-test.md` |
@@ -40,27 +41,37 @@
 ```text
 M9(构建) ──────────────────────────────► (仅编辑器期)
 
+M0(组合根 EmberGame) ──► 全部模块（只做装配与每帧顺序，不实现规则）
+   │
 M6(界面) ──► M2(进度)          M6 以参数接收 RunProgress，不持有 EmberGame
    │
-   └──────► (M2 的 id 常量 / 文案表)
+   └──────► EmberRunPhase      M6 经 IEmberMenuHost.EnterMode 请求切阶段
 
-M3(战斗) ──► M4(武器) ──► M2(进度)
-   │           │
-   │           └──► M7(表现)  M4 经 ctx.Effects / ctx.Pool
+M3(战斗) ──► IEmberCombatHost ──► M0  由组合根实现，M3 不认识 EmberGame
+   │
+   ├──► M4(武器) ──► M2(进度)
+   │       │
+   │       └──► M7(表现)  M4 经 ctx.Effects / ctx.Pool
    │
    ├──► M5(敌人) ──► M1(配置)
    ├──► M3.(Boss)
    └──► M1(配置)
 
-M7(表现) ──► M2/M3 只读状态门控   ⚠️ EmberKeeperAnimation / EmberEffects 读 EmberGame.State
+M7(表现) ──► IEmberRunPhaseSource  只读阶段门控，不再反查游戏实例
 M8(音频) ──► 无玩法依赖（Resources 自加载）
+
+M2(进度) ──► 无（零 UnityEngine 引用）
+RunFlowController ──► Host 契约 ──► M0  选卡推进规则不持有 EmberGame
 ```
 
 稳定的关键契约：
 
-- `EmberWeapon` / `EmberWeaponContext`（M4 与 M3 之间）——**M4 不反向依赖 `EmberGame`**，这是仓库里最干净的边界。
-- `RunProgress`（M2）——**零 `UnityEngine` 引用**，纯 C#，是唯一可脱离 Unity 单测的对象。
-- `EmberGame.State` + `EmberCombat.Tick`（M3 与 M6 之间）。
+- `EmberWeapon` / `EmberWeaponContext`（M4 与 M3 之间）——**M4 不反向依赖 `EmberGame`**。
+- `RunProgress`（M2）——**零 `UnityEngine` 引用**，纯 C#，唯一可脱离 Unity 单测的对象。
+- `IEmberCombatHost`（M3 与 M0 之间）——战斗只需要阶段/计时/伤害入口，不再持有整个游戏类。
+- `IEmberRunPhaseSource`（M7 与 M0 之间）——表现层只问"该不该播"。
+- `RunFlowController.Host`（选卡流程与 M0 之间）——选卡次数与补偿规则可脱离场景验证。
+- `EmberRunPhase` + `EmberCombat.Tick`（M3 与 M6 之间）。
 
 ## 任务索引
 
@@ -68,6 +79,8 @@ M8(音频) ──► 无玩法依赖（Resources 自加载）
 
 | 常用关键词 | 主要模块 | 读这个 |
 |------------|----------|--------|
+| 入口脚本 / 组合根 / EmberGame / 拆类 / 阶段状态机 / 装配顺序 | M0 | `00-composition-root.md` |
+| 战斗宿主契约 / IEmberCombatHost / 解除 EmberGame 依赖 | M0 + M3 | `00-composition-root.md` → `03-combat-waves.md` |
 | 难度倍率 / 怪血 / 刷怪配额 / 刷怪间隔 / Boss 血量公式 | M1 | `01-config-tuning.md` |
 | 词缀概率 / 敌人基础 HP / 地图边界 / 敌人上限 | M1 | `01-config-tuning.md` |
 | 游戏速度 / 1x–5x / 倍速 | M1 | `01-config-tuning.md` |
@@ -87,6 +100,7 @@ M8(音频) ──► 无玩法依赖（Resources 自加载）
 | 敌人动画 / 剪影 / 角色标记 / 预警圈 | M5 + M7 | `05-enemy-system.md` |
 | 主菜单 / 开局流程 / 选难度 / 选槽位 / 选武器 | M6 | `06-ui-flow.md` |
 | HUD / 血条 / 波次横幅 / 暂停 / 设置页 / 音量滑条 / UI 复用 | M6 | `06-ui-flow.md` |
+| HUD 推送点 / 安全区适配 / 摇杆输入 / 相机跟随 | M6 + M0 | `00-composition-root.md` → `06-ui-flow.md` |
 | 卡面排版 / 徽章 / 图标映射 / 滚动选卡 | M6 + M7 | `06-ui-flow.md` |
 | 简笔画素材 / 图集 / 程序化精灵 / 粒子 | M7 | `07-art-presentation.md` |
 | 中文字体 / TMP 图集 / 字体预热 / 加载页 | M7 | `07-art-presentation.md` |
@@ -96,6 +110,7 @@ M8(音频) ──► 无玩法依赖（Resources 自加载）
 | 性能 / 对象池 / 粒子上限 / 帧率 | M9 + M7 | `09-build-platform.md` |
 | 项目总览 / 模块依赖 / 任务归属 | 总览 | `00-overview.md` |
 | 数值口径 / 产品行为 / 不做什么 | 需求 | `../requirements.md` |
+| 离线编译校验 / 不启动 Unity 验证改动 | 工具 | `../../Tools/compile-check.ps1` |
 
 映射不唯一时不要猜测：列出候选模块和影响，请用户裁定后再改。
 
@@ -108,10 +123,13 @@ M8(音频) ──► 无玩法依赖（Resources 自加载）
 | M4 | M3 | `ctx.Damage / DamageFrom / Intercept / FindNearestVisibleEnemy` | 委托未赋值时空引用风险由 M3 保证全部赋值 |
 | M4 | M7 | `ctx.Effects`（粒子）、`ctx.Pool`（弹体池） | 池空时 `EmberEffects` 直接丢弃粒子，不报错 |
 | M3 | M5 | `IEnemyBehavior.Tick` / `EmberEnemyProjectiles` | 行为为空则退化为直线追击 |
-| M3 | M2 | `EmberGame.OnWaveCleared` → `Progress.Choices` | 无进度时不发牌 |
+| M3 | M2 | `IEmberCombatHost.OnWaveCleared` → `RunFlowController` → `Progress.Choices` | 无进度时不发牌 |
 | M6 | M2 | `RunProgress` 作为**方法参数**传入，UI 不持有 `EmberGame` | 参数为空则不绘制该块 |
 | M6 | M3 | 只读 `EnemyCount / Wave / WaveRemaining / Boss / BossAlive` | 无战斗实例时 HUD 隐藏战斗块 |
-| M7 | M3/M2 | 只读 `EmberGame.State` 作"是否播放"门控 | 找不到游戏实例则动画照常播放 |
+| M0 | M3 | `IEmberCombatHost` | 由组合根实现；**实现方不必是 `EmberGame`** |
+| M3 | M0 | `IEmberCombatHost` 反向请求阶段、伤害入口、计分与收局 | 宿主未提供时战斗不推进 |
+| M4 | M0 | **无依赖**（经 `EmberWeaponContext`） | — |
+| M7 | M0 | 阶段委托；构造时注入，不用服务定位器 | 委托为空时动画照常播放 |
 | M8 | M7/Resources | `Resources.Load("Audio/...")` | **clip 缺失静默跳过**，只警告一次，不崩 |
 | M9 | 全部 | 仅在编辑器期改写 PlayerSettings 与资源导入设置 | 缺环境变量即停止打包并列缺失项 |
 
@@ -119,12 +137,21 @@ M8(音频) ──► 无玩法依赖（Resources 自加载）
 
 | 问题 | 位置 | 影响 |
 |------|------|------|
-| `EmberGame` 为上帝类 | 11 态状态机 + 36 项文案表 + 开局流程 + 血量 + HUD 驱动 | 单文件承担 M6/M2/M3 三种职责，改动易互相波及 |
-| 表现层反向依赖游戏层 | `EmberKeeperAnimation` 用 `FindObjectOfType<EmberGame>()` 反查；`EmberEffects` 读 `EmberGame.State` | 服务定位器隐藏依赖，难以单测 |
 | `LevelConfig.ApplyWorld()` 被重复调用 | `EmberGame` 与 `EmberCombat` 各调一次 | 幂等，暂无实际危害，但属重复副作用 |
-| 死代码 | `EmberPulseWeapon`（`WavePower` 恒 0）、`RunProgress` 中 `FullRoster` / `HasEvolved` / `ScoreMult` / `HealAmount` 等零调用点成员 | 增加误读成本 |
+| 死代码 | `EmberPulseWeapon`（`WavePower` 恒 0）、`RunProgress` 中 `FullRoster` / `HasEvolved` / `CanEvolve` / `OwnedWeaponsView` / `AddShield` / `OfferCountExpected` / `ScoreMult` / `HealAmount`（2026-09-23 扫描确认零调用点） | 增加误读成本 |
 | `LevelConfig.Default` 每次访问新建对象 | `LevelConfig.cs` | 属性而非缓存，高频访问会有额外分配 |
-| 无程序集边界 | 全项目无 `.asmdef` | 模块边界只能靠文档与纪律维持，编译期无法阻止违规依赖 |
+| `EmberHud` 每帧拼字符串 | `EmberHud.Set` / `Stage` | 热路径分配；且 `Stage` 写 `waveText` 与 `Set` 重复（当前行为：`Stage` 覆盖 `Set`） |
+| 无程序集边界 | `Assets` 下无 `.asmdef` | 模块边界只能靠文档与纪律维持，编译期无法阻止违规依赖 |
+
+> **2026-09-23 已修复的历史技术债**（勿再按旧描述理解代码）：
+>
+> | 旧问题 | 现状 |
+> |--------|------|
+> | `EmberGame` 为上帝类（361 行 / 5 种职责） | 已拆为组合根（约 300 行，纯装配与顺序）+ 9 个职责单元，见 `00-composition-root.md` |
+> | 表现层用 `FindObjectOfType<EmberGame>()` 反查 | `EmberKeeperAnimation` / `EmberEffects` 改为注入 `IEmberRunPhaseSource` 式阶段委托 |
+> | M3 直接持有 `EmberGame` | 改为 `IEmberCombatHost`；`EmberCombat` / `EmberBoss` / `EmberHealingDrops` 零 `EmberGame` 引用 |
+> | 安全区变化每帧轮询 | 改为 `EmberSafeAreaWatcher` 事件订阅 |
+> | `RunProgress` 死代码清单（`HasExclusive` 等） | 已按 2026-09-23 全仓扫描重新核对，清单见 `02-run-progression.md` |
 
 ## 测试现状
 
@@ -132,10 +159,15 @@ M8(音频) ──► 无玩法依赖（Resources 自加载）
 
 | 项 | 状态 |
 |----|------|
-| `.asmdef` 文件 | **0 个**（Assets 下） |
+| `Assets` 下 `.asmdef` 文件 | **0 个**（`Packages/` 内第三方包的不计） |
 | EditMode / PlayMode 测试程序集 | **不存在** |
 | `[Test]` / `UnityTest` / `Assert` | **不存在** |
 | 编辑器校验入口（`EmberChecks` / `Validate*` / `EmberUIRenderCheck`） | **已被删除**（见 `09-build-platform.md` 清理记录） |
+| 离线编译校验 | **有**：`Tools/compile-check.ps1`（Unity 自带 Roslyn，不启动编辑器） |
+| 字形覆盖检查 | **有**：`Tools/atlas_glyph_check.py`（读编译产物字符串堆） |
+
+> 后两项是**检查工具，不是测试程序集**：它们能证明"代码写得对、文案都在盘上"，
+> 不能证明"运行行为正确"。因此各模块的自动化验收项仍按「待建」处理。
 
 > ⚠️ 历史文档中大量「`Emberlight/Validate …` 已通过」「`ValidateGodsSelect` 覆盖验收点」的表述**已失效**——这些入口在 2026-09-14 发布准备清理中连同临时编辑器脚本一并删除。引用它们作为证据是不成立的。
 

@@ -19,10 +19,12 @@
 | 被依赖模块 | 只使用的公开契约 | 用途 | 缺失时的行为 |
 |------------|------------------|------|--------------|
 | M2 | `EmberRarity` 枚举（卡框按稀有度取图）、词条 id（图标映射）、`AllNames`（字形预热） | 取图与预热 | 未知 id 回落占位图 |
-| M3 | `EmberGame.State`（是否播放动画的门控）、`Elapsed` | 动画相位与暂停冻结 | 找不到游戏实例则动画照常播放 |
+| M0 | **阶段委托**（`System.Func<EmberRunPhase>`，等价 `IEmberRunPhaseSource`），构造时注入 | "是否播放"门控与暂停冻结 | 委托为空时动画照常播放（不再反查游戏实例） |
 | Resources | `Resources/Art/**`、`Resources/Fonts/**`、`Resources/Art/Baked/**` | 图集与字体 | 逐级回退，最终用程序化占位 |
 
-**反向依赖警告**：`EmberKeeperAnimation` 通过 `Object.FindObjectOfType<EmberGame>()` **反查**游戏实例，`EmberEffects` 也读取 `EmberGame.State`。这是 Visuals → Core 的反向依赖（服务定位器），是本项目已知的边界问题，见 `00-overview.md` §已知边界问题。
+**边界（2026-09-23 起）**：`EmberKeeperAnimation` 与 `EmberEffects` 的阶段门控**改为构造时注入委托**，
+不再使用 `Object.FindObjectOfType<EmberGame>()` 反查，也不再读 `EmberGame.State`。
+因此 `Assets/Scripts/Visuals/` 下**零 `EmberGame` 类型引用**；这条边界现在由源码扫描可验证（见 `00-composition-root-test.md` C14）。
 
 ## 设计与数据流
 
@@ -121,7 +123,9 @@
 - `FirstScreenGlyphSet` 同步加入 —— 加载页文案+主菜单标题的约 98 个不同字形；已验证与 `EmberIntro` 会绘制的字符集完全一致。
 - `GlyphSet + CardGlyphSet()` 的余量按 48 字/帧用协程分片加入。
 
-`CardGlyphSet()` 从 `EmberGame.UpgradeNames` / `UpgradeDetails`、`EmberGodsSelectPanel.RosterNames` / `RosterDescs`、`EmberRarityUtil.AllNames` 及 `ExtraCardText` **推导**得出，不手写，避免改文案后失同步。
+`CardGlyphSet()` 从 `EmberCopy.UpgradeNames` / `UpgradeDetails`、`EmberGodsSelectPanel.RosterNames` / `RosterDescs`、`EmberRarityUtil.AllNames` 及 `ExtraCardText` **推导**得出，不手写，避免改文案后失同步。
+
+> 文案原有的 `EmberGame.UpgradeNames` / `UpgradeDetails` 已迁到 `EmberCopy`（提交 `a216de7` 之前的工作区改动），本文件此前引用的是旧位置。
 
 **改这三处文案必须同步确认预热覆盖**，否则回落路径下首次显示会触发运行时字形烘焙卡顿。
 
@@ -178,7 +182,7 @@ python Tools/atlas_glyph_check.py
 
 - 圆润斗篷造型，斗篷遮住脚；兜帽层次、黑脸亮眼、分层提灯。
 - **不再播放图集走路帧**：连续浮动 + 移动倾斜 + 衣摆呼吸 + 提灯摇晃。
-- **游戏暂停时停止动画**（读 `EmberGame.State`）。
+- **游戏暂停时停止动画**（读注入的阶段委托，非 Playing 即冻结）。
 - 只移动视觉子节点，保留角色坐标与碰撞规则。
 
 ### 世界美术
@@ -201,7 +205,7 @@ python Tools/atlas_glyph_check.py
 | `EmberEffects` | `MonoBehaviour` | 位置/类型 | — | 池上限 120；仅 `Playing` 发射 |
 | `EmberFonts.CreateChinese()` | 静态 | — | TMP 字体资产 | 预烘静态图集优先，`ValidateBaked` 不通过则回落动态图集；两条路径都保证返回可用字体 |
 | `EmberFonts.ApplyFont(Transform, TMP_FontAsset)` | 静态 | 根节点 + 字体 | — | 把字体刷到子树内所有 `TextMeshProUGUI`；`TMP_Settings.defaultFontAsset` 在 TMP 3.0.7 是只读属性，无法用默认字体做注入，编辑器手搭的层级将来靠这个接 |
-| `EmberKeeperAnimation` | `MonoBehaviour` | — | — | 暂停时停动画；⚠️ 用 `FindObjectOfType` 反查 |
+| `EmberKeeperAnimation` | `MonoBehaviour` | 阶段委托 | — | 暂停时停动画；门控由组合根注入，**不再用 `FindObjectOfType` 反查** |
 
 ## Unity 装配
 
@@ -222,6 +226,6 @@ python Tools/atlas_glyph_check.py
 | 问题 | 候选方案 | 影响 | 需要谁裁定 |
 |------|----------|------|------------|
 | 包体 16.4 MB 的 Noto CJK 是否裁剪 | 子集化字体 / 维持完整 | 可省十几 MB，但需保证全部文案字形覆盖 | jack + xiaoCoder |
-| `FindObjectOfType<EmberGame>()` 是否改为注入 | 构造注入 / 事件契约 / 维持 | 影响可测性；当前为服务定位器 | xiaoCoder |
+| ~~`FindObjectOfType<EmberGame>()` 是否改为注入~~ | **已裁定并落地（2026-09-23）**：改为构造时注入阶段委托 | 可测性与生命周期问题已解除；Visuals 下零 `EmberGame` 引用 | — |
 | 粒子上限 120 是否随真机实测调整 | Profiler 后调 / 维持 | 影响大波次表现与帧率 | xiaoCoder + jack |
 | 是否补完整八方角色动画 | 补图集 / 维持正背面+镜像 | 当前为简化动作，观感取舍 | jack |

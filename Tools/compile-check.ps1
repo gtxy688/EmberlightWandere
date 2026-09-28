@@ -10,11 +10,19 @@
 
 [CmdletBinding()]
 param(
-    [string]$ProjectPath = (Split-Path -Parent $PSScriptRoot),
+    [string]$ProjectPath = "",
     [string]$OutDll = "Library/RefactorCheck/Emberlight.dll"
 )
 
 $ErrorActionPreference = 'Stop'
+
+# $PSScriptRoot is unreliable under `powershell -File`; derive from the command path instead.
+if (-not $ProjectPath) {
+    $scriptDir = $PSScriptRoot
+    if (-not $scriptDir) { $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition }
+    if (-not $scriptDir) { $scriptDir = (Get-Location).Path }
+    $ProjectPath = Split-Path -Parent $scriptDir
+}
 
 $csc = 'E:\Unity\Unity\2022.3.62f3\Editor\Data\DotNetSdkRoslyn\csc.dll'
 if ($env:UNITY_EDITOR) {

@@ -134,14 +134,18 @@ EmberGame: 选槽位 N + 单选 1 把起始武器
 
 ### 零调用点成员（死代码，勿当作契约）
 
-`FullRoster()`、`HasEvolved()`（`HasMetamorph` 别名）、`HasExclusive()`、`CanEvolve()`、`OwnedWeaponsView()`、`AddShield()`、`OfferCountExpected()`、`ScoreMult`、`HealAmount()`。评估清理前先确认无外部引用。
+经 2026-09-23 全仓扫描确认**零调用点**：`FullRoster()`、`HasEvolved()`（`HasMetamorph` 别名）、`CanEvolve()`、`OwnedWeaponsView()`、`AddShield()`、`OfferCountExpected()`、`ScoreMult`、`HealAmount()`。
+
+（`OfferCountExpected()` 实现的是"候选数 = `3 + 空位`"公式，但界面实际用 `RunProgress.Choices()` 返回的数组长度，所以这个预测方法没人调——**不要**误以为改它会影响发牌数量。）
+
+> 注意：`HasEvolved(int)` 是 `HasMetamorph(int)` 的别名，**武器代码用的是 `HasMetamorph`**——只删别名不会影响行为，但别误删 `HasMetamorph`。
 
 ## Unity 装配
 
-- **无场景对象、无 Prefab、无 ScriptableObject**。`RunProgress` 由 `EmberGame` 在 `BeginRun` 时 `new` 出来并持有。
+- **无场景对象、无 Prefab、无 ScriptableObject**。`RunProgress` 由组合根（`EmberGame.StartRunWith`）在开局时 `new` 出来并由 `EmberRunState.Progress` 持有。
 - 回营地时 `Progress` 被置为 `null`，因此**所有消费方必须容忍 null**（`EmberCombat.Tick` 注入前先判）。
 - `EmberRarity` / `EmberRarityUtil` 为纯静态查表，无状态、无生命周期。
-- 词条名称与说明文案集中在 `EmberGame.UpgradeNames` / `UpgradeDetails`（36 项，下标 == 词条 id），并被 `EmberFonts` 用于字形预热——**改文案必须同时确认字体预热覆盖**。
+- 词条名称与说明文案集中在 `EmberCopy.UpgradeNames` / `UpgradeDetails`（36 项，下标 == 词条 id），并被 `EmberFonts` 用于字形预热——**改文案必须同时确认字体预热覆盖**。
 
 ## 影响与回归范围
 
