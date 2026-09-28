@@ -34,12 +34,20 @@
 | 检查 | 命令 | 结果 |
 |------|------|------|
 | 离线编译 | `powershell -ExecutionPolicy Bypass -File Tools/compile-check.ps1` | **通过**：53 源文件、0 错误、0 警告 |
+| **Unity 批处理导入 + 编译** | `powershell -ExecutionPolicy Bypass -File Tools/unity-batch-verify.ps1`（Unity 2022.3.62f3，需先关 Unity） | **通过**：退出码 0、0 条 `error CS`、`script compilation time: 1.519s`、`Assembly-CSharp.dll` 重新生成且含全部 12 个新类型 |
 | 字形覆盖 | `python Tools/atlas_glyph_check.py Library/RefactorCheck/Emberlight.dll` | **通过**：`MISSING (0)`，TMP 特殊字符齐全，退出码 0 |
 | 边界（源码扫描） | 见 `00-composition-root-test.md` C14 | **通过**：`Combat/`、`Combat/Weapons/`、`Visuals/` 下零 `EmberGame` 类型引用 |
-| Unity 编辑器编译 | **未执行**（编辑器当时开着，批处理会 crash） | **未验证** |
 | 真进一局 | — | **待人工验收**（R1） |
 
-> ⚠️ 离线编译**不等于** Unity 编译通过，也**不能替代**进一局。本次重构是行为保持型搬代码，但回归仍必须手测一遍主闭环。
+> ⚠️ 编译通过（无论离线 Roslyn 还是 Unity 批处理）只证明**工程能导入、代码能编译**，**不能替代**进一局。
+> 本次重构是行为保持型搬代码，但回归仍必须手测一遍主闭环。
+
+### 批处理编译的环境坑
+
+Unity 授权客户端走命名管道，**在沙箱 shell 里必定失败**（`Connection to channel LicenseClient-<n> refused`
+→ `IPC channel to LicensingClient doesn't exist; aborting` → 退出码 199）。必须在普通终端运行
+`Tools/unity-batch-verify.ps1`，且**先把 Unity 编辑器关掉**。另外 Unity 返回后仍可能在刷日志，
+脚本已加等待；若日志里没有 `script compilation time`，说明是增量导入（没东西要编），不是失败。
 
 ### 未做（有意决定，不是欠债）
 
@@ -55,6 +63,10 @@
    结论：**改含中文的源文件只用编辑工具，或显式 `-Encoding UTF8` + `[System.IO.File]::WriteAllText`**。
 2. **`$PSScriptRoot` 在 `powershell -File` 下可能为空**：`compile-check.ps1` 已改为从 `$MyInvocation.MyCommand.Definition` 回退。
 3. **执行策略会挡住 `.ps1`**：需 `-ExecutionPolicy Bypass` 运行。
+4. **Unity 授权客户端需要命名管道**：在沙箱 shell 里批处理必定以退出码 199 失败
+   （`IPC channel to LicensingClient doesn't exist; aborting`）。必须在普通终端跑 `Tools/unity-batch-verify.ps1`。
+5. **Unity 进程返回后仍在刷日志**：立刻检查日志会读到"文件不存在/为空"的假失败；脚本已加等待，
+   且区分"增量导入（无需编译）"与"编译失败"。
 
 ## 2026-09-15 本轮改动（工作区，已并入基线提交 `a216de7`）
 
@@ -75,7 +87,7 @@
 
 | 模块 | 阶段 | 最近验证 | 待人工验收 | 阻塞 | 下一步 |
 |------|------|----------|------------|------|--------|
-| M0 组合根 | **已重构** | **离线编译通过**（53 文件 0 错误 0 警告）+ 源码边界扫描通过；Unity 编译与实跑未做 | **R1–R10**（`00-composition-root-test.md`） | 无测试程序集 | **jack 进一局走查主闭环** |
+| M0 组合根 | **已重构** | **Unity 批处理编译通过**（退出码 0、0 条 `error CS`）+ 离线编译 53 文件 0 警告 + 源码边界扫描通过；实跑未做 | **R1–R10**（`00-composition-root-test.md`） | 无测试程序集 | **jack 进一局走查主闭环** |
 | M1 配置与调参 | 已实现 | **无自动化**（数值已对照代码） | H1–H4 | 无测试程序集 | 补 EditMode 测试（最高收益） |
 | M2 单局进度与构筑 | 已实现 | **无自动化**（规则已对照代码） | H1–H8 | 无测试程序集 | 补 EditMode 测试（最高收益） |
 | M3 战斗与波次 | 已实现 | **无自动化**；宿主契约已解耦（源码扫描通过） | H1–H9 | 无测试程序集；PlayMode 需可脚本化装配 | 打一局走查主闭环 |
@@ -92,7 +104,7 @@
 
 | 阻塞项 | 影响 | 需要谁 |
 |--------|------|--------|
-| **本次重构尚未在 Unity 里编译过、也未进过一局** | 离线 Roslyn 编译通过不等于 Unity 编译通过；重构面覆盖全部模块，必须先手测主闭环 | jack（或关闭 Unity 后跑批处理编译） |
+| **本次重构尚未真进过一局** | 编译与静态检查全绿，但重构面覆盖全部模块（含战斗、选卡、输入、HUD），必须手测主闭环 R1 | jack |
 | **无自动化测试基础设施**（无 asmdef、无测试程序集、校验入口已删） | 除 M7 的 A11–A14 外，全部模块的自动化项均为「未验证」；回归完全依赖手测 | jack 裁定是否补齐 |
 | **未构建过 APK** | M9 全部真机验收无法开始 | jack |
 | **keystore 签名身份未创建** | 阻塞正式发布（不阻塞调试包） | jack |

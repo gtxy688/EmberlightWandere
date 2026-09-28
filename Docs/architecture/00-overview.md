@@ -164,9 +164,10 @@ RunFlowController ──► Host 契约 ──► M0  选卡推进规则不持�
 | `[Test]` / `UnityTest` / `Assert` | **不存在** |
 | 编辑器校验入口（`EmberChecks` / `Validate*` / `EmberUIRenderCheck`） | **已被删除**（见 `09-build-platform.md` 清理记录） |
 | 离线编译校验 | **有**：`Tools/compile-check.ps1`（Unity 自带 Roslyn，不启动编辑器） |
+| Unity 批处理编译 | **有**：`Tools/unity-batch-verify.ps1`（真 Unity 导入 + 编译；需先关编辑器，且在普通终端运行） |
 | 字形覆盖检查 | **有**：`Tools/atlas_glyph_check.py`（读编译产物字符串堆） |
 
-> 后两项是**检查工具，不是测试程序集**：它们能证明"代码写得对、文案都在盘上"，
+> 后三项是**检查工具，不是测试程序集**：它们能证明"工程能导入、代码写得对、文案都在盘上"，
 > 不能证明"运行行为正确"。因此各模块的自动化验收项仍按「待建」处理。
 
 > ⚠️ 历史文档中大量「`Emberlight/Validate …` 已通过」「`ValidateGodsSelect` 覆盖验收点」的表述**已失效**——这些入口在 2026-09-14 发布准备清理中连同临时编辑器脚本一并删除。引用它们作为证据是不成立的。

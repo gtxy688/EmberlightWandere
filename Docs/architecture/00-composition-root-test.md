@@ -33,18 +33,23 @@
 |------|------------------|---------------------------|----------|------|
 | — | — | 尚无可执行的测试程序集 | — | **未验证** |
 
+> 注意：本项目**没有** Test Runner 套件可跑，因此上表恒为「未验证」。
+> 下面的编译与字形检查是**工程可导入/可编译**的证据，不是行为测试证据。
+
 ### 离线编译校验（已跑，非测试程序集）
 
 `Tools/compile-check.ps1` 用 Unity 自带 Roslyn 编译 `Assets/Scripts`，**不启动编辑器**，
 因此 Unity 开着也能跑；同时用 `Tools/atlas_glyph_check.py` 复查字形覆盖。
+`Tools/unity-batch-verify.ps1` 则是真正的 Unity 批处理导入 + 编译（**必须先关 Unity**，
+且需在普通终端运行——沙箱会阻断授权客户端的命名管道）。
 
 | 日期 | 命令 | 结果 |
 |------|------|------|
 | 2026-09-23 | `powershell -ExecutionPolicy Bypass -File Tools/compile-check.ps1` | **通过**：53 个源文件、0 错误、0 警告 |
-| 2026-09-23 | `python Tools/atlas_glyph_check.py Library/RefactorCheck/Emberlight.dll` | 见下方「字形覆盖」节 |
+| 2026-09-23 | `python Tools/atlas_glyph_check.py Library/RefactorCheck/Emberlight.dll` | **通过**：`MISSING (0)`，TMP 特殊字符齐全，退出码 0 |
+| 2026-09-23 | `powershell -ExecutionPolicy Bypass -File Tools/unity-batch-verify.ps1`（Unity 2022.3.62f3，`-batchmode -nographics -quit`） | **通过**：退出码 0、`Application will terminate with return code 0`、`AssetDatabase: script compilation time: 1.519s`、日志内 **0 条 `error CS`**；`Library/ScriptAssemblies/Assembly-CSharp.dll` 重新生成，其中含全部 12 个新类型 |
 
-> 离线编译通过**不等于** Unity 编译通过（引用集与预定义宏有差异），也**不能替代**进一局的验收。
-> 它是"改动没写错"的必要条件，不是充分条件。
+> 批处理通过只证明**工程能导入、代码能编译**，仍**不能替代**进一局。
 
 ## 手动验收前置条件
 
@@ -90,18 +95,23 @@
 
 ## 交付结论
 
-- **已验证**：离线编译 53 文件 / 0 错误 / 0 警告（命令与日期见上）；`Combat/`、`Visuals/` 与 `Weapons/` 下零 `EmberGame` 类型引用（源码扫描）。
+- **已验证**：
+  - 离线编译 53 文件 / 0 错误 / 0 警告（`Tools/compile-check.ps1`）；
+  - **Unity 批处理导入 + 编译通过**：退出码 0、0 条 `error CS`、`AssetDatabase: script compilation time: 1.519s`、`Assembly-CSharp.dll` 重新生成且含全部 12 个新类型（`Tools/unity-batch-verify.ps1`，2026-09-23）；
+  - 字形覆盖 `MISSING (0)`、TMP 特殊字符齐全（`Tools/atlas_glyph_check.py`）；
+  - `Combat/`（含 `Weapons/`）与 `Visuals/` 下零 `EmberGame` 类型引用（源码扫描）。
 - **不适用**：C15 战斗手感与 UI 观感——属审美判断，不做自动化。
 - **待人工验收**：R1–R10。
 - **未验证**：C1–C14 全部（阻塞原因：项目无 asmdef 与测试程序集；PlayMode 测试还需可脚本化装配）。
+  注：C14 的**结论**已由源码扫描人工确认，但仍无自动化断言守住它。
 - **未通过**：无。
 
 ## 字形覆盖
 
 本次重构新增的源码文件与注释**不含新的玩家可见文案**：文案仍集中在 `EmberCopy` 与各面板常量中，
-未改动任何字符串字面量。因此理论上不需要重跑烘制——但仍以 `Tools/atlas_glyph_check.py` 的实跑结果为准，
-结果记在下方（该脚本读编译产物字符串堆，能看见方法体内的内联字面量）。
+未改动任何字符串字面量。因此理论上不需要重跑烘制——仍以实跑结果为准
+（该脚本读编译产物字符串堆，能看见方法体内的内联字面量）。
 
 | 日期 | 命令 | 结果 |
 |------|------|------|
-| 2026-09-23 | `python Tools/atlas_glyph_check.py Library/RefactorCheck/Emberlight.dll` | 见 `progress.md` 记录 |
+| 2026-09-23 | `python Tools/atlas_glyph_check.py Library/RefactorCheck/Emberlight.dll` | **通过**：`MISSING (0)`、TMP 特殊字符齐全、退出码 0 |
