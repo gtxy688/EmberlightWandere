@@ -43,6 +43,11 @@ $logFull = Join-Path $ProjectPath $LogPath
 New-Item -ItemType Directory -Force -Path (Split-Path $logFull -Parent) | Out-Null
 if (Test-Path $logFull) { Remove-Item $logFull -Force }
 
+# Record the produced assembly before the run so compilation is proven by the ARTIFACT, not by
+# log wording (Unity's "compiled" lines differ between the incremental and full paths).
+$asmPath = Join-Path $ProjectPath 'Library/ScriptAssemblies/Assembly-CSharp.dll'
+$beforeTicks = if (Test-Path $asmPath) { (Get-Item $asmPath).LastWriteTimeUtc.Ticks } else { 0 }
+
 Write-Host "Unity   : $UnityExe"
 Write-Host "Project : $ProjectPath"
 Write-Host "Log     : $logFull"
@@ -77,7 +82,20 @@ $log = @(Get-Content $logFull)
 $csErrors = @($log | Where-Object { $_ -match 'error CS\d+' })
 $compileErrors = @($log | Where-Object { $_ -match 'Compilation failed|Scripts have compiler errors' })
 $licenseFailure = @($log | Where-Object { $_ -match "LicensingClient doesn't exist|return code 199" })
-$compiled = @($log | Where-Object { $_ -match 'script compilation time|CompileScripts' })
+
+# Unity can still be copying the build artifacts out of Bee when the process exits, so poll for
+# the assembly to settle before judging "did it build". Checking once here produced a false
+# "produced no Assembly-CSharp.dll" on a run that had compiled fine.
+$deadline = (Get-Date).AddSeconds(30)
+$afterTicks = if (Test-Path $asmPath) { (Get-Item $asmPath).LastWriteTimeUtc.Ticks } else { 0 }
+while ((Get-Date) -lt $deadline) {
+    if (-not (Test-Path $asmPath)) { Start-Sleep -Milliseconds 400; continue }
+    $t1 = (Get-Item $asmPath).LastWriteTimeUtc.Ticks
+    Start-Sleep -Milliseconds 600
+    $afterTicks = (Get-Item $asmPath).LastWriteTimeUtc.Ticks
+    if ($afterTicks -eq $t1) { break }
+}
+$rebuilt = ($afterTicks -ne 0) -and ($afterTicks -ne $beforeTicks)
 
 Write-Host ''
 if ($licenseFailure.Count -gt 0) {
@@ -99,10 +117,18 @@ if ($code -ne 0) {
     exit $code
 }
 
-if ($compiled.Count -eq 0) {
-    Write-Host 'Unity exited cleanly but the log shows NO script compilation.' -ForegroundColor Yellow
-    Write-Host 'That normally just means everything was already up to date (incremental import).'
-    Write-Host 'To force a full recompile: close Unity, delete Library/ScriptAssemblies, re-run.'
+if ($rebuilt) {
+    $asm = Get-Item $asmPath
+    Write-Host "COMPILE OK - Assembly-CSharp.dll rebuilt ($($asm.Length) bytes @ $($asm.LastWriteTime))." -ForegroundColor Green
+} else {
+    $asm = if (Test-Path $asmPath) { Get-Item $asmPath } else { $null }
+    if ($asm) {
+        Write-Host "COMPILE OK (incremental) - Assembly-CSharp.dll unchanged ($($asm.Length) bytes @ $($asm.LastWriteTime))." -ForegroundColor Green
+        Write-Host 'Nothing needed recompiling. To force a full rebuild: close Unity,' -ForegroundColor Yellow
+        Write-Host 'delete Library/ScriptAssemblies, then re-run this script.' -ForegroundColor Yellow
+    } else {
+        Write-Host 'WARNING: Unity exited cleanly but produced no Assembly-CSharp.dll.' -ForegroundColor Yellow
+    }
 }
 
 Write-Host 'UNITY COMPILE OK - project imported with no C# errors.' -ForegroundColor Green

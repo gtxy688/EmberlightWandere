@@ -134,11 +134,39 @@ EmberGame: 选槽位 N + 单选 1 把起始武器
 
 ### 零调用点成员（死代码，勿当作契约）
 
-经 2026-09-23 全仓扫描确认**零调用点**：`FullRoster()`、`HasEvolved()`（`HasMetamorph` 别名）、`CanEvolve()`、`OwnedWeaponsView()`、`AddShield()`、`OfferCountExpected()`、`ScoreMult`、`HealAmount()`。
+经 2026-09-23 全仓扫描确认**零调用点**：`FullRoster()`、`HasEvolved()`（`HasMetamorph` 别名）、`CanEvolve()`、`OwnedWeaponsView()`、`AddShield()`、`HealAmount()`。
 
-（`OfferCountExpected()` 实现的是"候选数 = `3 + 空位`"公式，但界面实际用 `RunProgress.Choices()` 返回的数组长度，所以这个预测方法没人调——**不要**误以为改它会影响发牌数量。）
+（`OfferCountExpected()` 与 `FullRoster()` 已改为转发 `EmberChoicePool.ExpectedCount` / `EmberWeaponCatalog.RosterCopy()`，仍无调用点，但公式不再有第二个版本。`ScoreMult` 恒为 1.0，按 `../requirements.md` §4.1 保留。）
 
 > 注意：`HasEvolved(int)` 是 `HasMetamorph(int)` 的别名，**武器代码用的是 `HasMetamorph`**——只删别名不会影响行为，但别误删 `HasMetamorph`。
+
+## 模块内的职责划分（2026-09-23）
+
+原 `RunProgress` 一个文件 528 行同时承担三件事，现已拆开：
+
+| 单元 | 文件 | 职责 | 零 `UnityEngine` |
+|------|------|------|------------------|
+| `EmberWeaponCatalog` | `Core/EmberWeaponCatalog.cs` | **Id 空间与武器名册的唯一出处**：0–4 通用 / 10–15 武器 / 20–25 质变 / 30–35 专属；`WeaponForMeta` / `WeaponForExcl` / `IsRosterWeapon` | ✅ |
+| `EmberChoicePool` | `Core/EmberChoicePool.cs` | **候选卡生成**：基础 3 张 + 空位补新武器、权重抽卡、同屏唯一键、补位与兜底 | ✅ |
+| `RunProgress` | `Core/RunProgress.cs` | **只负责构筑状态怎么变**：槽位与归属、通用属性、品质 roll 落地、`Choose` / `TryRefresh` / `AbsorbDamage` / 计分 | ✅ |
+| `EmberRarityUtil` | `Core/EmberRarity.cs` | 品质权重与通用词条数值表 | ✅（见下） |
+
+**为什么拆**：`02-run-progression-test.md` 把本模块列为自动化收益最高的目标，但"候选怎么拼"与"状态怎么变"混在一起时，
+想验证"满槽不出新武器""同屏唯一键是 `(Id, WeaponId)`"必须先摆好整套构筑状态。拆开后 `EmberChoicePool.Build(progress, random)`
+只读 `RunProgress` 的公开只读事实，可直接单测。
+
+**注意：随机数消耗顺序是行为的一部分。** `EmberChoicePool.Build` 里每次 `random.Next*` 的**顺序与次数必须与拆分前逐字一致**，
+否则同一个种子发出来的手牌会变，jack 无法复现问题。改这个文件前先读它的类注释。
+
+### 配色为什么返回 `float[3]` 而不是 `Color`
+
+`EmberRarityUtil.Tint(rarity)` 返回 `float[3]`（RGB 0–1），UI 侧用 `EmberRarityTint.ToColor()`
+（`UI/EmberRarityTint.cs`）转成 `UnityEngine.Color`。
+
+这是为了**让整个 M2 保持零 `UnityEngine` 引用**：拆分前 `EmberRarityUtil.Color` 返回 `Color`、
+`WeightsForLuck` 用 `Mathf.Lerp/RoundToInt`，因此本文档与 `-test` 里
+"`EmberRarityUtil` 零 `UnityEngine` 依赖"这一条**当时并不成立**（文档断言与实现不符，已订正）。
+现改为 `System.Math` + `float[3]`，该断言才真正可测。
 
 ## Unity 装配
 

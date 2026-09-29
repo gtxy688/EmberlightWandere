@@ -3,7 +3,13 @@
 > 对应架构：`02-run-progression.md`
 > 对应需求：`../requirements.md` §4、§5
 > ⚠️ 项目当前**无测试基础设施**，见 `00-overview.md` §测试现状。
-> ✅ **本模块是补齐自动化收益最高的目标**：`RunProgress` 与 `EmberRarityUtil` 零 `UnityEngine` 依赖，可直接用 EditMode 测试覆盖全部规则。
+> ✅ **本模块是补齐自动化收益最高的目标**：`RunProgress`、`EmberChoicePool`、`EmberWeaponCatalog`、
+> `EmberRarityUtil` 现已**全部零 `UnityEngine` 依赖**，可直接用 EditMode 测试覆盖全部规则。
+>
+> 2026-09-23 订正：此前这里写"`RunProgress` 与 `EmberRarityUtil` 零 `UnityEngine` 依赖"，
+> 但当时 `EmberRarityUtil` 用了 `Mathf` 并返回 `Color`，该断言**不成立**。
+> 现已把 `WeightsForLuck` 改用 `System.Math`、配色改为 `float[3]` + UI 侧 `EmberRarityTint.ToColor()`，
+> A25 那类断言才真正可测。
 
 ## 自动化测试计划与证据
 

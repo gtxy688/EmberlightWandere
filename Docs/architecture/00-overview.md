@@ -25,7 +25,7 @@
 |------|------|----------|------------|----------|----------|
 | M0 | 组合根 | 持有阶段与本局状态、装配各单元、驱动每帧顺序、接回调 | **不含任何业务规则**（规则分别归 M1–M8） | `00-composition-root.md` | `00-composition-root-test.md` |
 | M1 | 配置与调参 | 难度倍率、波次配额/间隔、Boss 与敌人基础数值、游戏速度 | 不含战斗逻辑与状态推进 | `01-config-tuning.md` | `01-config-tuning-test.md` |
-| M2 | 单局进度与构筑 | 槽位/拥有武器/通用属性、选卡池生成、品质 roll、刷新、结算分 | 不含战斗、不含 UI 呈现 | `02-run-progression.md` | `02-run-progression-test.md` |
+| M2 | 单局进度与构筑 | Id 空间（`EmberWeaponCatalog`）、候选卡生成（`EmberChoicePool`）、构筑状态推进与品质 roll（`RunProgress`）、刷新、结算分 | 不含战斗、不含 UI 呈现 | `02-run-progression.md` | `02-run-progression-test.md` |
 | M3 | 战斗与波次 | 刷怪、遭遇事件、伤害结算、死亡/分裂/重生、清波判定、Boss 招式 | 不含选卡内容、不含落卡 UI | `03-combat-waves.md` | `03-combat-waves-test.md` |
 | M4 | 武器系统 | 6 把武器的 Tick 行为与专属/质变形态 | 不反向依赖 `EmberGame`，不做敌人生成 | `04-weapon-system.md` | — |
 | M5 | 敌人系统 | 行为策略、暗弹弹幕、剪影与动画表现、治疗掉落 | 不做伤害应用（由 M3 结算） | `05-enemy-system.md` | `05-enemy-system-test.md` |
@@ -85,6 +85,8 @@ RunFlowController ──► Host 契约 ──► M0  选卡推进规则不持�
 | 词缀概率 / 敌人基础 HP / 地图边界 / 敌人上限 | M1 | `01-config-tuning.md` |
 | 游戏速度 / 1x–5x / 倍速 | M1 | `01-config-tuning.md` |
 | 选卡 / 出卡 / 卡池 / 补偿选卡 / 刷新 / 槽位 N / 侥幸权重 | M2 | `02-run-progression.md` |
+| 候选怎么拼 / 同屏唯一键 / 出卡张数 / EmberChoicePool | M2 | `02-run-progression.md` |
+| 词条 Id 分区 / 武器名册 / EmberWeaponCatalog / 专属与质变映射 | M2 | `02-run-progression.md` |
 | 幸运 / 稀有度 / 铜银金钻 / 品质 roll | M2 | `02-run-progression.md` |
 | 专属 / 质变 / 进化 / 连发 / 燎原 / 日冕 | M2 + M4 | `02-run-progression.md` → `04-weapon-system.md` |
 | 结算 / Score / 余烬 / 击杀计分 | M2 | `02-run-progression.md` |

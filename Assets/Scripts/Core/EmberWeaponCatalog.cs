@@ -1,0 +1,94 @@
+namespace Emberlight
+{
+    /// <summary>
+    /// 词条 Id 空间与武器名册的**唯一出处**（`requirements.md` §4.2 / §4.7）。
+    ///
+    /// 抽这个类的原因：名册数组原先重复出现在 `RunProgress.RosterIds` / `MetaWeaponOf` /
+    /// `ExclWeaponOf` 三处，`EmberGodsSelectPanel.Roster` 与各武器的自门控又各自散落一遍；
+    /// 只要有一个人改动其中一份，武器图标、出卡、门控就会互相错位。
+    ///
+    /// 本类**不含规则、不含状态、零 `UnityEngine` 引用**——`RunProgress` 的归属判定、
+    /// `EmberChoicePool` 的候选生成与武器的 Tick 门控都从这里取 id。
+    /// </summary>
+    public static class EmberWeaponCatalog
+    {
+        // ── 通用词条（0–4）────────────────────────────────────────────────────────────────
+        public const int StatAtk = 0;
+        public const int StatAs = 1;
+        public const int StatLuck = 2;
+        public const int StatAmp = 3;
+        public const int StatShield = 4;
+
+        // ── 武器（10–19，占槽）────────────────────────────────────────────────────────────
+        public const int Pierce = 10;
+        public const int Boom = 11;
+        public const int Meteor = 12;
+        public const int Basic = 13;
+        public const int Orbit = 14;
+        public const int Trail = 15;
+
+        // ── 质变（20–29）─────────────────────────────────────────────────────────────────
+        public const int MetaBasic = 20;
+        public const int MetaOrbit = 21;
+        public const int MetaTrail = 22;
+        public const int MetaPierce = 23;
+        public const int MetaBoom = 24;
+        public const int MetaMeteor = 25;
+
+        // ── 专属（30–39）─────────────────────────────────────────────────────────────────
+        public const int ExclBasic = 30;
+        public const int ExclOrbit = 31;
+        public const int ExclTrail = 32;
+        public const int ExclPierce = 33;
+        public const int ExclBoom = 34;
+        public const int ExclMeteor = 35;
+
+        /// <summary>武器名册顺序，同时是开局选武器界面的显示顺序。</summary>
+        public static readonly int[] Roster = { Basic, Orbit, Trail, Pierce, Boom, Meteor };
+
+        static readonly int[] MetaIds = { MetaBasic, MetaOrbit, MetaTrail, MetaPierce, MetaBoom, MetaMeteor };
+        static readonly int[] ExclIds = { ExclBasic, ExclOrbit, ExclTrail, ExclPierce, ExclBoom, ExclMeteor };
+        // 下标与 MetaIds / ExclIds 一一对应，索引即武器在 Roster 中的位置。
+        static readonly int[] MetaWeaponOf = { Basic, Orbit, Trail, Pierce, Boom, Meteor };
+        static readonly int[] ExclWeaponOf = { Basic, Orbit, Trail, Pierce, Boom, Meteor };
+
+        /// <summary>名册长度（= 武器总数）。</summary>
+        public static int RosterCount { get { return Roster.Length; } }
+
+        /// <summary>下标取武器 id；越界返回 0（不是合法武器 id）。</summary>
+        public static int RosterIdAt(int index)
+        {
+            return index >= 0 && index < Roster.Length ? Roster[index] : 0;
+        }
+
+        /// <summary>是否为占槽武器（10–19 名册内）。</summary>
+        public static bool IsRosterWeapon(int id)
+        {
+            for (int i = 0; i < Roster.Length; i++)
+                if (Roster[i] == id) return true;
+            return false;
+        }
+
+        /// <summary>质变 id → 对应武器 id；非质变返回 0。</summary>
+        public static int WeaponForMeta(int metaId)
+        {
+            for (int i = 0; i < MetaIds.Length; i++)
+                if (MetaIds[i] == metaId) return MetaWeaponOf[i];
+            return 0;
+        }
+
+        /// <summary>专属 id → 对应武器 id；非专属返回 0。</summary>
+        public static int WeaponForExcl(int exclId)
+        {
+            for (int i = 0; i < ExclIds.Length; i++)
+                if (ExclIds[i] == exclId) return ExclWeaponOf[i];
+            return 0;
+        }
+
+        /// <summary>名册的一个副本（调用方可自由排序）。</summary>
+        public static int[] RosterCopy()
+        {
+            return (int[])Roster.Clone();
+        }
+    }
+}

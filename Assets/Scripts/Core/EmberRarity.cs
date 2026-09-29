@@ -1,4 +1,4 @@
-using UnityEngine;
+using System;
 
 namespace Emberlight
 {
@@ -43,9 +43,10 @@ namespace Emberlight
             }
         }
 
+        /// <summary>幸运品质百分比（"青铜 ×20%"这类展示用），与 <see cref="Magnitude"/> 同源。</summary>
         public static int Percent(EmberRarity rarity)
         {
-            return Mathf.RoundToInt(Magnitude(rarity) * 100f);
+            return (int)Math.Round(Magnitude(rarity) * 100f, MidpointRounding.AwayFromZero);
         }
 
         /// <summary>
@@ -67,14 +68,19 @@ namespace Emberlight
             return index >= 0 && index < AllNames.Length ? AllNames[index] : AllNames[0];
         }
 
-        public static Color Color(EmberRarity rarity)
+        /// <summary>
+        /// 稀有度配色，以纯 `float[3]`（RGB, 0–1）表达。**不返回 `UnityEngine.Color`**，
+        /// 这样本文件（以及依赖它的 `RunProgress` / `EmberChoicePool`）保持零 `UnityEngine` 引用，
+        /// 可以脱离 Unity 做 EditMode 测试。UI 侧用 <see cref="EmberRarityTint.ToColor"/> 转换。
+        /// </summary>
+        public static float[] Tint(EmberRarity rarity)
         {
             switch (rarity)
             {
-                case EmberRarity.Silver: return new Color(.78f, .85f, .94f);
-                case EmberRarity.Gold: return new Color(1f, .76f, .19f);
-                case EmberRarity.Diamond: return new Color(.25f, .94f, 1f);
-                default: return new Color(.86f, .49f, .28f);
+                case EmberRarity.Silver: return new[] { .78f, .85f, .94f };
+                case EmberRarity.Gold: return new[] { 1f, .76f, .19f };
+                case EmberRarity.Diamond: return new[] { .25f, .94f, 1f };
+                default: return new[] { .86f, .49f, .28f };
             }
         }
 
@@ -111,11 +117,21 @@ namespace Emberlight
             }
             return new[]
             {
-                Mathf.Max(0, Mathf.RoundToInt(Mathf.Lerp(a[0], b[0], t))),
-                Mathf.Max(0, Mathf.RoundToInt(Mathf.Lerp(a[1], b[1], t))),
-                Mathf.Max(0, Mathf.RoundToInt(Mathf.Lerp(a[2], b[2], t))),
-                Mathf.Max(0, Mathf.RoundToInt(Mathf.Lerp(a[3], b[3], t)))
+                LerpWeight(a[0], b[0], t),
+                LerpWeight(a[1], b[1], t),
+                LerpWeight(a[2], b[2], t),
+                LerpWeight(a[3], b[3], t)
             };
+        }
+
+        /// <summary>
+        /// 线性插值后四舍五入（远离零方向，与 `Mathf.RoundToInt` 一致），下限 0。
+        /// 用 `System.Math` 而非 `Mathf`，是为了让本文件不引入 `UnityEngine`。
+        /// </summary>
+        static int LerpWeight(float from, float to, float t)
+        {
+            float v = from + (to - from) * t;
+            return Math.Max(0, (int)Math.Round(v, MidpointRounding.AwayFromZero));
         }
 
         static int[] WeightsForWave(int wave)

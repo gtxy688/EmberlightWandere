@@ -9,7 +9,34 @@
 - **尚未实际构建过 APK，也未做任何真机检查。**
 - 当前分支 `refactor/decouple-embergame`，基线提交 `a216de7 重构前基线`（含 2026-09-15 那批未提交改动）。
 
-## 2026-09-23 本轮改动：拆解上帝类 `EmberGame`
+## 2026-09-23 第二轮：拆 `RunProgress`，并让 M2 真正零 `UnityEngine`
+
+**动因**：`RunProgress.cs` 528 行同时承担三件事——词条 Id 空间、候选卡生成、构筑状态推进。
+而 `02-run-progression-test.md` 把 M2 列为自动化收益最高的目标，"候选怎么拼"与"状态怎么变"混在一起时无法单独验证。
+
+| 主题 | 内容 | 验证 |
+|------|------|------|
+| **Id 空间抽离** | 新增 `EmberWeaponCatalog`：0–4 通用 / 10–15 武器 / 20–25 质变 / 30–35 专属的唯一出处；`Roster` / `WeaponForMeta` / `WeaponForExcl` / `IsRosterWeapon` | 编译通过 |
+| **候选池抽离** | 新增 `EmberChoicePool`：基础 3 张 + 空位补新武器、权重抽卡、同屏唯一键、补位与兜底；`RunProgress.Choices` 改为转发 | 编译通过；**随机数消耗顺序逐字保留** |
+| **`RunProgress` 只留状态** | 528 → 380 行；`OfferCountExpected` / `FullRoster` 改为转发，公式不再有第二版 | 编译通过 |
+| **消除名册数组重复** | `EmberGodsSelectPanel` 的本地 `Roster` 数组改为读 `EmberWeaponCatalog.Roster`（此前名册字面量在 4 处各有一份） | 源码扫描：全仓已无重复名册字面量 |
+| **M2 真正零 `UnityEngine`** | `EmberRarityUtil` 的 `Mathf.Lerp/RoundToInt` 改 `System.Math`；配色由返回 `Color` 改为返回 `float[3]`（`Tint`），UI 侧新增 `EmberRarityTint.ToColor()` 适配 | 源码扫描：`EmberRarity` / `RunProgress` / `EmberChoicePool` / `EmberWeaponCatalog` 均无 `using UnityEngine`、`Mathf`、`Color`、`Vector2` |
+
+> ⚠️ **订正一条既有文档断言**：`02-run-progression-test.md` 原先声称"`RunProgress` 与 `EmberRarityUtil`
+> 零 `UnityEngine` 依赖"，但当时 `EmberRarityUtil` 既用 `Mathf` 又返回 `Color`，**该断言不成立**。
+> 现已按上面两项改动使其成立，文档与实现一致。
+
+### 本轮实测结果（2026-09-23）
+
+| 检查 | 命令 | 结果 |
+|------|------|------|
+| 离线编译 | `Tools/compile-check.ps1` | **通过**：56 源文件、0 错误、0 警告 |
+| **Unity 批处理全量重编** | `Tools/unity-batch-verify.ps1`（先删 `Library/ScriptAssemblies` 强制重编） | **通过**：`Assembly-CSharp.dll` 重新生成（179,200 字节）、`script compilation time: 2.000s`、日志 0 条 `error CS` |
+| 字形覆盖 | `Tools/atlas_glyph_check.py` | **通过**：`MISSING (0)`，TMP 特殊字符齐全 |
+| 边界（源码扫描） | M2 纯 C# + 无重复名册 | **通过** |
+| 真进一局 | — | **待人工验收**（R1；本轮未改玩法规则，但改了发牌代码路径） |
+
+## 2026-09-23 第一轮：拆解上帝类 `EmberGame`
 
 **动因**：全项目只有一个入口脚本 `EmberGame`，361 行里承担 5 种职责（11 态状态机 + 开局装配/销毁 +
 摇杆与键盘输入 + 相机跟随 + 血量存亡 + HUD 推送 + 选卡编排）；M3（战斗）与 M7（表现）反向依赖 `EmberGame` 类型，
@@ -67,6 +94,11 @@ Unity 授权客户端走命名管道，**在沙箱 shell 里必定失败**（`Co
    （`IPC channel to LicensingClient doesn't exist; aborting`）。必须在普通终端跑 `Tools/unity-batch-verify.ps1`。
 5. **Unity 进程返回后仍在刷日志**：立刻检查日志会读到"文件不存在/为空"的假失败；脚本已加等待，
    且区分"增量导入（无需编译）"与"编译失败"。
+6. **Unity 退出 ≠ 产物写好**：`Library/ScriptAssemblies/*.dll` 是 Bee 在进程结束前才拷贝出来的。
+   脚本原先只检查一次，误报过"produced no Assembly-CSharp.dll"，而那一轮其实编译成功（日志有
+   `script compilation time: 2.000s`）。**判断"是否编译过"要看产物时间戳轮询，不要只看日志措辞。**
+7. **增量导入时日志不会出现 `CompileScripts`**：没东西要编时 Unity 直接跳过，此时"日志里没有编译记录"
+   是正常现象，不是失败。要拿到真实编译信号，先删 `Library/ScriptAssemblies`。
 
 ## 2026-09-15 本轮改动（工作区，已并入基线提交 `a216de7`）
 

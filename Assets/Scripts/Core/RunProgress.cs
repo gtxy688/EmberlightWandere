@@ -1,37 +1,46 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace Emberlight
 {
-    /// <summary>Gods-Select-v3 run state: 4 generics + luck/amp, exclusives/metamorphs, slot roster, refreshes.</summary>
+    /// <summary>
+    /// Gods-Select-v3 run state: slots, owned weapons, generic stats, luck/amp, exclusives/metamorphs,
+    /// free refreshes. 只负责"构筑状态怎么变"，不管"候选怎么拼"——后者见 <see cref="EmberChoicePool"/>。
+    /// Id 空间见 <see cref="EmberWeaponCatalog"/>。本类**零 `UnityEngine` 引用**，可脱离 Unity 单测。
+    /// </summary>
     public sealed class RunProgress
     {
-        public const int StatAtk = 0;
-        public const int StatAs = 1;
-        public const int StatLuck = 2;
-        public const int StatAmp = 3;
-        public const int StatShield = 4;
+        // ── 通用词条 Id（转发自 EmberWeaponCatalog，保持既有调用点可用）─────────────────────
+        public const int StatAtk = EmberWeaponCatalog.StatAtk;
+        public const int StatAs = EmberWeaponCatalog.StatAs;
+        public const int StatLuck = EmberWeaponCatalog.StatLuck;
+        public const int StatAmp = EmberWeaponCatalog.StatAmp;
+        public const int StatShield = EmberWeaponCatalog.StatShield;
 
-        public const int WeaponPierce = 10;
-        public const int WeaponBoom = 11;
-        public const int WeaponMeteor = 12;
-        public const int WeaponBasic = 13;
-        public const int WeaponOrbit = 14;
-        public const int WeaponTrail = 15;
+        // ── 武器 Id ────────────────────────────────────────────────────────────────────────
+        public const int WeaponPierce = EmberWeaponCatalog.Pierce;
+        public const int WeaponBoom = EmberWeaponCatalog.Boom;
+        public const int WeaponMeteor = EmberWeaponCatalog.Meteor;
+        public const int WeaponBasic = EmberWeaponCatalog.Basic;
+        public const int WeaponOrbit = EmberWeaponCatalog.Orbit;
+        public const int WeaponTrail = EmberWeaponCatalog.Trail;
 
-        public const int MetaBasic = 20;
-        public const int MetaOrbit = 21;
-        public const int MetaTrail = 22;
-        public const int MetaPierce = 23;
-        public const int MetaBoom = 24;
-        public const int MetaMeteor = 25;
+        // ── 质变 Id ────────────────────────────────────────────────────────────────────────
+        public const int MetaBasic = EmberWeaponCatalog.MetaBasic;
+        public const int MetaOrbit = EmberWeaponCatalog.MetaOrbit;
+        public const int MetaTrail = EmberWeaponCatalog.MetaTrail;
+        public const int MetaPierce = EmberWeaponCatalog.MetaPierce;
+        public const int MetaBoom = EmberWeaponCatalog.MetaBoom;
+        public const int MetaMeteor = EmberWeaponCatalog.MetaMeteor;
 
-        public const int ExclBasic = 30;
-        public const int ExclOrbit = 31;
-        public const int ExclTrail = 32;
-        public const int ExclPierce = 33;
-        public const int ExclBoom = 34;
-        public const int ExclMeteor = 35;
+        // ── 专属 Id ────────────────────────────────────────────────────────────────────────
+        public const int ExclBasic = EmberWeaponCatalog.ExclBasic;
+        public const int ExclOrbit = EmberWeaponCatalog.ExclOrbit;
+        public const int ExclTrail = EmberWeaponCatalog.ExclTrail;
+        public const int ExclPierce = EmberWeaponCatalog.ExclPierce;
+        public const int ExclBoom = EmberWeaponCatalog.ExclBoom;
+        public const int ExclMeteor = EmberWeaponCatalog.ExclMeteor;
+
 
         public const int MaxLuck = 120;
         public const int FreeRefreshes = 2;
@@ -78,13 +87,7 @@ namespace Emberlight
         readonly Dictionary<int, float> weaponMagnitude = new Dictionary<int, float>();
         readonly Dictionary<int, float> weaponAttackSpeed = new Dictionary<int, float>();
 
-        static readonly int[] RosterIds = { WeaponBasic, WeaponOrbit, WeaponTrail, WeaponPierce, WeaponBoom, WeaponMeteor };
-        static readonly int[] GenericIds = { StatAtk, StatAs, StatLuck, StatAmp, StatShield };
-
-        static readonly int[] MetaIds = { MetaBasic, MetaOrbit, MetaTrail, MetaPierce, MetaBoom, MetaMeteor };
-        static readonly int[] ExclIds = { ExclBasic, ExclOrbit, ExclTrail, ExclPierce, ExclBoom, ExclMeteor };
-        static readonly int[] MetaWeaponOf = { WeaponBasic, WeaponOrbit, WeaponTrail, WeaponPierce, WeaponBoom, WeaponMeteor };
-        static readonly int[] ExclWeaponOf = { WeaponBasic, WeaponOrbit, WeaponTrail, WeaponPierce, WeaponBoom, WeaponMeteor };
+        /// <summary>候选项与 id 空间的唯一出处在 EmberWeaponCatalog / EmberChoicePool。</summary>
 
         public RunProgress()
         {
@@ -131,7 +134,8 @@ namespace Emberlight
 
         public IReadOnlyCollection<int> OwnedWeaponsView { get { return ownedWeapons; } }
 
-        public static int[] FullRoster() { return (int[])RosterIds.Clone(); }
+        /// <summary>武器名册副本（顺序即开局选武器界面的显示顺序）。转发自 <see cref="EmberWeaponCatalog"/>。</summary>
+        public static int[] FullRoster() { return EmberWeaponCatalog.RosterCopy(); }
 
         /// <summary>Open-run: fill N slots from roster picks (at least 1). No skip fallback.</summary>
         public void ConfigureRun(int[] slotWeapons, int slots)
@@ -194,12 +198,8 @@ namespace Emberlight
             ConfigureRun(new[] { coreWeaponId }, slots);
         }
 
-        static bool IsRosterWeapon(int id)
-        {
-            for (int i = 0; i < RosterIds.Length; i++)
-                if (RosterIds[i] == id) return true;
-            return false;
-        }
+        /// <summary>是否为占槽武器（10–19 名册内）。判定放在 <see cref="EmberWeaponCatalog"/>。</summary>
+        static bool IsRosterWeapon(int id) { return EmberWeaponCatalog.IsRosterWeapon(id); }
 
         void GrantWeaponBaseline(int id)
         {
@@ -243,180 +243,18 @@ namespace Emberlight
             return w > 0 && ownedWeapons.Contains(w);
         }
 
-        static int WeaponForMeta(int metaId)
-        {
-            for (int i = 0; i < MetaIds.Length; i++)
-                if (MetaIds[i] == metaId) return MetaWeaponOf[i];
-            return 0;
-        }
+        static int WeaponForMeta(int metaId) { return EmberWeaponCatalog.WeaponForMeta(metaId); }
 
-        static int WeaponForExcl(int exclId)
-        {
-            for (int i = 0; i < ExclIds.Length; i++)
-                if (ExclIds[i] == exclId) return ExclWeaponOf[i];
-            return 0;
-        }
+        static int WeaponForExcl(int exclId) { return EmberWeaponCatalog.WeaponForExcl(exclId); }
 
-        static void Shuffle(List<int> list, Random random)
-        {
-            for (int i = list.Count - 1; i > 0; i--)
-            {
-                int j = random.Next(i + 1);
-                int tmp = list[i];
-                list[i] = list[j];
-                list[j] = tmp;
-            }
-        }
-
-        int WeightForSpecial(Random random)
-        {
-            // Higher luck → higher exclusive/metamorph entry weight (vs generic base 10).
-            int w = 1 + (int)(Luck / 40f); // jack: diamond felt too common
-            if (w < 1) w = 1;
-            if (w > 5) w = 5;
-            return w;
-        }
-
-        EmberOffer MakeGenericOffer(int id, Random random, int weaponId = -1)
-        {
-            return new EmberOffer(id, EmberRarityUtil.RollByLuck(random, Luck), weaponId);
-        }
-
-        static long OfferKey(int id, int weaponId)
-        {
-            return ((long)id << 32) | (uint)(weaponId + 1);
-        }
-
-        /// <summary>Gods-Select-v3: base 3 (generic/excl/meta, unique kinds) + empty-slot new weapons.</summary>
+        /// <summary>
+        /// 生成候选：基础 3 张（通用/专属/质变，同屏唯一键 `(Id, WeaponId)`）+ 每个空位补 1 张未拥有武器。
+        /// 具体规则与随机数消耗顺序见 <see cref="EmberChoicePool.Build"/>——
+        /// **不要在这里重建一套抽卡逻辑**，否则 jack 复现同一手牌局会看到不同的牌。
+        /// </summary>
         public EmberOffer[] Choices(Random random, int waveCleared)
         {
-            var base3 = new List<EmberOffer>();
-            var usedKeys = new HashSet<long>();
-
-            var candIds = new List<int>();
-            var candWid = new List<int>();
-            var candW = new List<int>();
-
-            // Per-owned-weapon ATK/AS + global luck/amp/shield
-            for (int i = 0; i < RosterIds.Length; i++)
-            {
-                int wid = RosterIds[i];
-                if (!ownedWeapons.Contains(wid)) continue;
-                candIds.Add(StatAtk); candWid.Add(wid); candW.Add(10);
-                candIds.Add(StatAs); candWid.Add(wid); candW.Add(10);
-            }
-            candIds.Add(StatLuck); candWid.Add(-1); candW.Add(10);
-            candIds.Add(StatAmp); candWid.Add(-1); candW.Add(10);
-            candIds.Add(StatShield); candWid.Add(-1); candW.Add(10);
-
-            int specialW = WeightForSpecial(random);
-            for (int i = 0; i < ExclIds.Length; i++)
-            {
-                if (CanExclusive(ExclIds[i]))
-                {
-                    candIds.Add(ExclIds[i]);
-                    candWid.Add(-1);
-                    candW.Add(specialW);
-                }
-            }
-            // 质变进池：整次选卡仅 0.5% 概率放入候选（jack）
-            if (random.NextDouble() < 0.005)
-            {
-                for (int i = 0; i < MetaIds.Length; i++)
-                {
-                    if (CanMetamorph(MetaIds[i]))
-                    {
-                        candIds.Add(MetaIds[i]);
-                        candWid.Add(-1);
-                        candW.Add(10);
-                    }
-                }
-            }
-
-            while (base3.Count < 3 && candIds.Count > 0)
-            {
-                int total = 0;
-                for (int i = 0; i < candW.Count; i++) total += candW[i];
-                if (total <= 0) break;
-                int roll = random.Next(total);
-                int acc = 0;
-                int pick = 0;
-                for (int i = 0; i < candIds.Count; i++)
-                {
-                    acc += candW[i];
-                    if (roll < acc) { pick = i; break; }
-                }
-                int id = candIds[pick];
-                int wid = candWid[pick];
-                candIds.RemoveAt(pick);
-                candWid.RemoveAt(pick);
-                candW.RemoveAt(pick);
-                if (!usedKeys.Add(OfferKey(id, wid))) continue;
-                if (EmberRarityUtil.IsGenericId(id))
-                    base3.Add(MakeGenericOffer(id, random, wid));
-                else if (id >= 30)
-                    base3.Add(new EmberOffer(id, EmberRarity.Gold));
-                else
-                    base3.Add(new EmberOffer(id, EmberRarity.Diamond));
-            }
-
-            // Pad: remaining owned-weapon ATK/AS then other globals
-            if (base3.Count < 3)
-            {
-                var pad = new List<int>();
-                var padW = new List<int>();
-                for (int i = 0; i < RosterIds.Length; i++)
-                {
-                    int wid = RosterIds[i];
-                    if (!ownedWeapons.Contains(wid)) continue;
-                    if (!usedKeys.Contains(OfferKey(StatAtk, wid))) { pad.Add(StatAtk); padW.Add(wid); }
-                    if (!usedKeys.Contains(OfferKey(StatAs, wid))) { pad.Add(StatAs); padW.Add(wid); }
-                }
-                int[] globals = { StatLuck, StatAmp, StatShield };
-                for (int i = 0; i < globals.Length; i++)
-                    if (!usedKeys.Contains(OfferKey(globals[i], -1))) { pad.Add(globals[i]); padW.Add(-1); }
-                // shuffle pad indices
-                var order = new List<int>();
-                for (int i = 0; i < pad.Count; i++) order.Add(i);
-                Shuffle(order, random);
-                for (int oi = 0; oi < order.Count && base3.Count < 3; oi++)
-                {
-                    int i = order[oi];
-                    int id = pad[i];
-                    int wid = padW[i];
-                    if (!usedKeys.Add(OfferKey(id, wid))) continue;
-                    base3.Add(MakeGenericOffer(id, random, wid));
-                }
-            }
-            while (base3.Count < 3)
-            {
-                int wid = CoreWeaponId;
-                if (!ownedWeapons.Contains(wid))
-                {
-                    foreach (int r in RosterIds) { if (ownedWeapons.Contains(r)) { wid = r; break; } }
-                }
-                usedKeys.Add(OfferKey(StatAtk, wid));
-                base3.Add(MakeGenericOffer(StatAtk, random, wid));
-            }
-
-            // Extra: unowned weapons = empty slots (do not consume base-3 kind budget)
-            var result = new List<EmberOffer>(base3);
-            int empty = EmptySlots;
-            if (empty > 0)
-            {
-                var news = new List<int>();
-                for (int i = 0; i < RosterIds.Length; i++)
-                {
-                    int id = RosterIds[i];
-                    if (ownedWeapons.Contains(id)) continue;
-                    news.Add(id);
-                }
-                Shuffle(news, random);
-                for (int i = 0; i < news.Count && i < empty; i++)
-                    result.Add(new EmberOffer(news[i], EmberRarity.Gold));
-            }
-
-            return result.ToArray();
+            return EmberChoicePool.Build(this, random);
         }
 
         /// <summary>Spend one free refresh; rebuild offer list. Returns false if none left.</summary>
@@ -582,10 +420,13 @@ namespace Emberlight
             return 20f + 10f * (int)rarity;
         }
 
-        /// <summary>UI API: offer count formula.</summary>
+        /// <summary>
+        /// UI API：候选张数公式 `3 + 空位数`。
+        /// 转发到 <see cref="EmberChoicePool.ExpectedCount"/>，避免公式出现第二个版本。
+        /// </summary>
         public int OfferCountExpected()
         {
-            return 3 + EmptySlots;
+            return EmberChoicePool.ExpectedCount(this);
         }
     }
 }

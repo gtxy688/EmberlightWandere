@@ -48,6 +48,7 @@
 | 2026-09-23 | `powershell -ExecutionPolicy Bypass -File Tools/compile-check.ps1` | **通过**：53 个源文件、0 错误、0 警告 |
 | 2026-09-23 | `python Tools/atlas_glyph_check.py Library/RefactorCheck/Emberlight.dll` | **通过**：`MISSING (0)`，TMP 特殊字符齐全，退出码 0 |
 | 2026-09-23 | `powershell -ExecutionPolicy Bypass -File Tools/unity-batch-verify.ps1`（Unity 2022.3.62f3，`-batchmode -nographics -quit`） | **通过**：退出码 0、`Application will terminate with return code 0`、`AssetDatabase: script compilation time: 1.519s`、日志内 **0 条 `error CS`**；`Library/ScriptAssemblies/Assembly-CSharp.dll` 重新生成，其中含全部 12 个新类型 |
+| 2026-09-23（第二轮拆 `RunProgress` 后，删 `Library/ScriptAssemblies` 强制全量重编） | 同上的 `unity-batch-verify.ps1`；离线编译为 56 源文件 | **通过**：`Assembly-CSharp.dll` 重新生成 179,200 字节、`script compilation time: 2.000s`、0 条 `error CS`；离线编译 0 错误 0 警告；字形覆盖仍 `MISSING (0)` |
 
 > 批处理通过只证明**工程能导入、代码能编译**，仍**不能替代**进一局。
 

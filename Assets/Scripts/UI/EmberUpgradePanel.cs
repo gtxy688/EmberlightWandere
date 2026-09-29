@@ -173,7 +173,7 @@ namespace Emberlight
                     EmberOffer offer = offers[i];
                     int id = offer.Id;
                     float top = top0 - i * (cardH + gap);
-                    Color accent = EmberRarityUtil.Color(offer.Rarity);
+                    Color accent = EmberRarityUtil.Tint(offer.Rarity).ToColor();
                     bool create = i >= cards.Count;
                     var view = create ? new CardView() : cards[i];
                     if (create) cards.Add(view);

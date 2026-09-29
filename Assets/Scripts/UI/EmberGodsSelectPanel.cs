@@ -20,10 +20,9 @@ namespace Emberlight
         static readonly Color Hi = new Color(.22f, .32f, .28f);
         static readonly Color Filled = new Color(.32f, .28f, .18f);
 
-        static readonly int[] Roster = {
-            RunProgress.WeaponBasic, RunProgress.WeaponOrbit, RunProgress.WeaponTrail,
-            RunProgress.WeaponPierce, RunProgress.WeaponBoom, RunProgress.WeaponMeteor
-        };
+        // 名册顺序的唯一出处在 EmberWeaponCatalog：RosterNames / RosterDescs 的每一项
+        // 与它逐位对应（index 同时是武器卡图标格号）——本地再抄一份数组会导致三者错位。
+        static int[] Roster { get { return EmberWeaponCatalog.Roster; } }
         // public so EmberFonts can prewarm these characters; see EmberFonts.CardGlyphSet.
         public static readonly string[] RosterNames = {
             "\u706b\u7403", "\u73af\u706b", "\u71c3\u5730",
