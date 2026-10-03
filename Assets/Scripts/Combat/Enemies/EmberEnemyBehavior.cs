@@ -14,7 +14,7 @@ namespace Emberlight
     /// <summary>Reused by the combat owner; behaviors must not retain this context.</summary>
     public sealed class EmberEnemyContext
     {
-        public EmberCombat.Enemy Enemy;
+        public EmberEnemy Enemy;
         public Transform Player;
         public Camera Camera;
         public LevelConfig Config;

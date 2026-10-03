@@ -13,7 +13,7 @@ namespace Emberlight
             public float life, damage;
             public int hitsLeft;
             public bool isSplit;
-            public readonly HashSet<EmberCombat.Enemy> hit = new HashSet<EmberCombat.Enemy>();
+            public readonly HashSet<EmberEnemy> hit = new HashSet<EmberEnemy>();
         }
 
         readonly List<Arrow> arrows = new List<Arrow>();

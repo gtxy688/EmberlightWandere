@@ -2,8 +2,9 @@
 
 > 相关需求：`../requirements.md` §2（主循环）、§3.1–3.2、§3.5、§5
 > 验收文档：`03-combat-waves-test.md`
-> 代码：`Assets/Scripts/Combat/EmberCombat.cs`、`EmberBoss.cs`、`EmberWorld.cs`、`EmberPool.cs`、
-> `Assets/Scripts/Combat/IEmberCombatHost.cs`（本模块对宿主的契约）
+> 代码：`Assets/Scripts/Combat/` 下的 `EmberCombat.cs`（战斗根）、`EmberWaveDirector.cs`、
+> `EmberEnemyRoster.cs`、`EmberCombatDamage.cs`、`EmberEnemy.cs`、`EmberBoss.cs`、
+> `EmberWorld.cs`、`EmberPool.cs`、`IEmberCombatHost.cs`（本模块对宿主的契约）
 
 ## 职责边界
 
@@ -38,19 +39,51 @@
 
 ```text
 EmberGame.Update()                       ← 组合根只负责顺序（见 00-composition-root.md）
-   └─ combat.Tick(dt)
-        ├─ 刷怪：waveSpawned < QuotaForWave(wave) && enemies.Count < EnemyLimit
-        │     └─ RollKind(wave, rng) → TrashHp(wave, kind) → AffixChance(wave)
-        ├─ 遭遇事件：waveSpawned 达本波 50% 配额时触发一次
-        ├─ 每个武器：weapon.Tick(dt, ctx)   ← ctx 的委托全部指向本模块
-        │     └─ ctx.Damage / DamageFrom / Intercept → 扣血、死亡、分裂、重生
-        ├─ Boss 波：BossAlive ? boss.Tick(dt) : 生成 Boss
-        └─ 清波：waveSpawned >= quota && enemies.Count == 0
-              └─ host.OnWaveCleared(wave)          ← IEmberCombatHost
-                    └─ RunFlowController.OnWaveCleared   （M0，规则见 00-composition-root.md）
-                          └─ PicksAfterWave == 0 ? 直接推进 : 发牌（M2 + M6）
-                                └─ SelectUpgrade → combat.AdvanceAfterUpgrade()
+   └─ combat.Tick(dt)                    ← EmberCombat 只是战斗根：装配 + 每帧顺序
+        ├─ waves.Tick(dt)                            EmberWaveDirector
+        │     ├─ 刷怪：waveSpawned < QuotaForWave(wave) && EnemyCount < EnemyLimit
+        │     │     └─ host.SpawnRolledTrash() → roster.Spawn(...)
+        │     │           └─ RollKind(wave, rng) → TrashHp(wave, kind) → AffixChance(wave)
+        │     ├─ Boss 预警倒计时结束 → host.SpawnBoss()
+        │     └─ 遭遇事件：waveSpawned 达本波 50% 配额时触发一次 → host.SpawnTrashAt(...)
+        ├─ healingDrops.Tick(dt, player)
+        ├─ enemyProjectiles.Move(dt)
+        ├─ TickEnemies(dt)：闪白 / 重生读条 / e.ai.Tick（Boss）/ behavior.Tick / 接触伤害 / 灼热检测
+        │     └─ ⚠️ Boss 也在名册里，由这一段的 ai 分支推进，**不要另外再 Tick 一次**
+        ├─ 灼热光环脉冲（多圈不叠加）
+        ├─ TickWeapons(dt)：weapon.Tick(dt, ctx)   ← ctx 的委托指向 EmberCombatDamage
+        │     └─ ctx.Damage / DamageFrom / ContactDamageFrom → EmberCombatDamage.Apply
+        ├─ enemyProjectiles.HitPlayer(...)
+        └─ ResolveDeaths()
+              └─ EmberCombatDamage.ResolveDeaths(ctx) → Outcome
+                    ├─ 重生接管 → 行为 OnDeath → 掉落 → roster.Release → 记分
+                    ├─ outcome.Kills  → waves.NoteKill() × N
+                    ├─ outcome.BossDefeated → waves.NoteBossDefeated()
+                    └─ 否则 waves.CheckWaveCleared()
+                          └─ host.OnWaveCleared(wave)          ← IEmberCombatHost
+                                └─ RunFlowController.OnWaveCleared   （M0，规则见 00-composition-root.md）
+                                      └─ PicksAfterWave == 0 ? 直接推进 : 发牌（M2 + M6）
+                                            └─ SelectUpgrade → combat.AdvanceAfterUpgrade()
 ```
+
+### 模块内的职责划分（2026-09-23）
+
+原 `EmberCombat` 一个文件 509 行，把波次状态机、刷怪参数、伤害结算、死亡处理、分裂与遭遇压在一起。现拆为：
+
+| 单元 | 文件 | 职责 | 行数 |
+|------|------|------|------|
+| `EmberCombat` | `EmberCombat.cs` | **战斗根**：拥有 7 个武器实例、装配单元、每帧顺序、接回调 | 328 |
+| `EmberWaveDirector` | `EmberWaveDirector.cs` | 波次推进：配额、刷怪间隔、Boss 预警、遭遇事件、清波判定、HUD 只读量 | 216 |
+| `EmberEnemyRoster` | `EmberEnemyRoster.cs` | 敌人实例化与回收：种类/落点/颜色/体型/血量/词缀/部件、对象池归还 | 160 |
+| `EmberCombatDamage` | `EmberCombatDamage.cs` | 伤害应用与死亡结算：正面减伤、闪白击退、重生词缀、记分、掉落触发 | 143 |
+| `EmberEnemy` | `EmberEnemy.cs` | 单个敌人的运行时数据（原 `EmberCombat.Enemy` 嵌套类） | 62 |
+
+**两个易踩的坑**（都写进代码注释了）：
+
+1. **Boss 在名册里，由 `TickEnemies` 的 `ai` 分支推进**。战斗根不要再单独 `bossEnemy.ai.Tick(...)`——
+   重构过程中曾这样多推一次，效果是 Boss 招式速度翻倍。
+2. **`bossSpawned` 的语义是"这一波是 Boss 波"**，不是"Boss 已经出来了"。
+   若在预警期间不置位，空场会被判成本波已清完，波次会在 Boss 出场前前进并连锁跳过后面每一波（历史事故）。
 
 ### 状态机（`EmberRunPhase`，11 态）
 
@@ -123,8 +156,11 @@ Loading → Menu → SelectLength → SelectDifficulty → SelectSlots → Selec
 | `EmberCombat.Tick(float)` | 方法 | dt | — | 战斗唯一推进点 |
 | `EmberCombat.Begin(..., LevelConfig)` / `TearDown()` | 方法 | 场景引用、配置 | — | 成对调用；`TearDown` 清理池与弹幕 |
 | `EmberCombat.AdvanceAfterUpgrade()` | 方法 | — | — | 由组合根在选卡完成后调用（`ReturnToPlay`） |
-| `EmberCombat.Wave` / `WaveQuota` / `WaveSpawned` / `WaveKilled` / `WaveRemaining` / `EnemyCount` / `Boss` / `BossAlive` | 属性 | — | `int` / `Enemy` / `bool` | HUD 只读数据源；Boss 波 `WaveRemaining` 返回 0 |
-| `EmberCombat.Enemy`（嵌套类） | 类 | — | 敌人实例 | `Targetable` 是所有武器命中判定的统一门 |
+| `EmberCombat.Wave` / `WaveQuota` / `WaveSpawned` / `WaveKilled` / `WaveRemaining` / `KillsRemaining` / `EnemyCount` / `Boss` / `BossAlive` | 属性 | — | `int` / `EmberEnemy` / `bool` | HUD 只读数据源；Boss 波 `WaveRemaining` 返回 0。**这些全部转发自 `EmberWaveDirector`**，战斗根不再自己存波次状态 |
+| `EmberEnemy` | 类 | — | 敌人实例 | 顶层类型（原 `EmberCombat.Enemy` 嵌套类）；`Targetable` 是所有武器命中判定的统一门 |
+| `EmberWaveDirector` | 类 | `Host` 契约 | 波次只读量 | 不造敌人：需要刷怪时回调 `Host`。**不含伤害逻辑** |
+| `EmberEnemyRoster` | 类 | 池、配置、世界、玩家、随机源 | `EmberEnemy` | 唯一有权借出/归还敌人节点的地方 |
+| `EmberCombatDamage.Apply` / `.ResolveDeaths` | 静态方法 | `Context` + 目标下标 | `Outcome` | **不改波次、不造新敌人**；击杀数与 Boss 阵亡经 `Outcome` 回报 |
 | `EmberWeaponContext` | 类 | — | 委托包 | 见下表；由本模块在 `Begin` 时**全部赋值** |
 
 ### `EmberWeaponContext` 契约（M4 与 M3 的边界）

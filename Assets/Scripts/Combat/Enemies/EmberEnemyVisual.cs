@@ -8,7 +8,7 @@ namespace Emberlight
         readonly Transform root, shield;
         readonly SpriteRenderer tell, aura, core, wake;
         readonly Transform embers;
-        readonly EmberCombat.Enemy enemy;
+        readonly EmberEnemy enemy;
         readonly Transform[] bodyParts;
         readonly Vector3[] restPositions, restScales;
         readonly Quaternion[] restRotations;
@@ -17,7 +17,7 @@ namespace Emberlight
 
         static readonly Unity.Profiling.ProfilerMarker VisualMarker = new Unity.Profiling.ProfilerMarker("Ember.Enemy.Visual.Initialize");
 
-        public EmberEnemyVisual(EmberCombat.Enemy enemy, Transform world)
+        public EmberEnemyVisual(EmberEnemy enemy, Transform world)
         {
             using (VisualMarker.Auto())
             {

@@ -15,8 +15,8 @@ namespace Emberlight
             public bool returning;
             public int tripsLeft;
             public bool midLegCleared;
-            public readonly HashSet<EmberCombat.Enemy> hitOut = new HashSet<EmberCombat.Enemy>();
-            public readonly HashSet<EmberCombat.Enemy> hitBack = new HashSet<EmberCombat.Enemy>();
+            public readonly HashSet<EmberEnemy> hitOut = new HashSet<EmberEnemy>();
+            public readonly HashSet<EmberEnemy> hitBack = new HashSet<EmberEnemy>();
         }
 
         const float OutDist = 6f;
@@ -104,7 +104,7 @@ namespace Emberlight
             }
         }
 
-        void HitLeg(EmberWeaponContext ctx, Butterfly b, HashSet<EmberCombat.Enemy> hitSet)
+        void HitLeg(EmberWeaponContext ctx, Butterfly b, HashSet<EmberEnemy> hitSet)
         {
             for (int j = ctx.EnemyCount() - 1; j >= 0; j--)
             {

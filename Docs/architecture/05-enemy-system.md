@@ -19,7 +19,8 @@
 | 被依赖模块 | 只使用的公开契约 | 用途 | 缺失时的行为 |
 |------------|------------------|------|--------------|
 | M1 | `EnemySpeed(kind)`、`TrashHp(wave, kind)`、射击/护盾/爆炸/词缀参数、`EnemyLimit` | 全部行为数值 | — |
-| M3 | `EmberCombat.Enemy` 实例、`game.State`、`game.NeedsHealing`、`game.PickHealingDrop`、`game.HurtPlayer` | 宿主与伤害入口 | — |
+| M3 | `EmberEnemy` 实例（顶层类型，原 `EmberCombat.Enemy`）与 `EmberEnemyContext` | 行为策略读写敌人数据 | — |
+| M0 | `IEmberCombatHost`：`NeedsHealing` / `PickHealingDrop` / `HurtPlayer` / `Phase` | 掉落吸附与伤害入口（经 M3 转交，不再直接读 `game.State`） | — |
 | M7 | `EmberEnemySilhouette` / `EmberEnemyVisual` 使用的共享精灵与粒子 | 外观 | 精灵缺失时用程序化占位 |
 
 ## 设计与数据流

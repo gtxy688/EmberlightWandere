@@ -17,7 +17,7 @@ namespace Emberlight
         public System.Random Random;
 
         public Func<int> EnemyCount;
-        public Func<int, EmberCombat.Enemy> GetEnemy;
+        public Func<int, EmberEnemy> GetEnemy;
         public Action<int, float> Damage;
         public Action<int, float, Vector2> DamageFrom;
         public Func<Vector2, Vector2, float, bool> Intercept;
