@@ -353,7 +353,16 @@ namespace Emberlight
             return false;
         }
 
-        /// <summary>Returns the part of an incoming hit that reaches health.</summary>
+        /// <summary>
+        /// ⚠️ **零调用点，且与现行需求冲突，不要调用它。**
+        ///
+        /// 它把护盾硬钳到 250——那是"护盾数值 /2"之前的旧口径残留。
+        /// 现行需求（`requirements.md` §4.4）是 250 / 500 / 750 / 1250 且可叠加，
+        /// 所以走这条路的钻石护盾会被砍成青铜护盾。
+        ///
+        /// 真正的护盾发放点在 <see cref="Choose"/> 的 `StatShield` 分支（直接加算、不限上限）。
+        /// 保留本方法只是不想在这轮动公开 API；清理前先确认全仓无引用。
+        /// </summary>
         public void AddShield(float amount)
         {
             if (amount <= 0) return;

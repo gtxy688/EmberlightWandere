@@ -17,38 +17,53 @@
 
 | 编号 | 层级 | 拟测试路径与名称 | 行为 | 红灯原因或 N/A 理由 | 最近结果 |
 |------|------|------------------|------|---------------------|----------|
-| A1 | EditMode（待建） | `RunProgressTests::ConfigureRun_GrantsExactlyOneStarterWeapon` | 开局后 `OwnedWeaponCount == 1`，`EmptySlots == N-1` | 「开局一次填满 N 槽」回归时红灯——这是 v3 的核心纠正 | 未执行（无测试程序集） |
-| A2 | EditMode（待建） | `RunProgressTests::ConfigureRun_ClampsSlotsToRange` | N 传 0/6/负数均被钳制到 [1,5] | — | 未执行（无测试程序集） |
-| A3 | EditMode（待建） | `RunProgressTests::ConfigureRun_FallsBackToFireballOnInvalidRoster` | 传入非名册 id 或空集 → `OwnedWeapons` = {火球 13} | 兜底缺失会导致开局无武器可 Tick | 未执行（无测试程序集） |
-| A4 | EditMode（待建） | `RunProgressTests::ConfigureRun_ResetsAllStateBetweenRuns` | 第二局开局后幸运/护盾/加成/刷新次数全部归零 | 状态残留会让新局带上一局构筑 | 未执行（无测试程序集） |
-| A5 | EditMode（待建） | `Choices_ReturnsThreePlusEmptySlotsOffers` | 候选长度恒为 `3 + EmptySlots` | 与需求 §4.3 不符则红灯 | 未执行（无测试程序集） |
-| A6 | EditMode（待建） | `Choices_NeverRepeatsSameIdWeaponIdPair` | 同一候选内无重复 `(Id, WeaponId)` | 出现两张 `火球·攻击力` 时红灯 | 未执行（无测试程序集） |
-| A7 | EditMode（待建） | `Choices_AllowsSameStatOnDifferentWeapons` | 双武器时 `火球·攻击力` 与 `环火·攻击力` 可同屏 | 若按笼统"种类"去重会误判红灯 | 未执行（无测试程序集） |
-| A8 | EditMode（待建） | `Choices_ExcludesNewWeaponsWhenSlotsFull` | 满槽（含 N=1）时候选中不含任何 10–19 武器卡 | 满槽仍出新武器时红灯 | 未执行（无测试程序集） |
-| A9 | EditMode（待建） | `Choices_AddsOneNewWeaponPerEmptySlot` | 未满槽时额外张数 = `EmptySlots` | — | 未执行（无测试程序集） |
-| A10 | EditMode（待建） | `Choices_ExcludesExclusiveAndMetamorphWithoutOwnedWeapon` | 未拥有对应武器时，其专属(30–35)/质变(20–25)不进池 | — | 未执行（无测试程序集） |
-| A11 | EditMode（待建） | `Choices_NeverEmitsLegacyGenerics` | 候选中不出现 Id 5–9 的旧通用 | 旧通用回流时红灯 | 未执行（无测试程序集） |
-| A12 | EditMode（待建） | `Choices_PadsWithGenericsToGuaranteeThree` | 候选池枯竭时仍返回可选候选，不空手 | 空候选会让玩家卡在选卡态 | 未执行（无测试程序集） |
-| A13 | EditMode（待建） | `WeightsForLuck_MatchesNerfedTable` | 幸运 0/60/120 的权重为 72-22-5-1 / 58-28-11-3 / 45-32-18-5 | ⚠️ 回退到旧表 60-28-10-2 时红灯 | 未执行（无测试程序集） |
-| A14 | EditMode（待建） | `WeightsForLuck_ClampsLuckAndInterpolates` | 幸运 <0 按 0、>120 按 120；中间值线性插值且权重和恒为 100 | — | 未执行（无测试程序集） |
-| A15 | EditMode（待建） | `GenericMagnitudes_MatchRequirementTable` | 攻击力 10/20/30/40%、攻速 10/20/30/50%、幸运 25/50/75/125、增幅 5/10/15/25%、护盾 250/500/750/1250 | 攻速被误并入攻击力档位时红灯 | 未执行（无测试程序集） |
-| A16 | EditMode（待建） | `Choose_AttackAndSpeedApplyOnlyToTargetWeapon` | `火球·攻击力` 只抬火球，环火伤害不变 | 全局化回归时红灯 | 未执行（无测试程序集） |
-| A17 | EditMode（待建） | `Choose_DamageAmpAppliesToAllWeapons` | 全体增幅抬升全部 6 把武器 | — | 未执行（无测试程序集） |
-| A18 | EditMode（待建） | `DamageMul_EqualsOnePlusAmpOnly` | `DamageMul == 1 + DamageAmp`，不受已停用的 `DamageBonus` 影响 | — | 未执行（无测试程序集） |
-| A19 | EditMode（待建） | `Choose_NewWeaponReportsGrantedFlag` | 选新武器时 `grantedNewWeapon == true`，升级已有武器时为 false | 补偿选卡依赖此标志 | 未执行（无测试程序集） |
-| A20 | EditMode（待建） | `Choose_MetamorphHasNoExclusivePrerequisite` | 未拿专属也可选质变 | 加前置条件时红灯 | 未执行（无测试程序集） |
-| A21 | EditMode（待建） | `TryRefresh_ConsumesExactlyTwoPerRun` | 整局只能成功刷新 2 次，第 3 次返回 false | — | 未执行（无测试程序集） |
-| A22 | EditMode（待建） | `AbsorbDamage_ConsumesShieldBeforeHealth` | 护盾足够时生命不变；溢出的部分扣生命并返回该值 | 顺序反了会让护盾形同虚设 | 未执行（无测试程序集） |
-| A23 | EditMode（待建） | `AddScore_RejectsNegativeAndDoesNotChangeScoreMult` | 负数抛 `ArgumentOutOfRangeException`；`FinalScore() == Score` | ScoreMult 被改成随 N 变化时红灯 | 未执行（无测试程序集） |
-| A24 | EditMode（待建） | `KindOf_MapsIdRanges` | 0–9 通用、10–19 武器、20–29 质变、30–39 专属 | — | 未执行（无测试程序集） |
-| A25 | EditMode（待建） | `RunProgress_HasNoUnityEngineDependency` | 反射断言 `RunProgress` 的字段/方法签名不出现 `UnityEngine` 类型 | 防边界腐化；若引入 `Mathf`/`Vector2` 则红灯 | 未执行（无测试程序集） |
-| A26 | EditMode（待建） | `OfferAntiForgery_RejectsTamperedOffer` | 伪造或已被消耗的 `EmberOffer` 不被接受 | 防重复领卡 | 未执行（无测试程序集） |
+| A1 | EditMode ✅ | `RunProgressTests::ConfigureRun_WithASingleStarterWeapon_LeavesTheRestOfTheSlotsEmpty` | 开局后 `OwnedWeaponCount == 1`，`EmptySlots == N-1` | 「开局一次填满 N 槽」回归时红灯——这是 v3 的核心纠正 | **通过**（2026-10-03） |
+| A2 | EditMode ✅ | `RunProgressTests::ConfigureRun_ClampsSlotsToRange` | N 传 0 / -3 / 6 / 99 均被钳制到 [1,5] | — | **通过**（2026-10-03，4 个用例） |
+| A3 | EditMode ✅ | `RunProgressTests::ConfigureRun_NullOrEmptyRoster_FallsBackToFireball`、`ConfigureRun_NonRosterId_FallsBackToFireball` | 传 null / 空集 / 非名册 id → 兜底为火球 13 | 兜底缺失会导致开局无武器可 Tick | **通过**（2026-10-03） |
+| A4 | EditMode ✅ | `RunProgressTests::ConfigureRun_ResetsAllStateBetweenRuns` | 第二局开局后幸运 / 护盾 / 增幅 / 分数 / 刷新次数全部归零、武器不继承 | 状态残留会让新局带上一局构筑 | **通过**（2026-10-03） |
+| A5 | EditMode ✅ | `EmberChoicePoolTests::Build_OfferCountAlwaysMatchesThreePlusEmptySlots`、`ExpectedCount_IsThreePlusEmptySlots`、`Build_ReturnsThreeOffersWhenSlotsAreFull` | 候选长度恒为 `3 + EmptySlots`（N=1..5 全测） | 与需求 §4.3 不符则红灯 | **通过**（2026-10-03，7 个用例） |
+| A6 | EditMode ✅ | `EmberChoicePoolTests::Build_NeverRepeatsTheSameIdWeaponIdPair`、`OfferKey_EncodesBothIdAndWeaponId` | 60 个种子下同一候选内无重复 `(Id, WeaponId)` | 出现两张 `火球·攻击力` 时红灯 | **通过**（2026-10-03） |
+| A7 | EditMode ✅ | `EmberChoicePoolTests::Build_AllowsTheSameStatOnDifferentWeapons` | 双武器时同词条可绑定不同武器（键不同即允许同屏） | 若按笼统"种类"去重会误判红灯 | **通过**（2026-10-03）。注：测试为条件式断言（仅当同屏出现多张攻击力卡时校验其武器互异） |
+| A8 | EditMode ✅ | `EmberChoicePoolTests::Build_ExcludesNewWeaponCardsWhenSlotsAreFull` | 满槽（N=1）时 40 个种子下候选均不含 10–19 武器卡 | 满槽仍出新武器时红灯 | **通过**（2026-10-03） |
+| A9 | EditMode ✅ | `EmberChoicePoolTests::Build_AddsOneExtraOfferPerEmptySlot`、`Build_WithEmptySlots_OffersUnownedWeapons`、`Build_NewWeaponCardsAreGoldRarity` | 未满槽时额外张数 = `EmptySlots`，且额外卡是未拥有武器、固定黄金 | — | **通过**（2026-10-03） |
+| A10 | EditMode ✅ | `EmberChoicePoolTests::Build_ExcludesExclusivesAndMetamorphsForUnownedWeapons`、`Build_ExclusivesAreGoldAndMetamorphsAreDiamond` | 未拥有对应武器时其专属(30–35)/质变(20–25)不进池；专属固定黄金、质变固定钻石 | — | **通过**（2026-10-03） |
+| A11 | EditMode ✅ | `EmberChoicePoolTests::Build_NeverEmitsRetiredGenericIds` | 60 个种子下候选中不出现 Id 5–9 的旧通用 | 旧通用回流时红灯 | **通过**（2026-10-03） |
+| A12 | EditMode ✅ | `EmberChoicePoolTests::Build_AlwaysReturnsAPickableHandEvenAtMaximumSlots`、`Build_EveryOfferIsAnAcceptedIdSpaceEntry` | 池子枯竭时仍返回 ≥3 张合法候选，不空手 | 空候选会让玩家卡在选卡态 | **通过**（2026-10-03） |
+| A13 | EditMode ✅ | `EmberRarityUtilTests::WeightsForLuck_AtZero_MatchesAuthoritativeTable`、`_AtSixty_`、`_AtOneTwenty_` | 幸运 0/60/120 的权重为 72-22-5-1 / 58-28-11-3 / 45-32-18-5 | ⚠️ 回退到旧表 60-28-10-2 时红灯 | **通过**（2026-10-03） |
+| A14 | EditMode ⚠️ 部分 | `WeightsForLuck_ClampsBelowZeroAndAboveMax`、`WeightsForLuck_InterpolatesLinearlyBetweenAnchorPoints`、`WeightsForLuck_SumToExactlyHundredAtTheDocumentedAnchorPoints`、`WeightsForLuck_IntermediateValuesDriftFromHundredByAtMostTwo` | 幸运 <0 按 0、>120 按 120；中间值线性插值 | — | **通过**（2026-10-03），但**"权重和恒为 100"在中间幸运值不成立**：15/45 → 102，75/90 → 101。已改为断言漂移 ≤ 2 并记录为待裁定问题（见下） |
+| A15 | EditMode ✅ | `EmberRarityUtilTests::GenericAtkAs_`、`GenericAttackSpeed_UsesItsOwnDiamondStep`、`GenericLuck_`、`GenericAmp_`、`ShieldAmount_`（5 个 `_MatchesRequirementTable`） | 攻击力 10/20/30/40%、攻速 10/20/30/50%、幸运 25/50/75/125、增幅 5/10/15/25%、护盾 250/500/750/1250 | 攻速被误并入攻击力档位时红灯 | **通过**（2026-10-03）。攻速钻石档另有一条显式断言 `Is.Not.EqualTo` 攻击力钻石档 |
+| A16 | EditMode ✅ | `RunProgressTests::Choose_AttackAppliesOnlyToTheTargetWeapon`、`Choose_AttackSpeedAppliesOnlyToTheTargetWeapon` | `火球·攻击力` 只抬火球，环火数值不变 | 全局化回归时红灯（硬约束 2） | **通过**（2026-10-03） |
+| A17 | EditMode ✅ | `RunProgressTests::Choose_AmpIsGlobalAndFeedsDamageMul` | 全体增幅写入 `DamageAmp` 并通过 `DamageMul` 作用于全部武器 | — | **通过**（2026-10-03）。注：断言的是全局字段而非逐武器伤害，因为 6 把武器的 Tick 需 PlayMode 才能测 |
+| A18 | EditMode ✅ | `RunProgressTests::DamageMul_IgnoresTheRetiredDamageBonusField` | `DamageMul == 1 + DamageAmp`，不受已停用的 `DamageBonus` 影响 | — | **通过**（2026-10-03） |
+| A19 | EditMode ✅ | `RunProgressTests::Choose_NewWeaponReportsGrantedFlag`、`Choose_WhenSlotsAreFull_RejectsNewWeapon` | 选新武器时 `grantedNewWeapon == true`；满槽时拒绝且标志为 false | 补偿选卡依赖此标志 | **通过**（2026-10-03）。注：**"升级已有武器时为 false"这一半未单独断言** |
+| A20 | EditMode ✅ | `RunProgressTests::CanMetamorph_RequiresOwningTheWeaponButNoExclusive` | 未拿专属也可选质变；未拥有对应武器时不可选 | 加前置条件时红灯 | **通过**（2026-10-03） |
+| A21 | EditMode ✅ | `RunProgressTests::TryRefresh_ConsumesExactlyTwoPerRun`、`TryRefresh_WithoutPendingOffer_DoesNotConsumeABudget` | 整局只能成功刷新 2 次，第 3 次返回 false；失败不扣次数 | — | **通过**（2026-10-03） |
+| A22 | EditMode ✅ | `RunProgressTests::AbsorbDamage_ConsumesShieldBeforeHealthAndReturnsTheOverflow`、`AbsorbDamage_WithNoShield_ReturnsFullDamage`、`AbsorbDamage_TreatsNegativeDamageAsZero` | 护盾足够时溢出为 0；不足时返回溢出值且护盾不为负 | 顺序反了会让护盾形同虚设 | **通过**（2026-10-03） |
+| A23 | EditMode ✅ | `RunProgressTests::AddScore_RejectsNegativeAmounts`、`AddScore_AccumulatesAndFinalScoreHasNoMultiplier` | 负数抛 `ArgumentOutOfRangeException`；`FinalScore() == Score`；`ScoreMult == 1.0` | ScoreMult 被改成随 N 变化时红灯 | **通过**（2026-10-03） |
+| A24 | EditMode ✅ | `EmberRarityUtilTests::KindOf_MapsEveryIdRange`、`IsGenericId_TrueOnlyForZeroThroughFour` | 0–9 通用、10–19 武器、20–29 质变、30–39 专属 | — | **通过**（2026-10-03） |
 
 ## 自动化运行记录
 
 | 日期 | Unity 版本与环境 | 命令或 Test Runner 过滤器 | 结果文件 | 结论 |
 |------|------------------|---------------------------|----------|------|
-| — | — | 尚无可执行的测试程序集 | — | **未验证** |
+| 2026-10-03 | Unity 2022.3.62f3，`-batchmode -nographics`，EditMode | `Unity.exe -batchmode -nographics -projectPath <项目> -runTests -testPlatform editmode -testResults Library/TestRun/editmode.xml -logFile Library/TestRun/tests.log` | `Library/TestRun/editmode.xml` | **通过**：`total=103 passed=103 failed=0 skipped=0 result=Passed`，Unity 退出码 **0** |
+
+覆盖本模块的测试类与用例数：
+
+| 测试类 | 用例数 | 覆盖内容 |
+|--------|--------|----------|
+| `EmberWeaponCatalogTests` | 18 | Id 分区、名册顺序与副本隔离、`WeaponForMeta` / `WeaponForExcl` 逐项映射、越界返回 0 |
+| `EmberRarityUtilTests` | 25 | 权重表三个锚点、插值、边界钳制、`RollByLuck` 可复现性与分布、通用词条五张数值表、`KindOf` / `IsGenericId` / `AllNames` / `Tint` |
+| `EmberChoicePoolTests` | 25 | `3 + 空位` 张数、`(Id, WeaponId)` 同屏唯一、满槽不出新武器、专属/质变归属、旧通用不回流、兜底不空手、发牌可复现 |
+| `RunProgressTests` | 35 | 开局构筑与槽位钳制、跨局状态清零、攻击力/攻速单武器作用域、扩幅全局、护盾叠加不被钳、刷新 2 次、护盾先于生命、计分 |
+
+### 本轮通过测试发现的既有问题（未擅自改产品行为）
+
+| # | 现象 | 证据 | 影响 | 处置 |
+|---|------|------|------|------|
+| 1 | **中间幸运值的品质权重和不是 100** | 幸运 0/60/120 恰好为 100，但 15 → `69/24/7/2 = 102`、45 → 102、75 → 101、90 → 101（四个通道各自四舍五入造成） | `RollWeighted` 用 `weights.Sum()` 当分母，因此这些幸运档下各品质的实际出率有约 1–2% 的相对偏移（例：钻石 4/101 而非 4/100） | 已用 `WeightsForLuck_IntermediateValuesDriftFromHundredByAtMostTwo` **钉住 ±2 上限**；是否归一化到 100 属**待裁定**，见 `../requirements.md` §9 |
+| 2 | **`ConfigureRun` 不是"开局只给 1 把"的守卫** | 传 2 把 + `slots=3` → 实际拥有 2 把（循环上限是 `granted < slots`，不是 `granted < 1`） | 当前 UI（`EmberMenuFlow.OnRosterChosen`）只传 1 把，所以**线上行为不受影响**；但任何从别处传多把进来的调用都会绕过 v3 硬约束 4 | 已用 `ConfigureRun_WithSeveralInputWeapons_GrantsMoreThanOne` 记录真实行为并写明"若将来加守卫，此测试应红灯"；是否加守卫属**待裁定** |
+| 3 | `RunProgress.AddShield` 是死代码且与现行需求冲突 | 全仓仅 1 处匹配（其自身定义）；它把护盾硬钳到 **250**，即"护盾 /2"之前的旧口径 | 无运行时影响（无人调用），但**是个陷阱**：后来者若用它发护盾，钻石护盾会被砍成青铜数值 | 已加 XML 注释显式警告并指向真正的发放点（`Choose` 的 `StatShield` 分支）；删除与否属**待裁定** |
 
 ## 手动验收前置条件
 
@@ -91,11 +106,24 @@
 
 ## 交付结论
 
-- **已验证**：无。规则已**逐项对照代码**确认（`RunProgress.cs` / `EmberRarity.cs`），但尚无任何可执行检查通过。
+- **已验证**（2026-10-03 实跑，命令与结果见上表）：
+  - EditMode 测试套件 **103 个用例全部通过**（`total=103 passed=103 failed=0`），Unity 退出码 **0**；
+  - 其中覆盖本模块的用例：`EmberWeaponCatalogTests` 18、`EmberRarityUtilTests` 25、`EmberChoicePoolTests` 25、`RunProgressTests` 35；
+  - 源码扫描确认 M2 四个文件零 `UnityEngine` 引用。
 - **不适用**：场景装配与 Prefab 检查——`RunProgress` 无场景对象。
 - **待手动验收**：H1–H8（开局流程、槽位手感、同屏唯一、补偿选卡、刷新、幸运体感、六线平衡）。
-- **未验证**：A1–A26 全部（阻塞原因：项目无 asmdef 与测试程序集）。
+- **部分覆盖**：A14（权重和断言已放宽为漂移 ≤2）、A17（断言全局字段而非逐武器伤害）、A19（仅覆盖 `true` 分支）、A25（源码扫描代替反射断言）。
 - **未通过**：无。
+- **本轮测试发现的既有问题（待裁定，未擅自改产品行为）**：
+  1. 中间幸运值的品质权重和漂到 101–102（`RollWeighted` 以权重和为分母 → 出率约 1–2% 相对偏移）；
+  2. `ConfigureRun` 并非"开局只给 1 把"的守卫（当前 UI 只传 1 把，故线上无影响）；
+  3. `RunProgress.AddShield` 是死代码且把护盾硬钳到 250（与现行 250/500/750/1250 冲突）。
+
+  | 问题 | 候选方案 | 影响 | 需要谁裁定 |
+  |------|----------|------|------------|
+  | 权重和漂移 | 归一化到 100 / 维持现状并把 ±2 写进需求 | 影响各幸运档的实际出率口径；改则需重跑 A13 与 jack 的体感验收 | jack + xiaoPlanner |
+  | `ConfigureRun` 多把输入 | 加"只取第一把"的守卫 / 维持现状（视为越界调用） | 加守卫可编译期外防住硬约束 4 被绕过 | jack + xiaoCoder |
+  | `AddShield` 死代码 | 删除 / 改为转发到 `Choose` 的发放逻辑 | 保留是个陷阱：钻石护盾会被砍成青铜数值 | jack + xiaoCoder |
 
 ## ⚠️ 已修正的历史记录
 

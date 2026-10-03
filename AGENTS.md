@@ -11,9 +11,11 @@
 | 命名空间 | `Emberlight`；编辑器为 `Emberlight.Editor` |
 | 脚本根 | `Assets/Scripts/{Core,Combat,UI,Visuals,Audio}` + `Assets/Editor` |
 | 文档根 | `Docs/` |
-| 程序集 | **`Assets` 下无自建 `.asmdef`** → 全部进 `Assembly-CSharp` / `Assembly-CSharp-Editor`（`Packages/` 内第三方包的 asmdef 不计） |
-| 自动化测试 | **不存在**。当前验证手段只有编辑器编译 + 手动试玩 |
-| 离线编译校验 | `powershell -ExecutionPolicy Bypass -File Tools/compile-check.ps1`（Unity 开着也能跑；退出码 0 = 编译通过） |
+| 程序集 | **有自建 asmdef**（2026-10-03 起）：`Emberlight.Runtime`（`Assets/Scripts`）→ `Emberlight.Editor`（`Assets/Editor`）+ `Emberlight.EditMode.Tests`（`Assets/Tests/EditMode`）。本项目代码已不在 `Assembly-CSharp` |
+| 自动化测试 | **有 EditMode 套件**（2026-10-03 起）：103 个用例全绿，覆盖 M2（Id 空间 / 卡池 / 品质数值 / 构筑推进）。**PlayMode 仍无** |
+| 跑测试 | `Unity.exe -batchmode -nographics -projectPath <项目> -runTests -testPlatform editmode -testResults Library/TestRun/editmode.xml -logFile Library/TestRun/tests.log` |
+| 离线编译校验 | `powershell -ExecutionPolicy Bypass -File Tools/compile-check.ps1`（Unity 开着也能跑；**只覆盖 Runtime，不含测试程序集**） |
+| Unity 批处理编译 | `powershell -ExecutionPolicy Bypass -File Tools/unity-batch-verify.ps1`（需先关编辑器，且在普通终端运行） |
 | GitHub | `https://github.com/gtxy688/EmberlightWandere.git` |
 
 > ⚠️ 旧路径 `Assets/Emberlight/Scripts/...` **已废弃**，以 `Assets/Scripts/...` 为准。
@@ -64,7 +66,7 @@
 | 护盾数值 | 除以 2 | **250 / 500 / 750 / 1250** |
 | 死亡掉落 | 掉落余烬拾取物 | **已删除**，击杀直接记 Score |
 | 中文字体 | 「固定走动态图集，不要改回预烘」 | **预烘静态图集 + `ValidateBaked` 闸门 + 动态回落**（2026-09-23 裁定，`requirements.md` §7 已订正） |
-| 程序集 | 「无 `.asmdef`」 | **`Assets` 下无自建 asmdef**；`Packages/` 内第三方包的 asmdef 不计 |
+| 程序集 | 「无 `.asmdef`」 | **有自建 asmdef**（2026-10-03 起）：`Emberlight.Runtime` → `Emberlight.Editor` + `Emberlight.EditMode.Tests` |
 
 ## 硬约束（违反即事故）
 
@@ -73,7 +75,7 @@
    python Tools/atlas_glyph_check.py      # 先查缺口，退出码非 0 表示有字没烘进去
    Unity.exe -batchmode -quit -projectPath <项目> -executeMethod Emberlight.Editor.EmberFontBake.Bake
    ```
-   该脚本直接读编译后的 `Assembly-CSharp.dll` 字符串堆，能看见**方法体内的内联字面量**，因此是"文案全在盘上"的唯一可靠判断依据。它还会**显式检查 TMP 的两个特殊字符** `U+005F`（下划线）与 `U+2026`（省略号）——TMP 每次给 `TextMeshProUGUI` 赋字体都会去字体里找这两个，缺一个就每个 label 报一条 `The character used for Underline is not available` 警告。`U+005F` 是 ASCII，看着"显然存在"，但**没有任何游戏文案含它**，手写白名单和字面量扫描都抓不到，所以靠脚本兜。**批处理必须先关 Unity**，否则 `HandleProjectAlreadyOpenInAnotherInstance` 直接 crash。
+   该脚本直接读编译后的 **`Library/ScriptAssemblies/Emberlight.Runtime.dll`**（2026-10-03 起游戏代码在本项目自建程序集里；脚本已同步默认路径，找不到时回落 `Assembly-CSharp.dll`）的字符串堆，能看见**方法体内的内联字面量**，因此是"文案全在盘上"的唯一可靠判断依据。它还会**显式检查 TMP 的两个特殊字符** `U+005F`（下划线）与 `U+2026`（省略号）——TMP 每次给 `TextMeshProUGUI` 赋字体都会去字体里找这两个，缺一个就每个 label 报一条 `The character used for Underline is not available` 警告。`U+005F` 是 ASCII，看着"显然存在"，但**没有任何游戏文案含它**，手写白名单和字面量扫描都抓不到，所以靠脚本兜。**批处理必须先关 Unity**，否则 `HandleProjectAlreadyOpenInAnotherInstance` 直接 crash。
 2. **不要引入全局攻击力**，也不要把攻击力/攻速改回全局作用域——会让早期伤害膨胀。
 3. **不要恢复局外成长、XP / 经验条、`Elapsed >= 480` Boss 触发、ScoreMult 随 N 变化**。见 `requirements.md` §6。
 4. **开局不可跳过**：必须选 N 并单选 1 把武器；**禁止开局一次填满 N 槽**。
@@ -106,9 +108,10 @@
 | **待人工验收** | 手感、审美、可读性、真机表现等必须由人在设备上判断 |
 | **未验证** | 因环境、资源或权限无法执行的检查 |
 
-- **当前项目没有任何自动化测试**。因此：
+- **本项目有 EditMode 测试套件（2026-10-03 起，103 个用例），但没有 PlayMode 测试**。因此：
   - **禁止**再写「`Emberlight/Validate …` 已通过」「`ValidateGodsSelect` 覆盖验收点」这类表述——这些入口**已被删除**。
-  - 需要自动化但尚无基础设施的检查，在验收文档中标为**待建**并写明拟测层级。
+  - 已实现的 EditMode 用例按实际结果记录（附命令与 `total/passed/failed`）；**不要把 EditMode 全绿说成"模块已验收"**，手感与PlayMode 行为仍须人工验收。
+  - 需要 PlayMode 或尚无基础设施的检查，在验收文档中标为**待建**并写明拟测层级。
   - 只有所有适用自动化检查通过**且**适用的人工验收完成后，模块才可标记为**已验收**。
 - AI 可以报告"代码实现完成"与"自动化验证完成"，但**不能代替 jack 做手感与审美验收**。
 - 任何改动 UI 或字体的提交，都需要在编辑器里手动进一局确认。
@@ -116,6 +119,7 @@
 ## 自检（改完至少做）
 
 - [ ] **先跑离线编译**：`powershell -ExecutionPolicy Bypass -File Tools/compile-check.ps1`（退出码 0）
+- [ ] **跑 EditMode 测试**（改了 M2 / 纯逻辑时必做）：见上表命令，要求 `failed=0` 且 Unity 退出码 0
 - [ ] 若改了文案：`python Tools/atlas_glyph_check.py`（退出码 0，见硬约束 1）
 - [ ] Unity 编译无报错；Console 进主菜单无错误
 - [ ] 能开一局：选长度 → 选难度 → 选槽位 → 选武器 → 升级 → 暂停 → 胜或负

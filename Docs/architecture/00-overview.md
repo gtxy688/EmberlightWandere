@@ -157,20 +157,30 @@ RunFlowController ──► Host 契约 ──► M0  选卡推进规则不持�
 
 ## 测试现状
 
-**当前项目没有任何自动化测试基础设施**，这是全部验收文档最大的缺口：
+**2026-10-03 起项目有了第一套真实自动化测试——EditMode 套件 103 个用例（M2 全覆盖）**。
+PlayMode 仍为空，这是当前验收口径的主要缺口：
 
 | 项 | 状态 |
 |----|------|
-| `Assets` 下 `.asmdef` 文件 | **0 个**（`Packages/` 内第三方包的不计） |
-| EditMode / PlayMode 测试程序集 | **不存在** |
-| `[Test]` / `UnityTest` / `Assert` | **不存在** |
+| `Assets` 下自建 `.asmdef` | **3 个**：`Emberlight.Runtime`（`Assets/Scripts`）、`Emberlight.Editor`、`Emberlight.EditMode.Tests`。项目代码已不在 `Assembly-CSharp` |
+| EditMode 测试程序集 | **有**：`Assets/Tests/EditMode`，103 个用例 |
+| PlayMode 测试程序集 | **不存在** |
+| 已覆盖模块 | **M2**（Id 空间、卡池、品质权重与数值表、构筑推进与护盾吸收）；M0 的 `EmberKeeperVitals` / `RunFlowController` **可测但未写** |
 | 编辑器校验入口（`EmberChecks` / `Validate*` / `EmberUIRenderCheck`） | **已被删除**（见 `09-build-platform.md` 清理记录） |
-| 离线编译校验 | **有**：`Tools/compile-check.ps1`（Unity 自带 Roslyn，不启动编辑器） |
+| 离线编译校验 | **有**：`Tools/compile-check.ps1`（Unity 自带 Roslyn，不启动编辑器；**只覆盖 Runtime**） |
 | Unity 批处理编译 | **有**：`Tools/unity-batch-verify.ps1`（真 Unity 导入 + 编译；需先关编辑器，且在普通终端运行） |
-| 字形覆盖检查 | **有**：`Tools/atlas_glyph_check.py`（读编译产物字符串堆） |
+| 字形覆盖检查 | **有**：`Tools/atlas_glyph_check.py`（读 `Emberlight.Runtime.dll` 的字符串堆） |
 
-> 后三项是**检查工具，不是测试程序集**：它们能证明"工程能导入、代码写得对、文案都在盘上"，
-> 不能证明"运行行为正确"。因此各模块的自动化验收项仍按「待建」处理。
+跑测试：
+
+```powershell
+Unity.exe -batchmode -nographics -projectPath <项目> -runTests -testPlatform editmode `
+  -testResults Library/TestRun/editmode.xml -logFile Library/TestRun/tests.log
+```
+
+> 后三项是**检查工具**，它们能证明"工程能导入、代码写得对、文案都在盘上"，
+> 但不能证明"运行行为正确"——那部分由 EditMode 套件与人工验收分别承担。
+> **EditMode 全绿不等于模块已验收**：手感、观感与依赖帧推进的行为仍须人工验收。
 
 > ⚠️ 历史文档中大量「`Emberlight/Validate …` 已通过」「`ValidateGodsSelect` 覆盖验收点」的表述**已失效**——这些入口在 2026-09-14 发布准备清理中连同临时编辑器脚本一并删除。引用它们作为证据是不成立的。
 
@@ -180,4 +190,12 @@ RunFlowController ──► Host 契约 ──► M0  选卡推进规则不持�
 - 只能人工判断的项 → 写入手动验收表；
 - 不属于本模块的检查 → 标记 `N/A` 并给出理由。
 
-补齐测试基础设施的方案见 `../requirements.md` §9 待裁定事项。建议的落地起点：仅为 M1（`LevelConfig`）与 M2（`RunProgress`）建 `Runtime` + `EditMode.Tests` 两个 asmdef——这两个模块不依赖场景与帧推进，收益最高、风险最低。
+**下一步建议的测试扩展顺序**（基础设施已就位，属"照着写"而非"从零搭"）：
+
+1. **M0 的 `EmberKeeperVitals` 与 `RunFlowController`**——两者已零 `UnityEngine` 引用，属同一档纯逻辑，
+   对应 `00-composition-root-test.md` 的 C1–C10，收益最高；
+2. **M1 的 `LevelConfig`**——波次配额、刷怪间隔、Boss 血量公式全是对数表的纯函数，
+   对应 `01-config-tuning-test.md`；
+3. **M3 的 `EmberWaveDirector` 规则**——需要一点桩（`Host` 是接口，可用假实现），
+   但"Boss 波不被误判为已清空"这类历史事故值得钉住；
+4. **PlayMode** 仍需可脚本化装配 Canvas，属独立课题。

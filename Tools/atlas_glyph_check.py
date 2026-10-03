@@ -30,7 +30,12 @@ except Exception:
     pass
 
 ROOT = Path(__file__).resolve().parent.parent
-DLL = ROOT / "Library" / "ScriptAssemblies" / "Assembly-CSharp.dll"
+# 2026-10-03: the game code moved into its own assembly (`Emberlight.Runtime.asmdef`),
+# so `Assembly-CSharp.dll` no longer contains the player-facing string literals.
+# Scanning it would silently report "coverage complete" on an empty set.
+DLL = ROOT / "Library" / "ScriptAssemblies" / "Emberlight.Runtime.dll"
+# Fall back to the legacy location if the asmdef has not been imported yet.
+DLL_LEGACY = ROOT / "Library" / "ScriptAssemblies" / "Assembly-CSharp.dll"
 ATLAS = ROOT / "Assets" / "Resources" / "Fonts" / "NotoSansCJKsc-Regular SDF.asset"
 
 
@@ -133,9 +138,19 @@ def atlas_characters(path):
 
 def main():
     dll = Path(sys.argv[1]) if len(sys.argv) > 1 else DLL
+    if len(sys.argv) <= 1 and not dll.exists() and DLL_LEGACY.exists():
+        dll = DLL_LEGACY
     atlas = Path(sys.argv[2]) if len(sys.argv) > 2 else ATLAS
 
+    if not dll.exists():
+        print(f"assembly not found: {dll}")
+        print("build the project once (or pass the dll path explicitly)")
+        return 2
+
     literals = user_strings(dll)
+    if not literals:
+        print(f"no string literals found in {dll.name} - wrong assembly?")
+        return 2
     have = atlas_characters(atlas)
 
     wanted = set()

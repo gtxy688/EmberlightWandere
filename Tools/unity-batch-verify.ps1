@@ -43,9 +43,16 @@ $logFull = Join-Path $ProjectPath $LogPath
 New-Item -ItemType Directory -Force -Path (Split-Path $logFull -Parent) | Out-Null
 if (Test-Path $logFull) { Remove-Item $logFull -Force }
 
-# Record the produced assembly before the run so compilation is proven by the ARTIFACT, not by
+# Record the produced assemblies before the run so compilation is proven by the ARTIFACT, not by
 # log wording (Unity's "compiled" lines differ between the incremental and full paths).
-$asmPath = Join-Path $ProjectPath 'Library/ScriptAssemblies/Assembly-CSharp.dll'
+# 2026-10-03: the project moved into its own asmdefs, so `Assembly-CSharp.dll` is no longer
+# produced. Watch the project's own assemblies instead, and keep the legacy one as a fallback.
+$asmPaths = @(
+    (Join-Path $ProjectPath 'Library/ScriptAssemblies/Emberlight.Runtime.dll'),
+    (Join-Path $ProjectPath 'Library/ScriptAssemblies/Assembly-CSharp.dll')
+)
+$asmPath = $asmPaths | Where-Object { Test-Path $_ } | Select-Object -First 1
+if (-not $asmPath) { $asmPath = $asmPaths[0] }
 $beforeTicks = if (Test-Path $asmPath) { (Get-Item $asmPath).LastWriteTimeUtc.Ticks } else { 0 }
 
 Write-Host "Unity   : $UnityExe"
@@ -119,15 +126,16 @@ if ($code -ne 0) {
 
 if ($rebuilt) {
     $asm = Get-Item $asmPath
-    Write-Host "COMPILE OK - Assembly-CSharp.dll rebuilt ($($asm.Length) bytes @ $($asm.LastWriteTime))." -ForegroundColor Green
+    Write-Host "COMPILE OK - $($asm.Name) rebuilt ($($asm.Length) bytes @ $($asm.LastWriteTime))." -ForegroundColor Green
 } else {
     $asm = if (Test-Path $asmPath) { Get-Item $asmPath } else { $null }
     if ($asm) {
-        Write-Host "COMPILE OK (incremental) - Assembly-CSharp.dll unchanged ($($asm.Length) bytes @ $($asm.LastWriteTime))." -ForegroundColor Green
+        Write-Host "COMPILE OK (incremental) - $($asm.Name) unchanged ($($asm.Length) bytes @ $($asm.LastWriteTime))." -ForegroundColor Green
         Write-Host 'Nothing needed recompiling. To force a full rebuild: close Unity,' -ForegroundColor Yellow
         Write-Host 'delete Library/ScriptAssemblies, then re-run this script.' -ForegroundColor Yellow
     } else {
-        Write-Host 'WARNING: Unity exited cleanly but produced no Assembly-CSharp.dll.' -ForegroundColor Yellow
+        Write-Host "WARNING: Unity exited cleanly but produced no $([System.IO.Path]::GetFileName($asmPaths[0]))." -ForegroundColor Yellow
+        Write-Host 'If the project has no asmdef, check Assembly-CSharp.dll instead.' -ForegroundColor Yellow
     }
 }
 
