@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Emberlight
 {
-    /// <summary>共享地面持续伤害，供燃地、燎原与日冕使用；不要求持有燃地武器。</summary>
+    /// <summary>共享地面持续伤害；不要求持有燃地武器。</summary>
     public sealed class EmberBurnGround
     {
         sealed class Flame

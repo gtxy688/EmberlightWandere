@@ -74,7 +74,7 @@ namespace Emberlight
                 SetProgress(target);
             }
 
-            // 保留 ValidateBaked：先校验/回落字体，再激活序列化视图，不直接信任资产中的字体。
+            // 走 EmberFonts.CreateChinese（内含 ValidateBaked）：先校验/回落字体，再激活序列化视图。
             prompt.text = "Loading fonts...";
             var font = EmberFonts.CreateChinese();
             titleCn.font = font != null ? font : fallback;
@@ -92,13 +92,11 @@ namespace Emberlight
             prompt.ForceMeshUpdate();
             pct.ForceMeshUpdate();
 
-            // Everything the first screen needs is already in the atlas (CreateChinese adds it
-            // synchronously). The remainder goes in 48 at a time while this screen is still held
-            // open; for a Static atlas this returns immediately.
+            // 首屏所需字形已由 CreateChinese 同步进图集；其余字形按 48 个一批、趁本屏还开着预热，
+            // 静态图集下立即返回。
             yield return EmberFonts.PrewarmInBackground(font);
 
-            // Now the bar. These waits fill the minimum on-screen time with the text already
-            // visible instead of before it exists.
+            // 再跑进度条：这些等待用来填满最小展示时长，此时文字已经可见，而不是等文字出现。
             SetProgress(0f);
             yield return null;
             yield return SpinBar(0.15f, 0.5f);

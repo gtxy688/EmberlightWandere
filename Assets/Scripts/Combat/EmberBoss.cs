@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 namespace Emberlight
 {
-    // Explicit tick keeps telegraphs frozen during upgrades, pause and results.
+    // 显式 Tick：升级、暂停与结算期间预警特效保持冻结。
     public sealed class EmberBoss
     {
         public enum AttackState { Pursuit, DashWarning, Dash, EruptionWarning, VolleyWarning, Recovery }

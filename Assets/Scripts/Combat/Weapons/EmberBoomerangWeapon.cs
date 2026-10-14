@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Emberlight
 {
-    /// <summary>Boomerang. Exclusive \u56de\u9a6c extra leg hit. Metamorph \u6298\u8fd4\u4e0d\u5c3d extra round trip.</summary>
+    /// <summary>回旋镖。专属 \u56de\u9a6c 增加往返中段命中；蜕变 \u6298\u8fd4\u4e0d\u5c3d 增加一次往返。</summary>
     public sealed class EmberBoomerangWeapon : EmberWeapon
     {
         sealed class Butterfly
@@ -37,7 +37,7 @@ namespace Emberlight
             if (cd <= 0 && ctx.EnemyCount() > 0)
             {
                 Fire(ctx);
-                cd = EmberWeaponTuning.Boom.Cooldown / (1f + ctx.Progress.WeaponAttackSpeed(RunProgress.WeaponBoom)); // Weapon-Balance-v1
+                cd = EmberWeaponTuning.Boom.Cooldown / (1f + ctx.Progress.WeaponAttackSpeed(RunProgress.WeaponBoom));
             }
 
             bool extraLeg = ctx.Progress.BoomExtraLegHit;
@@ -84,7 +84,6 @@ namespace Emberlight
                             b.midLegCleared = false;
                             b.hitOut.Clear();
                             b.hitBack.Clear();
-                            // Aim again toward nearest
                             int nearest = ctx.FindNearestVisibleEnemy();
                             if (nearest >= 0)
                             {

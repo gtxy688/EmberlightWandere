@@ -3,14 +3,13 @@ namespace Emberlight
     /// <summary>
     /// 选卡流程控制器：清波之后"发几张、选几次、什么时候补偿一次、什么时候回到战斗"的推进规则。
     ///
-    /// 它**不认识** `EmberGame`，也不碰 UI 与音频：需要用到的状态（本局数据、当前阶段）与
-    /// 需要触发的动作（重绘面板、开始下一波、回到战斗）全部通过 <see cref = "Host"/> 回调。
-    /// 因此选卡次数规则可以脱离场景与帧推进单独验证。
+    /// 它**不认识** `EmberGame`，也不碰 UI 与音频：所需状态（本局构筑、当前阶段）与要触发的动作
+    /// （重绘面板、开始下一波、回到战斗）全部通过 <see cref="Host"/> 回调，因此选卡次数规则
+    /// 可以脱离场景与帧推进单独验证。
     ///
-    /// 保持的行为口径（`requirements.md` §3.6 / §4.3）：
-    /// - 波次选卡次数由 `LevelConfig.PicksAfterWave` 给出；
-    /// - 每次选卡各自允许一次"拿到新武器后的补偿选卡"，补偿**不消耗**后续次数、且**不连锁**；
-    /// - 只有出现在当前候选里的卡才能被选中。
+    /// 行为口径（`requirements.md` §3.6 / §4.3）：波次选卡次数由 `LevelConfig.PicksAfterWave` 给出；
+    /// 每次选卡各自允许一次"拿到新武器后的补偿选卡"，补偿**不消耗**后续次数且**不连锁**；
+    /// 只有出现在当前候选里的卡才能被选中。
     /// </summary>
     public sealed class RunFlowController
     {
@@ -23,16 +22,19 @@ namespace Emberlight
             int FinalWave { get; }
 
             int PicksAfterWave(int clearedWave);
+
             /// <summary>当前阶段，由组合根持有。</summary>
             EmberRunPhase Phase { get; }
 
             /// <summary>生成一组新候选（内部会置 Pending = 1）。</summary>
             void RequestChoices();
+
             /// <summary>当前候选，用于校验玩家点的那张确实在候选里。</summary>
             EmberOffer[] Offers { get; }
 
             /// <summary>进入 Upgrade 阶段并把候选画出来。</summary>
             void OnUpgradeOffered(EmberOffer[] offers);
+
             /// <summary>选卡序列走完，开始下一波并回到 Playing。</summary>
             void OnUpgradeSequenceFinished();
         }
@@ -41,23 +43,12 @@ namespace Emberlight
         readonly System.Random random;
         int pendingPicks;
         bool compensationPick;
+
         /// <summary>当前这一轮还剩几次计划内选卡。</summary>
-        public int PendingPicks
-        {
-            get
-            {
-                return pendingPicks;
-            }
-        }
+        public int PendingPicks { get { return pendingPicks; } }
 
         /// <summary>当前这次选卡是否为"新武器补偿"。</summary>
-        public bool IsCompensationPick
-        {
-            get
-            {
-                return compensationPick;
-            }
-        }
+        public bool IsCompensationPick { get { return compensationPick; } }
 
         public RunFlowController(Host runHost, System.Random rng)
         {

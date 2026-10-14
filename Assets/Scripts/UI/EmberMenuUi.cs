@@ -72,10 +72,7 @@ namespace Emberlight
             Safe.offsetMin = Safe.offsetMax = Vector2.zero;
         }
 
-        /// <summary>
-        /// 订阅安全区变化。原先这份判断每帧跑在 `EmberGame.Update()` 顶部；现在由
-        /// <see cref = "EmberSafeAreaWatcher"/> 统一观察，UI 只在真的变化时才重排。
-        /// </summary>
+        /// <summary>订阅安全区变化；由 <see cref="EmberSafeAreaWatcher"/> 统一观察，UI 只在真的变化时才重排。</summary>
         public void WatchSafeArea()
         {
             if (watchingSafeArea)
@@ -130,8 +127,7 @@ namespace Emberlight
             }
             for (int i = labels.Length; i < menuButtons.Count; i++) menuButtons[i].gameObject.SetActive(false);
             hintDismissed = onHintDismissed;
-            // One-time discovery hint. Sits under the choice buttons, which stop at .16, and is
-            // itself the dismiss control so the tip costs no extra chrome.
+            // 一次性发现提示：位于选项按钮（到 .16 为止）下方，自身就是关闭控件，不额外占版面。
             if (string.IsNullOrEmpty(hint))
             {
                 HideHint();
@@ -143,7 +139,6 @@ namespace Emberlight
             }
         }
 
-        /// <summary>Removes the discovery hint if it is currently on screen.</summary>
         public void HideHint()
         {
             if (hintRoot == null)

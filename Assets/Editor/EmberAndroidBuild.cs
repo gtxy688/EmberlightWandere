@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace Emberlight.Editor
 {
-    /// <summary>Android preparation and APK packaging; never runs automatically on import.</summary>
+    /// <summary>Android 环境准备与 APK 打包；不会在导入时自动触发。</summary>
     public static class EmberAndroidBuild
     {
         const string Scene = "Assets/Scenes/Emberlight.unity";

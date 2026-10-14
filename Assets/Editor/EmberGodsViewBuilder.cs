@@ -4,7 +4,7 @@ using UnityEngine.UI;
 
 namespace Emberlight.Editor
 {
-    /// <summary>仅供旧 UI 快照迁移：补齐开局选择页的静态控件，不包含运行时交互。</summary>
+    /// <summary>Editor 期补齐开局选择页的静态控件；不包含运行时交互。</summary>
     public static class EmberGodsViewBuilder
     {
         static readonly Color Gold = new Color(.95f, .70f, .34f);

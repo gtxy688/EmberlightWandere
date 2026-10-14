@@ -6,10 +6,6 @@ namespace Emberlight
     /// 波次推进（M3，`requirements.md` §3.1 / §3.2）：本波刷多少、多久刷一个、什么时候清波、
     /// 什么时候出遭遇、Boss 的预警倒计时。
     ///
-    /// 从 `EmberCombat` 搬出来：这些规则原先散在 `StartWave` / `Tick` / `TryEncounter` / `ResolveDeaths`
-    /// 四处，和伤害结算、敌人实例化缠在一起，任何一处读错都会让波次跑飞
-    /// （历史上就出过"Boss 波被当成已清空，波次一路跑飞"的事故）。
-    ///
     /// **本类不造敌人**：需要刷怪时通过 <see cref="Host"/> 请求，由名册执行。
     /// 数值一律查 `LevelConfig`，不在这里写。
     /// </summary>
@@ -139,9 +135,8 @@ namespace Emberlight
             if (config.IsBossWave(wave))
             {
                 waveQuota = 0;
-                // bossSpawned 的语义是"这一波是 Boss 波"，不是"Boss 已经出来了"。
-                // Remaining 和清波判定都看它——若这里不置位，空场会被判成本波已清完，
-                // 于是波次在 Boss 出场前就前进，并连锁跳过后面每一波（历史事故）。
+                // ⚠️ bossSpawned 的语义是"这一波是 Boss 波"，不是"Boss 已经出来了"：
+                // Remaining 与清波判定都看它，不置位会让空场被判为本波已清完、波次连锁跳过。
                 // 真正让 SpawnBoss 等待的是 bossWarning。
                 bossSpawned = true;
                 bossWarning = BossWarningSeconds;

@@ -66,7 +66,7 @@ namespace Emberlight
                     var renderer=parts[i].GetComponent<SpriteRenderer>();if(renderer!=null)colors[i]=renderer.color;
                 }
                 decoration=new GameObject("Silhouette").transform;decoration.SetParent(transform,false);
-                // Reusable silhouette accents, activated by role rather than recreated on spawn.
+                // 轮廓配饰按兵种复用，不在刷怪时重建。
                 for(int i=0;i<3;i++) EmberVisuals.Shape("Hem",decoration,new Vector2((i-1)*.18f,-.30f),new Vector2(.24f,.26f),Color.white,3);
                 for(int i=0;i<2;i++) EmberVisuals.Shape("Tail",decoration,new Vector2(-.15f-i*.10f,-.26f-i*.11f),new Vector2(.24f-i*.045f,.40f),Color.white,2);
                 for(int i=-1;i<=1;i+=2) EmberVisuals.Shape("Shoulder",decoration,new Vector2(i*.32f,.06f),new Vector2(.25f,.35f),Color.white,4);

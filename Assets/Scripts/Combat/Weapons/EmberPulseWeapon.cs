@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace Emberlight
 {
-    /// <summary>Wave pulse when WavePower &gt; 0: every 4s, radius 3+WP*1.5, dmg 50*WP.</summary>
+    /// <summary>波次脉冲：WavePower &gt; 0 时每 4 秒，半径 3+WP×1.5，伤害 50×WP。</summary>
     public sealed class EmberPulseWeapon : EmberWeapon
     {
         float pulseTimer;

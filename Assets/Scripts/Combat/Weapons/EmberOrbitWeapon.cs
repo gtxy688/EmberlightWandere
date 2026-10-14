@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Emberlight
 {
-    /// <summary>Orbit. Exclusive +1 orb. Metamorph \u65e5\u5195: radius/spin/DPS up + burn trail. Same-target: nearest orb only.</summary>
+    /// <summary>环绕球。专属多 1 球；蜕变 \u65e5\u5195 提升半径/转速/每秒伤害并拖燃迹。</summary>
     public sealed class EmberOrbitWeapon : EmberWeapon
     {
         readonly List<SpriteRenderer> orbs = new List<SpriteRenderer>();
@@ -56,7 +56,7 @@ namespace Emberlight
                     ctx.SpawnBurnPatch(p, 0.35f);
             }
 
-            // Weapon-Balance-v1: one orb damages each enemy (nearest in range) — no multi-orb stack.
+            // 每个敌人每帧只被最近的球命中一次，不叠加多球伤害。
             for (int j = ctx.EnemyCount() - 1; j >= 0; j--)
             {
                 var e = ctx.GetEnemy(j);

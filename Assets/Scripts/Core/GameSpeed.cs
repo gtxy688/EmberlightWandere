@@ -3,19 +3,11 @@ using UnityEngine;
 namespace Emberlight
 {
     /// <summary>
-    /// Player-selectable game speed, 1x to 5x.
-    ///
-    /// Implemented as Time.timeScale, which is exactly "the whole flow of time gets faster":
-    /// every system already driven by Time.deltaTime (run clock, waves, enemy movement, weapon
-    /// cadence, particles, the keeper animation) scales with it and needs no changes.
-    ///
-    /// Everything that must NOT speed up is already written against unscaled time: the audio
-    /// throttles in EmberAudio, the panel fade in EmberCardMotion, the settings click preview
-    /// and the intro sequence all use Time.unscaledTime / unscaledDeltaTime. So no UI or sound
-    /// work was needed to keep the shell stable at 5x.
-    ///
-    /// The speed is a player preference, so it persists across runs and is deliberately kept
-    /// when a run ends or is abandoned.
+    /// 玩家可选的游戏速度，1x–5x，直接实现为 Time.timeScale：所有已按 Time.deltaTime 驱动的系统
+    /// （局内计时、波次、敌人移动、武器节奏、粒子、灯芯动画）自动跟随，无需逐个改动。
+    /// 不该加速的部分已经写在 unscaled 时间上：EmberAudio 的节流、EmberCardMotion 的面板淡入、
+    /// 设置页点击试听与开场序列都用 Time.unscaledTime / unscaledDeltaTime，故 5x 下界面与音效稳定。
+    /// 速度是玩家偏好，跨局保留，收局或中途退出都不重置。
     /// </summary>
     public static class GameSpeed
     {
@@ -27,7 +19,7 @@ namespace Emberlight
 
         static int multiplier = -1;
 
-        /// <summary>Current multiplier. Assigning stores it and applies it to Time.timeScale.</summary>
+        /// <summary>当前倍率；赋值会持久化并立即应用到 Time.timeScale。</summary>
         public static int Multiplier
         {
             get
@@ -44,13 +36,12 @@ namespace Emberlight
                 if (!changed) return;
                 PlayerPrefs.SetInt(PrefSpeed, clamped);
                 PlayerPrefs.Save();
-                // Adjusting the speed is what counts as having used the feature, so the
-                // first-time hint stops appearing.
+                // 调过速度就算用过该功能，首次提示不再出现。
                 MarkHintSeen();
             }
         }
 
-        /// <summary>Whether the one-time "you can speed this up" hint should still be offered.</summary>
+        /// <summary>是否仍应展示一次性的「可以加速」提示。</summary>
         public static bool ShouldShowHint { get { return PlayerPrefs.GetInt(PrefHintSeen, 0) == 0; } }
 
         public static void MarkHintSeen()
@@ -60,11 +51,8 @@ namespace Emberlight
             PlayerPrefs.Save();
         }
 
-        /// <summary>
-        /// Pushes the stored multiplier into Time.timeScale. Call this whenever something else
-        /// has reset the time scale (game teardown, leaving play mode) so the player's chosen
-        /// speed is restored rather than silently dropped back to 1x.
-        /// </summary>
+        /// <summary>把已存倍率推回 Time.timeScale。任何重置过 timeScale 的场合（收局拆场、退出播放模式）
+        /// 都要调用，否则玩家选的速度会被静默打回 1x。</summary>
         public static void Apply() { Time.timeScale = Multiplier; }
     }
 }

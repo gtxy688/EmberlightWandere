@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace Emberlight
 {
-    /// <summary>Trail. Exclusive \u5ef6\u71c3 longer/hotter. Metamorph \u706b\u6d77 persistent ring.</summary>
+    /// <summary>轨迹。专属 \u5ef6\u71c3 间隔更短、燃地更强；蜕变 \u706b\u6d77 持续火环带持续伤害。</summary>
     public sealed class EmberTrailWeapon : EmberWeapon
     {
         float trailTimer;
@@ -34,7 +34,6 @@ namespace Emberlight
                 ctx.SpawnBurnPatch?.Invoke(ctx.PlayerPos, extend ? 1.25f : 1f);
             }
 
-            // Metamorph 火海: visible persistent ring + DoT
             if (ctx.Progress != null && ctx.Progress.TrailRing && ownsTrail)
             {
                 float ringR = EmberWeaponTuning.Trail.RingRadius;

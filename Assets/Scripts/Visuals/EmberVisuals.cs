@@ -9,7 +9,7 @@ namespace Emberlight
             get
             {
                 if (disc != null) return disc;
-                // Baked PNG first (Emberlight/Bake runtime art), rasterise as the fallback.
+                // 优先构建期烘好的 PNG，未烘制时就地光栅化。
                 var baked = EmberBakedArt.Disc;
                 if (baked != null)
                 {
@@ -30,11 +30,7 @@ namespace Emberlight
             g.transform.localPosition=position; g.transform.localScale=scale;
             var r=g.AddComponent<SpriteRenderer>(); r.sprite=Disc; r.color=color; r.sortingOrder=order; return r;
         }
-        /// <summary>
-        /// Builds a hooded shade silhouette. This is the enemy/plain path only: the player
-        /// keeper is not built here, because EmberKeeperAnimation.Initialize owns that
-        /// shape (hood rim, narrow glowing eyes, swinging lantern).
-        /// </summary>
+        /// <summary>兜帽剪影。只走敌人/杂兵这条路径：玩家灯芯不在这里建，它的形体（兜帽边缘、细长发光眼、摆动提灯）归 EmberKeeperAnimation.Initialize。</summary>
         public static Transform Character(string name, Transform parent, Color body)
         {
             var root=new GameObject(name).transform; root.SetParent(parent,false);

@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Emberlight
 {
-    /// <summary>Fireball. Exclusive ExclBasic +1 shot. Metamorph MetaBasic \u71ce\u539f: size*1.5 dmg*1.25 + burn on hit.</summary>
+    /// <summary>火球。专属 ExclBasic 多 1 发；蜕变 MetaBasic \u71ce\u539f：体积 ×1.5、伤害 ×1.25、命中留燃地。</summary>
     public sealed class EmberBasicShotWeapon : EmberWeapon
     {
         sealed class Shot

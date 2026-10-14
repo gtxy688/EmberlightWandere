@@ -6,7 +6,7 @@ using UnityEngine.UI;
 
 namespace Emberlight.Editor
 {
-    /// <summary>首次迁移加载页布局，之后保留 Prefab 的人工编辑。</summary>
+    /// <summary>生成加载页布局；生成后的调整以 Prefab 人工编辑为准。</summary>
     public static class EmberIntroPrefabSetup
     {
         public const string PrefabPath = "Assets/UI/IntroRoot.prefab";

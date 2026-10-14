@@ -1,7 +1,7 @@
 using UnityEngine;
 namespace Emberlight
 {
-    // Shared code-native sprites; textures are generated once, not per effect.
+    // 共享的代码原生精灵；纹理只生成一次，不按效果重复生成。
     public static class EmberArt
     {
         static Sprite flame, ring, panel, glow;
@@ -12,8 +12,7 @@ namespace Emberlight
         static Sprite Create(int kind)
         {
             const int n=128;
-            // Prefer the build-time baked PNG (Emberlight/Bake runtime art); fall back to
-            // rasterising here so the game still runs before the art has been baked.
+            // 优先构建期烘好的 PNG；未烘制时就地光栅化，保证美术还没烘时游戏照常能跑。
             var baked = Baked(kind);
             if (baked != null)
                 return Sprite.Create(baked,new Rect(0,0,baked.width,baked.height),Vector2.one*.5f,n,0,SpriteMeshType.FullRect,kind==2?new Vector4(24,24,24,24):Vector4.zero);

@@ -2,7 +2,6 @@ using UnityEngine;
 
 namespace Emberlight
 {
-    /// <summary>Run/level tunables: arena, waves, spawn cadence, boss HP. Combat reads this instead of magic numbers.</summary>
     public enum EmberDifficulty
     {
         Casual,
@@ -10,6 +9,10 @@ namespace Emberlight
         Hard
     }
 
+    /// <summary>
+    /// 单局调参表（M1）：地图、波次配额与间隔、Boss 血量、敌人基础数值、词缀概率、掉落。
+    /// 战斗侧一律查这里，不写魔法数。**权威数值见 `Docs/requirements.md` §3**。
+    /// </summary>
     public sealed class LevelConfig
     {
         public float MapLimit = 22f;
@@ -18,24 +21,63 @@ namespace Emberlight
         public float SpawnBandWidth = 2f;
         public float BossHp = 6000f;
         public int BossWave = 25;
+        public int EnemyLimit = 150;
         public EmberDifficulty Difficulty { get; private set; } = EmberDifficulty.Standard;
         public float HealthMultiplier { get; private set; } = 1f;
         public float DamageMultiplier { get; private set; } = 1f;
         public float CountMultiplier { get; private set; } = 1f;
         public float IntervalMultiplier { get; private set; } = 1f;
         public float AffixMultiplier { get; private set; } = 1f;
+        public float HealDropChance = .08f, EliteHealDropChance = .20f;
+        public float HealDropAmount = 20f, HealDropLifetime = 60f;
+        public float ShooterNear = 5.5f, ShooterFar = 7f, ShooterInterval = 2.6f, ShooterCharge = .4f;
+        public float ShooterBulletSpeed = 6f, ShooterDamage = 8f;
+        public float ShieldTurnSpeed = 65f, ShieldFrontMultiplier = .3f;
+        public float BombFuse = .8f, BombRadius = 1.8f, BombDamage = 20f, BombTriggerRange = 2f;
+        public int SplitCount = 3;
+        public float BurningRadius = 2f, BurningDamage = 2f;
+        public float WindPeriod = 3f, WindDuration = 1f, WindSpeedMultiplier = 1.8f;
+        public float RebirthDelay = 2f, RebirthHpFraction = .4f;
+
+        /// <summary>第 1–5 波的杂兵清波配额。</summary>
+        public int[] WaveQuotas = { 12, 18, 24, 30, 36 };
+
+        /// <summary>第 1–5 波的刷怪间隔（秒）。</summary>
+        public float[] SpawnIntervals = { 0.90f, 0.75f, 0.60f, 0.48f, 0.36f };
+
+        /// <summary>刷怪表列序号：普通 / 疾行 / 高血 / 射手 / 烬胎 / 铁灯卫 / 引线虫。Boss 与子体不走这张表。</summary>
+        public static readonly int[] SpawnKinds = { 0, 1, 2, 4, 5, 7, 8 };
+
+        readonly int[][] weights =
+        {
+            new[] { 100, 0, 0, 0, 0, 0, 0 },
+            new[] { 60, 25, 15, 0, 0, 0, 0 },
+            new[] { 50, 20, 15, 15, 0, 0, 0 },
+            new[] { 35, 15, 15, 15, 12, 8, 0 },
+            new[] { 20, 15, 15, 15, 15, 10, 10 }
+        };
+
+        readonly int[][] lateWeights =
+        {
+            new[] { 20, 30, 5, 10, 20, 5, 10 },
+            new[] { 15, 10, 10, 30, 10, 15, 10 },
+            new[] { 10, 10, 20, 15, 10, 25, 10 },
+            new[] { 10, 20, 10, 15, 10, 15, 20 }
+        };
+
+        readonly int[] eliteWeights = { 10, 10, 30, 15, 10, 20, 5 };
 
         public static string DifficultyName(EmberDifficulty difficulty)
         {
             return difficulty == EmberDifficulty.Casual ? "休闲" : difficulty == EmberDifficulty.Hard ? "困难" : "标准";
         }
 
+        /// <summary>建一局的配置；难度倍率全部按 `requirements.md` §3.3 的权威值。</summary>
         public static LevelConfig Create(EmberDifficulty difficulty, int waves)
         {
             var c = new LevelConfig();
             c.BossWave = waves == 50 ? 50 : 25;
             c.Difficulty = System.Enum.IsDefined(typeof(EmberDifficulty), difficulty) ? difficulty : EmberDifficulty.Standard;
-            // jack 2026-09-14: all modes monster HP /2 (was Casual .5 / Standard 1 / Hard 1.35)
             if (c.Difficulty == EmberDifficulty.Casual)
             {
                 c.HealthMultiplier = .25f;
@@ -61,16 +103,19 @@ namespace Emberlight
             return c;
         }
 
+        /// <summary>Boss 波：每 10 波一次，最后 1 波为最终 Boss。</summary>
         public bool IsBossWave(int wave)
         {
             return wave >= 1 && wave <= BossWave && (wave == BossWave || wave % 10 == 0);
         }
 
+        /// <summary>精英挑战波：每 5 波一次且不与 Boss 波重叠。</summary>
         public bool IsEliteWave(int wave)
         {
             return wave >= 1 && wave < BossWave && wave % 5 == 0 && !IsBossWave(wave);
         }
 
+        /// <summary>本波清完后可以选几次卡；最终波不选卡。</summary>
         public int PicksAfterWave(int wave)
         {
             if (wave < 1 || wave >= BossWave)
@@ -78,6 +123,7 @@ namespace Emberlight
             return (wave <= 10 || wave % 2 == 0 ? 1 : 0) + (IsBossWave(wave) ? 1 : 0);
         }
 
+        /// <summary>阶段 Boss 血量公式；最终波用 <see cref="BossHp"/>。</summary>
         public float BossHpForWave(int wave)
         {
             return wave == BossWave ? BossHp : (1600f + wave * 100f) * HealthMultiplier;
@@ -111,137 +157,14 @@ namespace Emberlight
             }
         }
 
-        public int EnemyLimit = 150;
-        public float HealDropChance = .08f, EliteHealDropChance = .20f;
-        public float HealDropAmount = 20f, HealDropLifetime = 60f;
-        public float ShooterNear = 5.5f, ShooterFar = 7f, ShooterInterval = 2.6f, ShooterCharge = .4f;
-        public float ShooterBulletSpeed = 6f, ShooterDamage = 8f;
-        public float ShieldTurnSpeed = 65f, ShieldFrontMultiplier = .3f;
-        public float BombFuse = .8f, BombRadius = 1.8f, BombDamage = 20f, BombTriggerRange = 2f;
-        public int SplitCount = 3;
-        public float BurningRadius = 2f, BurningDamage = 2f;
-        public float WindPeriod = 3f, WindDuration = 1f, WindSpeedMultiplier = 1.8f;
-        public float RebirthDelay = 2f, RebirthHpFraction = .4f;
-        // Columns: ordinary, fast, tough, shooter, brood, guard, bomber. Boss/children never roll here.
-        public static readonly int[] SpawnKinds =
-        {
-            0,
-            1,
-            2,
-            4,
-            5,
-            7,
-            8
-        };
-        readonly int[][] weights =
-        {
-            new[]
-            {
-                100,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0
-            },
-            new[]
-            {
-                60,
-                25,
-                15,
-                0,
-                0,
-                0,
-                0
-            },
-            new[]
-            {
-                50,
-                20,
-                15,
-                15,
-                0,
-                0,
-                0
-            },
-            new[]
-            {
-                35,
-                15,
-                15,
-                15,
-                12,
-                8,
-                0
-            },
-            new[]
-            {
-                20,
-                15,
-                15,
-                15,
-                15,
-                10,
-                10
-            }
-        };
-        readonly int[][] lateWeights =
-        {
-            new[]
-            {
-                20,
-                30,
-                5,
-                10,
-                20,
-                5,
-                10
-            },
-            new[]
-            {
-                15,
-                10,
-                10,
-                30,
-                10,
-                15,
-                10
-            },
-            new[]
-            {
-                10,
-                10,
-                20,
-                15,
-                10,
-                25,
-                10
-            },
-            new[]
-            {
-                10,
-                20,
-                10,
-                15,
-                10,
-                15,
-                20
-            }
-        };
-        readonly int[] eliteWeights =
-        {
-            10,
-            10,
-            30,
-            15,
-            10,
-            20,
-            5
-        };
+        /// <summary>本波的种类权重表：精英波用精英表，第 6 波起轮转后期表，否则用前期表。</summary>
         public System.Collections.Generic.IReadOnlyList<int> WeightTable(int wave)
         {
-            return IsEliteWave(wave) && wave > 5 ? eliteWeights : wave > 5 ? lateWeights[(wave - 6) % lateWeights.Length] : weights[Mathf.Clamp(wave - 1, 0, weights.Length - 1)];
+            if (IsEliteWave(wave) && wave > 5)
+                return eliteWeights;
+            if (wave > 5)
+                return lateWeights[(wave - 6) % lateWeights.Length];
+            return weights[Mathf.Clamp(wave - 1, 0, weights.Length - 1)];
         }
 
         public int RollKind(int wave, System.Random random)
@@ -258,6 +181,7 @@ namespace Emberlight
             return 0;
         }
 
+        /// <summary>词缀概率：第 3 波起 12%，第 5 波起 18% 并每波 +0.3%，封顶 50%，再乘难度倍率。</summary>
         public float AffixChance(int wave)
         {
             return Mathf.Min(.5f, (wave < 3 ? 0 : wave >= 5 ? .18f + Mathf.Min(.12f, (wave - 5) * .003f) : .12f) * AffixMultiplier);
@@ -267,49 +191,19 @@ namespace Emberlight
         {
             switch (kind)
             {
-                case 1:
-                    return 1.9f;
-                case 4:
-                    return 1.1f;
-                case 5:
-                    return .8f;
-                case 6:
-                    return 2.2f;
-                case 7:
-                    return .7f;
-                case 8:
-                    return 1.6f;
-                default:
-                    return 1f;
+                case 1: return 1.9f;
+                case 4: return 1.1f;
+                case 5: return .8f;
+                case 6: return 2.2f;
+                case 7: return .7f;
+                case 8: return 1.6f;
+                default: return 1f;
             }
         }
 
-        /// <summary>Trash clear quotas for Wave 1..5.</summary>
-        public int[] WaveQuotas =
-        {
-            12,
-            18,
-            24,
-            30,
-            36
-        };
-        /// <summary>Spawn interval seconds per wave index 1..5 (Boss wave unused).</summary>
-        public float[] SpawnIntervals =
-        {
-            0.90f,
-            0.75f,
-            0.60f,
-            0.48f,
-            0.36f
-        };
-        public static LevelConfig Default
-        {
-            get
-            {
-                return Create(EmberDifficulty.Standard, 25);
-            }
-        }
+        public static LevelConfig Default { get { return Create(EmberDifficulty.Standard, 25); } }
 
+        /// <summary>本波杂兵配额 = 表值（或第 6 波起的增长式）× 难度倍率，下限 1；Boss 波为 0。</summary>
         public int QuotaForWave(int wave)
         {
             if (wave < 1 || wave > BossWave || IsBossWave(wave))
@@ -324,25 +218,19 @@ namespace Emberlight
             return Mathf.Max(.14f, interval * IntervalMultiplier);
         }
 
+        /// <summary>敌人血量：普通 `16 + wave×6`、高血 `40 + wave×10`，再按种类取系数与难度倍率。</summary>
         public float TrashHp(int wave, int kind)
         {
             float normal = (16f + wave * 6f) * HealthMultiplier, tough = (40f + wave * 10f) * HealthMultiplier;
             switch (kind)
             {
-                case 2:
-                    return tough;
-                case 4:
-                    return normal * .8f;
-                case 5:
-                    return tough * .6f;
-                case 6:
-                    return normal * .25f;
-                case 7:
-                    return tough * 1.2f;
-                case 8:
-                    return normal * .6f;
-                default:
-                    return normal;
+                case 2: return tough;
+                case 4: return normal * .8f;
+                case 5: return tough * .6f;
+                case 6: return normal * .25f;
+                case 7: return tough * 1.2f;
+                case 8: return normal * .6f;
+                default: return normal;
             }
         }
 

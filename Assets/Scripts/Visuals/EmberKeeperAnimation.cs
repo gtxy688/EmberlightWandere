@@ -1,7 +1,7 @@
 using UnityEngine;
 namespace Emberlight
 {
-    // Continuous local transforms: no frame swaps or changes to gameplay position.
+    // 只用局部变换做连续动画：不换帧，也不改玩法位置。
     public sealed class EmberKeeperAnimation : MonoBehaviour
     {
         Transform body, cloak, face, lantern;
@@ -10,24 +10,15 @@ namespace Emberlight
         Vector3 previous;
         Vector2 drift;
         float phaseClock, moving;
-        /// <summary>
-        /// 注入阶段闸门。原先这里用 `FindObjectOfType&lt;EmberGame&gt;()` 反查游戏实例——
-        /// 表现层反向依赖游戏层，还隐藏了依赖关系；现在由组合根在创建灯芯时传入。
-        /// </summary>
+        /// <summary>注入阶段闸门：由组合根在创建灯芯时传入，表现层不反查游戏层。</summary>
         public void Initialize(System.Func<EmberRunPhase> phaseProvider)
         {
             phase = phaseProvider;
             body = new GameObject("Floating keeper").transform;
             body.SetParent(transform,false);
-            // Ground shadow. Parented to the keeper root, not to body: it is a ground shadow, so
-            // it must not bob with the hover.
-            //
-            // It also has to sit below the cloak, which is why the offset is -0.50 rather than the
-            // -0.25 the enemy shadow uses. The enemy cloak is centred on its root and spans
-            // -0.40..0.40, so a shadow at -0.25 pokes out under it. The keeper cloak hangs off
-            // body at y=-0.08 with height 0.78 and spans -0.51..0.31, so a shadow at -0.25 sat
-            // entirely inside it and was completely hidden. At -0.50 it spans -0.64..-0.36 and
-            // clears the cloak, leaving a visible band underneath.
+            // 地面阴影。挂在灯芯根节点而非 body：它是地面阴影，不能跟着悬浮一起上下浮。
+            // 偏移取 -0.50 是为了不被斗篷盖住——灯芯斗篷挂在 body 的 y=-0.08、高 0.78（跨 -0.51..0.31），
+            // 阴影放 -0.25 会整条藏在斗篷里；-0.50 时跨 -0.64..-0.36，正好在斗篷下留出可见的一条。
             EmberVisuals.Shape("Shadow",transform,new Vector2(0,-.50f),new Vector2(.90f,.28f),new Color(0,0,0,.30f),1);
             var blue = new Color(.20f,.35f,.45f);
             cloak=EmberVisuals.Shape("Cloak",body,new Vector2(0,-.08f),new Vector2(.66f,.78f),blue,3).transform;

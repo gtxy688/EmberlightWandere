@@ -3,16 +3,9 @@ using UnityEngine;
 namespace Emberlight
 {
     /// <summary>
-    /// Pre-baked versions of the code-native sprites under Resources/Art/Baked.
-    ///
-    /// These shapes used to be rasterised in C# on first use (EmberArt.Create /
-    /// EmberVisuals.Disc). Emberlight/Bake runtime art writes them out as PNGs so the
-    /// work happens at build time; the runtime rasterisers remain as the fallback for
-    /// when the assets have not been baked yet.
-    ///
-    /// Textures are loaded as Texture2D (not Sprite) and sliced with the original
-    /// pivot / pixels-per-unit / 9-slice border, so Sprite.Create output is identical
-    /// to what the rasterisers produced.
+    /// 预烘好的代码原生精灵（Resources/Art/Baked）：把首次使用时的 C# 光栅化挪到构建期；
+    /// 尚未烘制时，EmberArt / EmberVisuals 里的运行时光栅化仍是回落路径。
+    /// 按 Texture2D（不是 Sprite）加载，并用原 pivot / PPU / 九宫边框切片，输出与原光栅化一致。
     /// </summary>
     public static class EmberBakedArt
     {

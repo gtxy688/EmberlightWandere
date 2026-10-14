@@ -2,37 +2,35 @@ namespace Emberlight
 {
     /// <summary>
     /// 词条 Id 空间与武器名册的**唯一出处**（`requirements.md` §4.2 / §4.7）。
-    ///
-    /// 抽这个类的原因：名册数组原先重复出现在 `RunProgress.RosterIds` / `MetaWeaponOf` /
-    /// `ExclWeaponOf` 三处，`EmberGodsSelectPanel.Roster` 与各武器的自门控又各自散落一遍；
-    /// 只要有一个人改动其中一份，武器图标、出卡、门控就会互相错位。
-    ///
-    /// 本类**不含规则、不含状态、零 `UnityEngine` 引用**——`RunProgress` 的归属判定、
-    /// `EmberChoicePool` 的候选生成与武器的 Tick 门控都从这里取 id。
+    /// 归属判定、候选生成与武器 Tick 门控都从这里取 id。
+    /// 本类**不含规则、不含状态、零 `UnityEngine` 引用**。
     /// </summary>
     public static class EmberWeaponCatalog
     {
-        // ── 通用词条（0–4）────────────────────────────────────────────────────────────────
+        // 通用词条 0–4
         public const int StatAtk = 0;
         public const int StatAs = 1;
         public const int StatLuck = 2;
         public const int StatAmp = 3;
         public const int StatShield = 4;
-        // ── 武器（10–19，占槽）────────────────────────────────────────────────────────────
+
+        // 武器 10–19（占槽）
         public const int Pierce = 10;
         public const int Boom = 11;
         public const int Meteor = 12;
         public const int Basic = 13;
         public const int Orbit = 14;
         public const int Trail = 15;
-        // ── 质变（20–29）─────────────────────────────────────────────────────────────────
+
+        // 质变 20–29
         public const int MetaBasic = 20;
         public const int MetaOrbit = 21;
         public const int MetaTrail = 22;
         public const int MetaPierce = 23;
         public const int MetaBoom = 24;
         public const int MetaMeteor = 25;
-        // ── 专属（30–39）─────────────────────────────────────────────────────────────────
+
+        // 专属 30–39
         public const int ExclBasic = 30;
         public const int ExclOrbit = 31;
         public const int ExclTrail = 32;

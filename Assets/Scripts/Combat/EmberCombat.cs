@@ -6,19 +6,14 @@ namespace Emberlight
     /// <summary>
     /// 战斗根（M3）：本局战斗的装配点与每帧顺序。
     ///
-    /// 它**只做四件事**——拥有武器实例、装配各战斗单元、驱动每帧顺序、把单元之间的回调接起来。
-    /// 具体规则分别属于：波次推进 <see cref = "EmberWaveDirector"/>、敌人实例化与回收
-    /// <see cref = "EmberEnemyRoster"/>、伤害与死亡结算 <see cref = "EmberCombatDamage"/>、
-    /// 敌方弹幕 <see cref = "EmberEnemyProjectiles"/>、治疗掉落 <see cref = "EmberHealingDrops"/>。
-    ///
-    /// 拆分前本文件 509 行，把波次状态机、刷怪参数、伤害结算、死亡处理、分裂与遭遇全压在一处。
-    /// **不要再往这里加规则**：能独立成单元的就独立。
-    ///
-    /// 对宿主的依赖只有 <see cref = "IEmberCombatHost"/>，不认识 `EmberGame`。
+    /// 只做四件事——拥有武器实例、装配各战斗单元、驱动每帧顺序、把单元之间的回调接起来。
+    /// 具体规则分别属于：波次推进 <see cref="EmberWaveDirector"/>、敌人实例化与回收
+    /// <see cref="EmberEnemyRoster"/>、伤害与死亡结算 <see cref="EmberCombatDamage"/>、
+    /// 敌方弹幕 <see cref="EmberEnemyProjectiles"/>、治疗掉落 <see cref="EmberHealingDrops"/>。
+    /// 对宿主的依赖只有 <see cref="IEmberCombatHost"/>，不认识 `EmberGame`。
     /// </summary>
     public sealed class EmberCombat : EmberWaveDirector.Host
     {
-        // ── 武器 ──────────────────────────────────────────────────────────────────────────
         readonly List<EmberWeapon> weapons = EmberWeaponFactory.CreateAll();
         readonly EmberBurnGround burnGround = new EmberBurnGround();
         readonly EmberWeaponContext weaponCtx = new EmberWeaponContext();
@@ -41,6 +36,7 @@ namespace Emberlight
         bool hasLastPlayerPos;
         float burningTimer;
         bool inBurningAura;
+
         public EmberCombat(IEmberCombatHost owner)
         {
             host = owner;
@@ -48,102 +44,24 @@ namespace Emberlight
             healingDrops = new EmberHealingDrops(pool, host);
         }
 
-        // ── 只读状态（HUD 与武器 context 读取）────────────────────────────────────────────
-        public int EnemyCount
-        {
-            get
-            {
-                return roster != null ? roster.Count : 0;
-            }
-        }
+        // 只读状态，供 HUD 与武器 context 读取。
 
-        public EmberEnemy Boss
-        {
-            get
-            {
-                return bossEnemy;
-            }
-        }
+        public int EnemyCount { get { return roster != null ? roster.Count : 0; } }
+        public EmberEnemy Boss { get { return bossEnemy; } }
+        public bool BossAlive { get { return bossEnemy != null; } }
+        public int Wave { get { return waves != null ? waves.Wave : 1; } }
+        public int WaveQuota { get { return waves != null ? waves.Quota : 0; } }
+        public int WaveSpawned { get { return waves != null ? waves.Spawned : 0; } }
+        public int WaveKilled { get { return waves != null ? waves.Killed : 0; } }
+        public int WaveRemaining { get { return waves != null ? waves.Remaining : 0; } }
+        public int WaveKillsRemaining { get { return waves != null ? waves.KillsRemaining : 0; } }
+        public string EncounterText { get { return waves != null ? waves.EncounterText : ""; } }
 
-        public bool BossAlive
-        {
-            get
-            {
-                return bossEnemy != null;
-            }
-        }
-
-        public int Wave
-        {
-            get
-            {
-                return waves != null ? waves.Wave : 1;
-            }
-        }
-
-        public int WaveQuota
-        {
-            get
-            {
-                return waves != null ? waves.Quota : 0;
-            }
-        }
-
-        public int WaveSpawned
-        {
-            get
-            {
-                return waves != null ? waves.Spawned : 0;
-            }
-        }
-
-        public int WaveKilled
-        {
-            get
-            {
-                return waves != null ? waves.Killed : 0;
-            }
-        }
-
-        public int WaveRemaining
-        {
-            get
-            {
-                return waves != null ? waves.Remaining : 0;
-            }
-        }
-
-        public int WaveKillsRemaining
-        {
-            get
-            {
-                return waves != null ? waves.KillsRemaining : 0;
-            }
-        }
-
-        public string EncounterText
-        {
-            get
-            {
-                return waves != null ? waves.EncounterText : "";
-            }
-        }
-
-        // ── EmberWaveDirector.Host ────────────────────────────────────────────────────────
-        int EmberWaveDirector.Host.EnemyCount
-        {
-            get
-            {
-                return EnemyCount;
-            }
-        }
+        int EmberWaveDirector.Host.EnemyCount { get { return EnemyCount; } }
 
         Vector2 EmberWaveDirector.Host.PlayerPosition
         {
-            get
-            {
-                return player != null ? (Vector2)player.position : Vector2.zero;
-            }
+            get { return player != null ? (Vector2)player.position : Vector2.zero; }
         }
 
         bool EmberWaveDirector.Host.TrySpawnRolledTrash()
@@ -176,7 +94,6 @@ namespace Emberlight
             host.EndRun(true);
         }
 
-        // ── 生命周期 ──────────────────────────────────────────────────────────────────────
         public void Begin(Transform runWorld, Transform keeper, Camera camera, EmberEffects fx)
         {
             Begin(runWorld, keeper, camera, fx, LevelConfig.Default);
@@ -299,7 +216,6 @@ namespace Emberlight
             }
         }
 
-        // ── 每帧 ──────────────────────────────────────────────────────────────────────────
         /// <summary>选卡结束后推进到下一波。</summary>
         public void AdvanceAfterUpgrade()
         {
@@ -307,6 +223,10 @@ namespace Emberlight
                 waves.Advance();
         }
 
+        /// <summary>
+        /// 一帧的战斗顺序：波次 → 掉落 → 弹幕 → 敌人 → 灼热光环 → 武器 → 弹幕命中 → 死亡结算。
+        /// 每个阶段之后都重新确认仍在 Playing，因为受伤可能当场收局。
+        /// </summary>
         public void Tick(float dt)
         {
             if (host.Phase != EmberRunPhase.Playing)
@@ -316,13 +236,12 @@ namespace Emberlight
             var progress = host.Progress;
             waves.Tick(dt);
             healingDrops.Tick(dt, player.position);
-            // 注意：Boss 不需要在这里单独 Tick——它也在名册里，由 TickEnemies 的 ai 分支推进。
-            // 重构时曾在这里多推一次，导致 Boss 招式速度翻倍。
+            // Boss 不需要单独 Tick：它也在名册里，由 TickEnemies 的 ai 分支推进。
             enemyProjectiles.Move(dt);
             TickEnemies(dt);
             if (host.Phase != EmberRunPhase.Playing)
                 return;
-            // 灼热光环：多个光环共用一次脉冲，避免按敌人数叠加伤害
+            // 灼热光环：多个光环共用一次脉冲，避免按敌人数叠加伤害。
             if (inBurningAura)
                 burningTimer += dt;
             else
@@ -467,7 +386,6 @@ namespace Emberlight
             pendingBroods.Clear();
         }
 
-        // ── 伤害与特效入口 ────────────────────────────────────────────────────────────────
         void SetEnemyContext(EmberEnemy e)
         {
             enemyCtx.Enemy = e;

@@ -22,7 +22,7 @@ namespace Emberlight
             var v = pool.RentShape("healing-drop", world, position, Vector2.one * .48f, new Color(.16f, .8f, .46f), 12);
             v.sprite = EmberWorldArt.Get(9);
             v.color = Color.white;
-            // Preserve the pickup size regardless of atlas pixel dimensions.
+            // 按图集像素尺寸反算缩放，保证拾取物实际大小恒定。
             v.transform.localScale = Vector3.one * (.62f / v.sprite.bounds.size.x);
             for (int child = 0; child < v.transform.childCount; child++)
                 v.transform.GetChild(child).gameObject.SetActive(false);

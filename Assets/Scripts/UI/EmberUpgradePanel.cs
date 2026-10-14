@@ -60,7 +60,7 @@ namespace Emberlight
             refresh = null;
         }
 
-        // 保留原工具入口；卡面规则归 EmberOfferPresentation。
+        // 卡面文案规则归 EmberOfferPresentation。
         public static string Preview(int id, EmberRarity rarity, RunProgress progress, int weaponId = -1)
         {
             return EmberOfferPresentation.Preview(id, rarity, progress, weaponId);
@@ -201,7 +201,7 @@ namespace Emberlight
             refreshButton.onClick.AddListener(() => { if (!choosing && canRefresh) refresh?.Invoke(); });
         }
 
-        // Separate title, two-line explanation and numeric preview so fitting one cannot overlap another.
+        // 标题、两行说明与数值预览各自独立缩放，避免挤在一起互相重叠。
         static void FitText(TextMeshProUGUI text, float min, float max, bool wrap)
         {
             text.enableAutoSizing = true;

@@ -3,13 +3,11 @@ using UnityEngine;
 namespace Emberlight
 {
     /// <summary>
-    /// 本局的运行时状态与场景引用：构筑进度、关卡配置、计时、击杀、以及这一局创建出来的
-    /// 世界/灯芯/相机/特效句柄。
-    ///
-    /// 这里**只放数据，不放规则**：伤害、护盾、选卡推进分别属于 `EmberKeeperVitals`、
-    /// `RunProgress`、`RunFlowController`。这样战斗与表现模块可以只读本对象，而不必认识
-    /// `EmberGame`。注意本类引用了 `Transform`/`Camera`，因此不能脱离 Unity 单测——
-    /// 纯逻辑仍在 `RunProgress` 里。
+    /// 本局的运行时状态与场景引用：构筑进度、关卡配置、计时、击杀，以及本局创建出来的
+    /// 世界 / 灯芯 / 相机 / 特效句柄。
+    /// 只放数据不放规则：伤害、护盾、选卡推进分别属于 EmberKeeperVitals / RunProgress /
+    /// RunFlowController，战斗与表现模块因此可以只读本对象而不必认识 EmberGame。
+    /// 本类引用了 Transform / Camera，不能脱离 Unity 单测——纯逻辑仍在 RunProgress 里。
     /// </summary>
     public sealed class EmberRunState
     {

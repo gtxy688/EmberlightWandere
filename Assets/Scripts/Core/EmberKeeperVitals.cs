@@ -4,15 +4,13 @@ namespace Emberlight
 {
     /// <summary>
     /// 灯芯（玩家）的生命结算：当前生命、无敌帧、受伤、回血、掉落拾取。
+    /// 伤害链路只依赖本类与 <see cref="RunProgress"/>，不持有场景句柄，也不创建音频对象。
     ///
-    /// 原先这些方法散在 `EmberGame` 上，导致 M3（接触伤害、Boss 招式、灼热光环、敌方弹幕）
-    /// 必须持有整个 `EmberGame` 才能扣一次血。抽出来之后伤害链路只依赖本类与 `RunProgress`。
-    ///
-    /// 保持的行为口径（不得静默变动）：
-    /// - 难度倍率在 <see cref = "Hurt"/> 内**统一乘一次**，覆盖接触/射手/爆炸/灼热/Boss；
-    /// - 受伤后无敌帧 0.65 秒；
-    /// - 护盾先乘难度倍率、再扣护盾，溢出部分扣生命（`RunProgress.AbsorbDamage`）；
-    /// - 怪物治疗掉落**任意血量**都可拾取，溢出部分丢弃（护盾只来自词条）。
+    /// 行为口径（不得静默变动）：
+    /// - 难度倍率在 <see cref="Hurt"/> 内**统一乘一次**，覆盖接触/射手/爆炸/灼热/Boss；
+    /// - 受伤后无敌帧 <see cref="HurtCooldown"/> 秒；
+    /// - 护盾先乘难度倍率、再扣护盾，溢出部分扣生命（<see cref="RunProgress.AbsorbDamage"/>）；
+    /// - 怪物治疗掉落**任意血量**都可拾取，溢出部分丢弃。
     /// </summary>
     public sealed class EmberKeeperVitals
     {

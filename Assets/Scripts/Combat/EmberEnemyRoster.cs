@@ -4,15 +4,9 @@ using UnityEngine;
 namespace Emberlight
 {
     /// <summary>
-    /// 敌人名册：拥有敌方实例列表，并负责刷怪与回收（M3）。
-    ///
-    /// 从 `EmberCombat` 搬出来的原因：刷怪一次要同时决定 8 件事——种类 roll、落点、颜色、
-    /// 尺寸、血量、速度、词缀、表现部件——这些散落在 130 行的 `SpawnEnemy` 里，与波次推进、
-    /// 伤害结算混在同一个类。现在"怎么造一个敌人"和"什么时候该造"分开了：
-    /// 名册只管前者，后者归 <see cref="EmberWaveDirector"/>。
-    ///
-    /// 行为口径保持不变（`requirements.md` §3.4 / §3.5）：血量与词缀概率全部查 `LevelConfig`，
-    /// 不在这里写数值。
+    /// 敌人名册（M3）：拥有敌方实例列表，负责"怎么造一个敌人"与回收；
+    /// "什么时候该造"归 <see cref="EmberWaveDirector"/>。
+    /// 血量与词缀概率全部查 `LevelConfig`，不在这里写数值（`requirements.md` §3.4 / §3.5）。
     /// </summary>
     public sealed class EmberEnemyRoster
     {
@@ -43,8 +37,6 @@ namespace Emberlight
         /// <summary>直接遍历用（结算器、Tick 循环）。不要改这个列表的结构。</summary>
         public List<EmberEnemy> All { get { return enemies; } }
 
-        // ── 刷怪 ──────────────────────────────────────────────────────────────────────────
-
         /// <summary>对象池的 key：Boss 与杂兵分池，避免尺寸/部件互相污染。</summary>
         static string PoolKeyFor(int kind) { return kind == 3 ? "boss" : "shade"; }
 
@@ -58,6 +50,7 @@ namespace Emberlight
         /// <param name="forcedKind">≥ 0 时跳过种类 roll；仅在 <paramref name="boss"/> 为 false 时生效。</param>
         /// <param name="position">请求落点；杂兵仅在地图内且屏外时采用，否则重新选取。</param>
         /// <param name="forceAffix">true 时跳过词缀概率判定（精英挑战小队用）。</param>
+        /// <param name="allowInView">true 时允许落在屏内（分裂子体等派生生成用）。</param>
         public EmberEnemy Spawn(bool boss, int wave, IEmberCombatHost host = null,
             System.Action<Vector2, int> bossVolley = null, int forcedKind = -1,
             Vector2? position = null, bool forceAffix = false, bool allowInView = false)
@@ -110,8 +103,6 @@ namespace Emberlight
             return added;
         }
 
-        // ── 回收与清理 ────────────────────────────────────────────────────────────────────
-
         /// <summary>把表现节点收回对象池，并清掉附着的血条与表现组件。</summary>
         public void Release(EmberEnemy e)
         {
@@ -145,8 +136,7 @@ namespace Emberlight
             enemies.Clear();
         }
 
-        // ── 外观与行为的静态查表 ──────────────────────────────────────────────────────────
-
+        /// <summary>按种类取行为策略；没有专属策略的走直线追击。</summary>
         public static IEnemyBehavior CreateBehavior(int kind)
         {
             switch (kind)

@@ -72,7 +72,7 @@ namespace Emberlight
             hasStats = true;
         }
 
-        /// <summary>波次文字的唯一写入点，保留原难度/波数/波名呈现。</summary>
+        /// <summary>波次文字的唯一写入点。</summary>
         public void Stage(int wave, int total, string difficulty, string name)
         {
             if (wave == lastWave && total == lastTotal && difficulty == lastDifficulty && name == lastWaveName) return;

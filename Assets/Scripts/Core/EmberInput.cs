@@ -3,11 +3,8 @@ using UnityEngine;
 namespace Emberlight
 {
     /// <summary>
-    /// 触屏 / 鼠标输入：把下半屏的拖拽翻译成一根摇杆向量。
-    ///
-    /// 原先这段逻辑写在 `EmberGame.ReadInput()` 里，直接读写入口脚本的私有字段
-    /// （`pointer` / `origin` / `stick`）。现在输入有自己的状态，且不持有 `EmberGame`——
-    /// 摇杆呈现与暂停请求通过 <see cref="Presenter"/> 回调，因此本类可脱离游戏实例验证。
+    /// 触屏 / 鼠标输入：把下半屏的拖拽翻译成一根摇杆向量。输入自带状态、不持有 EmberGame，
+    /// 摇杆呈现与暂停请求都走 <see cref="Presenter"/> 回调，因此可脱离游戏实例验证。
     /// </summary>
     public sealed class EmberInput
     {
@@ -17,7 +14,6 @@ namespace Emberlight
             /// <summary>把摇杆状态交给界面（active = 是否正在拖动）。</summary>
             void OnStick(bool active, Vector2 screenOrigin, Vector2 stick);
 
-            /// <summary>请求暂停。</summary>
             void OnPauseRequested();
         }
 
@@ -38,7 +34,6 @@ namespace Emberlight
         /// <summary>当前摇杆向量（已钳到单位长度）。</summary>
         public Vector2 Stick { get { return stick; } }
 
-        /// <summary>是否正在拖动摇杆。</summary>
         public bool IsDragging { get { return pointer != -1; } }
 
         /// <summary>手指/鼠标按下的屏幕坐标，用于摆放摇杆底盘。</summary>

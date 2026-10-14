@@ -6,7 +6,7 @@ using TMPro;
 
 namespace Emberlight
 {
-    /// <summary>Gods-Select-v3: pick N, then roster single-pick 1 starter. Empty slots = N-1 for in-run. No skip - must pick N then 1 starter.</summary>
+    /// <summary>先选槽位数 N，再单选 1 把起始武器；开局不可跳过，剩余 N-1 个空槽在局内补。</summary>
     public sealed class EmberGodsSelectPanel : MonoBehaviour
     {
         [SerializeField] GameObject slotsRoot, rosterRoot;
@@ -49,7 +49,7 @@ namespace Emberlight
             confirmRoster = null;
         }
 
-        /// <summary>UI API: start roster select after N is known.</summary>
+        /// <summary>UI 入口：N 确定后开始选起始武器。</summary>
         public void ShowRosterSelect(int slots, Action<int[]> onConfirm)
         {
             ShowRoster(slots, onConfirm);
@@ -104,7 +104,7 @@ namespace Emberlight
 
         void ToggleRoster(int id)
         {
-            // Selection is retained across pages until explicit confirmation.
+            // 选择保留到显式确认为止。
             filled.Clear();
             filled.Add(id);
             RefreshRoster();

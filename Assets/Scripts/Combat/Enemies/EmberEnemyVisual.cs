@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace Emberlight
 {
-    /// <summary>Distinct silhouettes and combat tells built from the existing procedural sprite library.</summary>
+    /// <summary>用既有程序化贴图库搭出各兵种轮廓与攻击预警。</summary>
     public sealed class EmberEnemyVisual
     {
         readonly Transform root, shield;
@@ -37,7 +37,7 @@ namespace Emberlight
                 }
                 previousPosition=enemy.view.position;
                 previousTime=-1f;
-                // World-sized tells must not inherit enemy body scaling.
+                // 攻击预警是世界尺寸，不能继承敌人本体的缩放。
                 root = new GameObject("Enemy tells").transform;
                 root.SetParent(world, false);
                 root.position = enemy.view.position;
@@ -178,7 +178,7 @@ namespace Emberlight
 
         public void Clear()
         {
-            // Pooled enemies must return in their neutral pose.
+            // 敌人回池前必须恢复中性姿态。
             for(int i=0;i<bodyParts.Length;i++)
                 if(bodyParts[i]!=null){bodyParts[i].localPosition=restPositions[i];bodyParts[i].localScale=restScales[i];bodyParts[i].localRotation=restRotations[i];}
             if (root == null) return;

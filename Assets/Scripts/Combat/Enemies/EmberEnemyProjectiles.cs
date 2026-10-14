@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Emberlight
 {
-    /// <summary>Combat-owned dark bolts: bounded, pooled, swept collision, paused with combat.</summary>
+    /// <summary>战斗自有的暗色弹幕：上限池化、扫掠碰撞，随战斗暂停。</summary>
     public sealed class EmberEnemyProjectiles
     {
         sealed class Bolt

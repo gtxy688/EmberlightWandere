@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Emberlight
 {
-    /// <summary>Pierce sniper: fire only while standing. Exclusive +PierceLimit. Metamorph \u7a7f\u6768 split on hit.</summary>
+    /// <summary>穿刺狙击。专属提升穿透上限；蜕变 \u7a7f\u6768 命中后分裂。</summary>
     public sealed class EmberPierceWeapon : EmberWeapon
     {
         sealed class Arrow
@@ -29,7 +29,7 @@ namespace Emberlight
             if (ctx.Progress == null || !ctx.Progress.OwnsWeapon(RunProgress.WeaponPierce))
                 return;
             cd -= dt;
-            // Hotfix: only shoot while standing; in-flight arrows keep ticking below.
+            // 仅静止时开火；已在飞的箭仍在下文继续结算。
             if (cd <= 0 && ctx.PlayerStanding && ctx.EnemyCount() > 0)
             {
                 Fire(ctx, ctx.PlayerPos, null, false);

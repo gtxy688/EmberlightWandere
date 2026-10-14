@@ -9,7 +9,7 @@ using UnityEngine.UI;
 
 namespace Emberlight.Editor
 {
-    /// <summary>一次性补齐旧快照的引用和缺失控件；日常布局直接编辑 Prefab。</summary>
+    /// <summary>补齐 UIRoot 的运行时引用与缺失控件；日常布局直接编辑 Prefab。</summary>
     public static class EmberUiPrefabSetup
     {
         const string PrefabPath = "Assets/UI/UIRoot.prefab";
@@ -31,7 +31,7 @@ namespace Emberlight.Editor
             Debug.Log("UIRoot runtime connected. Save the scene to retain its assigned reference.");
         }
 
-        // Batch entry runs only against the explicitly opened project; uses Editor APIs for all asset writes.
+        // 批处理入口，仅作用于显式打开的工程；资产写入一律走 Editor API。
         public static void ConnectProject()
         {
             ConfigurePrefab();
@@ -57,7 +57,7 @@ namespace Emberlight.Editor
                 view.Upgrade = At<EmberUpgradePanel>(root.transform, "Safe area");
                 view.Settings = At<EmberSettingsPanel>(root.transform, "Safe area");
                 view.GodsSelect = At<EmberGodsSelectPanel>(root.transform, "Safe area");
-                var font = EmberFonts.CreateChinese(); // Keep the same ValidateBaked gate as startup.
+                var font = EmberFonts.CreateChinese(); // 与启动一致，走 ValidateBaked 闸门。
                 ConfigureMenu(view, font);
                 ConfigureHud(view);
                 ConfigureUpgrade(view);

@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Emberlight
 {
-    /// <summary>Meteor. Exclusive +1 impact. Metamorph \u5929\u706b bigger higher dmg.</summary>
+    /// <summary>陨石。专属多 1 次落点；蜕变 \u5929\u706b 范围与伤害提升。</summary>
     public sealed class EmberMeteorWeapon : EmberWeapon
     {
         sealed class Strike
@@ -78,15 +78,15 @@ namespace Emberlight
             var e = ctx.GetEnemy(idx);
             Vector2 point = e.view.position;
             bool skyfire = ctx.Progress.HasMetamorph(RunProgress.MetaMeteor);
-            float radius = skyfire ? EmberWeaponTuning.Meteor.SkyfireRadius : EmberWeaponTuning.Meteor.Radius; // skyfire +10% Weapon-Balance-v1
+            float radius = skyfire ? EmberWeaponTuning.Meteor.SkyfireRadius : EmberWeaponTuning.Meteor.Radius;
             if (ctx.Progress.WavePower > 0)
                 radius += ctx.Progress.WavePower * 0.5f;
             float dmg = EmberWeaponTuning.Meteor.Damage * ctx.Progress.DamageMul * (1f + ctx.Progress.WeaponMagnitude(RunProgress.WeaponMeteor));
             if (skyfire)
-                dmg *= EmberWeaponTuning.Meteor.SkyfireDamage; // was 1.4; +10% Weapon-Balance-v1
+                dmg *= EmberWeaponTuning.Meteor.SkyfireDamage;
             var warn = ctx.Pool != null ? ctx.Pool.RentShape("warn", ctx.World, point, Vector2.one * (radius * 2f), new Color(1f, .3f, .05f, .35f), 1) : EmberVisuals.Shape("Meteor warn", ctx.World, point, Vector2.one * (radius * 2f), new Color(1f, .3f, .05f, .35f), 1);
             warn.sprite = EmberArt.Ring;
-            // Warning is silent; impact SFX plays when timer hits 0.
+            // 预警圈不播音效，计时归零落地时才播撞击音。
             pending.Add(new Strike { point = point, timer = EmberWeaponTuning.Meteor.WarningTime, damage = dmg, radius = radius, warn = warn });
         }
     }

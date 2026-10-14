@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace Emberlight
 {
-    /// <summary>Audio-v1 bus: 2D music + SFX, PlayerPrefs volumes, silent-with-warn missing clips.</summary>
+    /// <summary>音频总线：2D 音乐 + 音效，音量存 PlayerPrefs，clip 缺失时静默降级并告警。</summary>
     public sealed class EmberAudio : MonoBehaviour
     {
         public static EmberAudio Instance { get; private set; }
@@ -181,7 +181,7 @@ namespace Emberlight
             if (weaponMeteor == null) weaponMeteor = LoadWeaponClip("weapon_meteor");
         }
 
-        /// <summary>Prefer short action-aligned clips; preserve the original clips as fallback.</summary>
+        /// <summary>优先取动作对齐的短 clip，缺失时回落原始 clip。</summary>
         AudioClip LoadWeaponClip(string fileNameNoExt)
         {
             var clip = Resources.Load<AudioClip>("Audio/Sfx/Generated/" + fileNameNoExt);
@@ -238,7 +238,7 @@ namespace Emberlight
                 sfx.PlayOneShot(clip, Mathf.Clamp01(gain));
                 return;
             }
-            // PlayOneShot cannot seek; spin a one-shot 2D source so attack aligns with the game event.
+            // PlayOneShot 无法跳转起点，另起一次性 2D 源，让起音对齐事件帧。
             var go = new GameObject("EmberSfxOneShot");
             var src = go.AddComponent<AudioSource>();
             src.playOnAwake = false;
@@ -303,7 +303,7 @@ namespace Emberlight
             PlaySfx(hit);
         }
 
-        /// <summary>Meteor ground impact — Kenney lowFrequency_explosion; looser throttle for multi-drops.</summary>
+        /// <summary>陨石落地（Kenney lowFrequency_explosion）；多点位连续落地共用同一节流。</summary>
         public void PlayMeteorImpact()
         {
             if (Time.unscaledTime < nextMeteorImpactTime) return;
@@ -311,7 +311,7 @@ namespace Emberlight
             if (weaponMeteor == null) weaponMeteor = LoadWeaponClip("weapon_meteor");
             if (weaponMeteor != null)
             {
-                // Impact starts at sample zero on the damage frame.
+                // 落地音从采样 0 起播，与伤害同帧。
                 PlaySfx(weaponMeteor, 0f, .75f);
                 return;
             }
@@ -321,7 +321,7 @@ namespace Emberlight
             PlaySfx(hit);
         }
 
-        /// <summary>Dedicated short launch clips, with lighter gain than ground impacts.</summary>
+        /// <summary>专用短促发射音，增益低于落地音。</summary>
         public void PlayWeaponFireball()
         {
             if (Time.unscaledTime < nextWeaponShotTime) return;
@@ -336,7 +336,7 @@ namespace Emberlight
             if (Time.unscaledTime < nextWeaponArrowTime) return;
             nextWeaponArrowTime = Time.unscaledTime + FireHitMinInterval;
             if (weaponPierceArrow == null) weaponPierceArrow = LoadWeaponClip("weapon_pierce_arrow");
-            // Short launch sound starts on the projectile spawn frame.
+            // 短促发射音与弹丸生成同帧起播。
             if (weaponPierceArrow != null) { PlaySfx(weaponPierceArrow, 0f, .55f); return; }
             PlayFire();
         }
@@ -350,7 +350,7 @@ namespace Emberlight
             PlayFire();
         }
 
-        /// <summary>Only called after orbit contact actually reduces enemy health.</summary>
+        /// <summary>仅在火环接触真正扣血之后调用。</summary>
         public void PlayWeaponOrbitContact()
         {
             if (Time.unscaledTime < nextWeaponOrbitTime) return;
@@ -360,7 +360,7 @@ namespace Emberlight
             PlayFire();
         }
 
-        /// <summary>Only called after ground fire damage; throttle overlapping patches.</summary>
+        /// <summary>仅在地面火焰造成伤害之后调用；重叠火区共用同一节流。</summary>
         public void PlayWeaponBurnGround()
         {
             if (Time.unscaledTime < nextWeaponBurnTime) return;

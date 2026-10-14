@@ -4,11 +4,6 @@ namespace Emberlight
 {
     /// <summary>
     /// 单个敌人的运行时数据（M3 拥有，M5 的行为策略只读/写其中字段）。
-    ///
-    /// 从 `EmberCombat.Enemy` 提升为顶层类型的原因：`EmberEnemyContext`（M5 的行为契约）本来就写着
-    /// `EmberCombat.Enemy`，于是刷怪、伤害结算、死亡处理、行为策略全都被迫挂在 `EmberCombat` 这个
-    /// 大类上。数据本身独立后，工厂、名册、结算器与行为策略都只依赖本类型。
-    ///
     /// 字段是公开的：这是**热路径上的逐帧数据**，行为策略与结算器直接读写，不做属性包装。
     /// </summary>
     public sealed class EmberEnemy
@@ -24,7 +19,7 @@ namespace Emberlight
         /// <summary>Boss 招式状态机；非 Boss 为 null。</summary>
         public EmberBoss ai;
 
-        /// <summary>敌人种类 id（0/1/2/4/5/6/7/8 杂兵，3 为 Boss）。</summary>
+        /// <summary>敌人种类 id（0/1/2/4/5/6/7/8 为杂兵，3 为 Boss）。</summary>
         public int kind;
 
         /// <summary>行为策略；Boss 走 <see cref="ai"/>，其余走这里。</summary>

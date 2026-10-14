@@ -2,13 +2,7 @@ using UnityEngine;
 
 namespace Emberlight
 {
-    /// <summary>
-    /// 安全区与分辨率变化的观察点。
-    ///
-    /// 原先这段判断写在 `EmberGame.Update()` 顶部，每帧都要为一个"只在分辨率/朝向变化时才发生"
-    /// 的事件做一次比较，而且把安全区这件事塞进了局长入口脚本。现在改成由本组件在 Play 期间
-    /// 维护，`EmberMenuUi` 只订阅一个回调，`EmberGame` 不再参与。
-    /// </summary>
+    /// <summary>安全区与分辨率变化的观察点：本组件在 Play 期间轮询，只在真的变化时才通知订阅者重排。</summary>
     public static class EmberSafeAreaWatcher
     {
         static int lastWidth, lastHeight;

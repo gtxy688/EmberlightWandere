@@ -1,8 +1,8 @@
 namespace Emberlight
 {
     /// <summary>
-    /// 公共界面文案；武器身份与说明由 EmberWeaponCatalog 提供。
-    /// EmberFonts 依赖这里的常量决定预烘图集要包含哪些字形；改文案前先读 07-art-presentation.md。
+    /// 公共界面文案；武器身份与说明由 EmberWeaponCatalog 提供。EmberFonts 靠这里的常量决定预烘
+    /// 图集包含哪些字形，改文案前先读 07-art-presentation.md（静态图集不能追加字形，改完要重烘）。
     /// </summary>
     public static class EmberCopy
     {
@@ -11,15 +11,9 @@ namespace Emberlight
         public const string RosterTitle = "挑选起始武器";
         public const string RosterSummary = "点选一把武器后点击确认开战 · 上下滑动查看全部";
         public static readonly string[] SlotChoices = { "1 把武器", "2 把武器（推荐）", "3 把武器", "4 把武器", "5 把武器" };
-        // ── Player-facing copy ────────────────────────────────────────────────────────────────
-        // Named constants, not inline literals, for one specific reason: EmberFonts must bake a
-        // glyph for every character it can be asked to draw, and it can only see strings that are
-        // reachable. The difficulty blurb used to be an inline literal inside ChooseLength, so no
-        // amount of scanning could find it, the bake never requested 闲/验/精/英/困/低, and the
-        // atlas had no glyphs for them -- they rendered as hollow boxes in game.
-        //
-        // Keep new player-facing copy here (or in the matching panel's constants) and wire it into
-        // EmberFonts.MenuGlyphSet, or it will not be in the atlas.
+        // 玩家可见文案一律写成常量，不要内联字面量：EmberFonts 只能扫描到"可达"的字符串，
+        // 内联文案会漏出烘制范围，字在游戏里渲染成空心方框。新增文案放这里（或对应面板的常量），
+        // 并接进 EmberFonts.MenuGlyphSet，否则不会进图集。
         public const string MenuTitle = "\u70ec\u706f\u884c\u8005";
         public const string MenuTagline = "25\u6ce2\u6807\u51c6\u5f81\u7a0b\u00b7\u002050\u6ce2\u6f2b\u957f\u5f81\u7a0b\n" + "\u81ea\u7531\u9009\u62e9\u96be\u5ea6\uff0c\u6bcf\u5c40\u4ece\u76f8\u540c\u7684\u57fa\u7840\u5c5e\u6027\u51fa\u53d1\u3002\n" + "\u6ce2\u6b21\u5956\u52b1\u9009\u5361\uff0c\u51fb\u8d25\u6700\u7ec8\u5b88\u536b\u3002";
         public static readonly string[] MenuChoices =
@@ -37,8 +31,7 @@ namespace Emberlight
             "\u8fd4\u56de\u8425\u5730"
         };
         public const string DifficultyTitle = "\u9009\u62e9\u96be\u5ea6";
-        // The blurb that exposed the whole problem. Each difficulty gets its own line so nothing
-        // wraps onto an orphaned trailing character.
+        // 每种难度单独一行，避免折行后末尾留下孤字。
         public static string DifficultyBody(int waves)
         {
             return waves + " \u6ce2\u5f81\u7a0b\n" + "\u4f11\u95f2\u9002\u5408\u8f7b\u677e\u6784\u7b51\uff0c\n" + "\u6807\u51c6\u4f53\u9a8c\u5b8c\u6574\u6311\u6218\uff0c\n" + "\u56f0\u96be\u9762\u5bf9\u66f4\u591a\u7cbe\u82f1\u3002";
@@ -58,7 +51,7 @@ namespace Emberlight
         public const string LoseTitle = "\u706f\u706b\u6682\u7184";
         public const string RestartChoice = "\u518d\u6218\u4e00\u6b21";
         public const string ReturnChoice = "\u8fd4\u56de\u8425\u5730";
-        // Fragments the result screen concatenates with run numbers.
+        // 结算页与局内数字拼接的片段。
         public const string ResultShape = "\u6ce2\u5f81\u7a0b\u5230\u8fbe\u7b2c\u751f\u5b58\u79d2\u51fb\u6740\u4f59\u70ec" + "\u4f11\u95f2\u6807\u51c6\u56f0\u96be";
         public static readonly string[] UpgradeNames =
         {

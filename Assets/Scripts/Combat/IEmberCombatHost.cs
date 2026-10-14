@@ -2,15 +2,9 @@ using UnityEngine;
 
 namespace Emberlight
 {
-    /// <summary>
-    /// 战斗模块（M3）对宿主的最小契约。
-    ///
-    /// 重构前 `EmberCombat` / `EmberBoss` / `EmberHealingDrops` 直接持有 `EmberGame` 并读它的
-    /// `State`、`Progress`、`Elapsed`——这些参数是纯逻辑，却让整个战斗模拟绑在 MonoBehaviour
-    /// 上，无法脱离场景验证。现在只保留战斗真正需要的能力。
-    ///
-    /// 表现层（M7）的阶段门控不需要这些能力，用 <see cref="IEmberRunPhaseSource"/> 即可。
-    /// </summary>
+    /// <summary>战斗模块（M3）对宿主的最小契约：战斗只通过本接口取纯逻辑参数，
+    /// 不直接依赖 <c>EmberGame</c>，故可脱离场景验证。
+    /// 表现层（M7）的阶段门控用 <see cref="IEmberRunPhaseSource"/> 即可。</summary>
     public interface IEmberCombatHost : IEmberRunPhaseSource
     {
         /// <summary>本局已进行的游戏内秒数（敌人动画与武器节奏用）。</summary>

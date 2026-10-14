@@ -2,15 +2,14 @@ using UnityEngine;
 
 namespace Emberlight
 {
-    /// <summary>Shared doodle atlas. Cell order is top-to-bottom, left-to-right.</summary>
+    /// <summary>共享涂鸦图集；格子顺序为自上而下、自左而右。</summary>
     public static class EmberCardIcons
     {
         static readonly Sprite[] icons = new Sprite[24];
         static Texture2D atlas;
         static bool reportedSlice;
-        // Sub-sprite names as the Sprite Editor writes them: "<atlas>_<index>", row-major from
-        // the top-left, so index == cell. The slicing itself lives in the .meta and is applied by
-        // EmberCardIconImporter; this name pattern is the contract between the two.
+        // 子精灵命名同 Sprite Editor 的写法 "<atlas>_<index>"，自左上起行主序，index == cell。
+        // 切片本身在 .meta 里、由 EmberCardIconImporter 应用，这套命名是二者的契约。
         const string Stem = "doodle-icons";
 
         public static Sprite ForOffer(int id)
@@ -52,9 +51,8 @@ namespace Emberlight
         static Sprite Cell(int cell)
         {
             if (icons[cell] != null) return icons[cell];
-            // Preferred: the sub-sprite cut in the Sprite Editor. Atlas is still loaded as a
-            // Texture2D because the fallback below needs it -- and on this path the texture has
-            // to be resident regardless, or the sprite would pull it in anyway.
+            // 图集仍按 Texture2D 加载：下面的回落需要它，而且这条路径上纹理无论如何都得常驻，
+            // 换成取 Sprite 也会把同一张纹理拉进来。
             if (atlas == null) atlas = Resources.Load<Texture2D>("Art/Cards/" + Stem);
             if (atlas != null)
             {
@@ -66,10 +64,10 @@ namespace Emberlight
                     return icons[cell];
                 }
             }
-            // Fallback: not reimported since the meta was cut, or no atlas at all.
+            // 回落：meta 切过之后没重新导入，或根本没有图集。
             if (atlas == null) return EmberArt.Flame;
             int column = cell % 4, row = cell / 4;
-            // Inset avoids sampling neighbouring cells with bilinear filtering.
+            // 内缩一点，避免双线性过滤采到相邻格子。
             float x = column * atlas.width / 4f + 1;
             float y = (5 - row) * atlas.height / 6f + 1;
             icons[cell] = Sprite.Create(atlas,

@@ -5,7 +5,7 @@ using TMPro;
 
 namespace Emberlight
 {
-    /// <summary>Settings overlay: music/sfx volume + continue/back. Used from pause and main menu.</summary>
+    /// <summary>设置浮层：音乐/音效音量与继续/返回；暂停界面与主菜单共用。</summary>
     public sealed class EmberSettingsPanel : MonoBehaviour
     {
         const float SfxPreviewInterval = 0.12f;
@@ -109,10 +109,8 @@ namespace Emberlight
             onSpeedChanged = null;
         }
 
-        /// <param name="close">Continue battle or return to previous screen.</param>
-        /// <param name="fromPause">true: button = continue battle; false: back.</param>
-        /// <param name="returnToCamp">When supplied from pause, ends the current run and opens the camp.</param>
-        /// <param name="onSpeedChanged">Notified after the player picks a different game speed.</param>
+        /// <param name="fromPause">true：按钮为「继续战斗」；false：「返回」。</param>
+        /// <param name="returnToCamp">从暂停界面传入时，结束本局并打开营地。</param>
         public void Show(Action close, bool fromPause, Action returnToCamp = null, Action onSpeedChanged = null)
         {
             Hide();

@@ -14,7 +14,7 @@ namespace Emberlight
         MeteorImpact
     }
 
-    /// <summary>Per-tick combat services for weapons. Weapons must not reverse-depend on EmberGame.</summary>
+    /// <summary>武器每帧战斗服务；武器不得反向依赖 EmberGame。</summary>
     public sealed class EmberWeaponContext
     {
         public Transform Player;
@@ -53,7 +53,7 @@ namespace Emberlight
         }
 
         public Func<bool> StillPlaying;
-        /// <summary>Shared burn patches (trail weapon + evo hit trails).</summary>
+        /// <summary>共享燃地：轨迹武器与进化命中轨迹共用。</summary>
         public Action<Vector2, float> SpawnBurnPatch;
         /// <summary>战斗装配音效；武器只报告反馈，不创建音频单例。</summary>
         public Action<EmberWeaponSound> PlaySound;
@@ -65,9 +65,9 @@ namespace Emberlight
             }
         }
 
-        /// <summary>World units/sec this frame (set by combat).</summary>
+        /// <summary>本帧移动速度（世界单位/秒，由战斗层写入）。</summary>
         public float PlayerSpeed;
-        /// <summary>True when nearly still (Hotfix pierce sniper gate).</summary>
+        /// <summary>是否近乎静止：穿刺狙击的开火门槛。</summary>
         public bool PlayerStanding
         {
             get

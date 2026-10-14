@@ -13,7 +13,7 @@ namespace Emberlight
         public void Initialize(System.Func<EmberRunPhase> phaseProvider){phase=phaseProvider;}
         public void Emit(Vector2 p,Vector2 velocity,float size,float life,Color color,bool ring=false,float growth=0)
         {
-            if(active.Count>=120)return; // mobile particle cap
+            if(active.Count>=120)return; // 移动端粒子上限
             Particle s;
             if(pool.Count>0)s=pool.Pop();else s=new Particle{sprite=EmberVisuals.Shape("Ember particle",transform,p,Vector2.one,color,10)};
             s.sprite.gameObject.SetActive(true);s.sprite.sprite=ring?EmberArt.Ring:EmberVisuals.Disc;s.sprite.transform.position=p;

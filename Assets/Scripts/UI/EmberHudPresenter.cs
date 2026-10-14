@@ -1,14 +1,6 @@
 namespace Emberlight
 {
-    /// <summary>
-    /// 战斗 HUD 的唯一推送点：每帧把只读数值喂给 <see cref="EmberHud"/>。
-    ///
-    /// UI 不主动拉取。原先这段拼装逻辑写在 `EmberGame.UpdateHud()` 里，把战斗读数、关卡文案
-    /// 与呈现细节混在入口脚本中；搬出来之后 `EmberGame` 不必再知道 HUD 的字段构成，
-    /// 表现层也可以整体替换而不动玩法代码。
-    ///
-    /// 本类只读，不写任何游戏状态，也不持有 <see cref="EmberGame"/>。
-    /// </summary>
+    /// <summary>战斗 HUD 的唯一推送点：每帧把只读数值喂给 <see cref="EmberHud"/>，UI 不主动拉取；只读，不写游戏状态，也不持有 <see cref="EmberGame"/>。</summary>
     public sealed class EmberHudPresenter
     {
         readonly EmberHud hud;

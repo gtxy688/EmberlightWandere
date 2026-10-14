@@ -9,14 +9,11 @@ namespace Emberlight.Editor
         {
             if (assetPath != "Assets/Resources/Art/UI/doodle-card-frames.png") return;
             var importer = (TextureImporter)assetImporter;
-            // Sprite, not Default. These atlases are cut into sub-sprites whose rects live in
-            // the .meta; under Default the importer ignores them entirely, so any slicing done
-            // in the Sprite Editor -- or written by Tools/slice_atlases.py -- was silently
-            // reverted on the next reimport. Multiple is the mode slice_atlases.py writes.
+            // 必须 Sprite + Multiple：切片矩形存在 .meta 里，Default 会让导入器完全忽略它们，
+            // 切片（Sprite Editor / Tools/slice_atlases.py）会在下次重导入时被静默清掉。
             importer.textureType = TextureImporterType.Sprite;
             importer.spriteImportMode = SpriteImportMode.Multiple;
-            // The sliced rects are authored in pixels; letting Unity rescale the source with a
-            // power-of-two fit would invalidate every one of them.
+            // 切片按像素写死，power-of-two 缩放会让每个矩形都失效。
             importer.npotScale = TextureImporterNPOTScale.None;
             importer.mipmapEnabled = false;
             importer.alphaIsTransparency = true;

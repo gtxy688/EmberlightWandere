@@ -11,7 +11,7 @@ namespace Emberlight
         void OnDeath(EmberEnemyContext ctx);
     }
 
-    /// <summary>Reused by the combat owner; behaviors must not retain this context.</summary>
+    /// <summary>由战斗宿主复用，行为不得持有该 context。</summary>
     public sealed class EmberEnemyContext
     {
         public EmberEnemy Enemy;
@@ -31,7 +31,7 @@ namespace Emberlight
             Enemy.view.position = EmberWorld.Clamp(Position + direction * Enemy.speed * SpeedMultiplier * dt, .3f);
         }
 
-        // The nominal ranged band must fit the portrait viewport, including the HUD inset.
+        // 名义远程距离必须能塞进竖屏视口（含 HUD 内缩）。
         public float ShooterNearDistance
         {
             get { return Mathf.Min(Config.ShooterNear, Camera.orthographicSize * Mathf.Min(Camera.aspect, .65f) * .70f); }

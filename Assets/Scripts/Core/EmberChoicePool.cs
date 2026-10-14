@@ -6,15 +6,11 @@ namespace Emberlight
     /// <summary>
     /// 候选卡生成（M2，`requirements.md` §4.3）。纯规则，**零 `UnityEngine` 引用**。
     ///
-    /// 从 `RunProgress.Choices()` 搬出来的原因：那 130 行是"候选怎么拼"，而 `RunProgress` 同时
-    /// 又是"构筑状态怎么变"。混在一起时，想单独验证"满槽不出新武器""同屏唯一键是
-    /// (Id, WeaponId)"这些规则，必须先把整套构筑状态摆好。
+    /// 只从 <see cref="RunProgress"/> 读只读事实（拥有哪些武器、已拿哪些质变/专属、空位剩几个），
+    /// 不写任何状态——状态写入归 `RunProgress.Choose`。
     ///
-    /// 现在本类只从 <see cref="RunProgress"/> 读只读事实（拥有哪些武器、已拿哪些质变/专属、
-    /// 空位剩几个），不写任何状态——状态的写入仍归 `RunProgress.Choose`。
-    ///
-    /// **随机数消耗顺序必须与搬移前逐字一致**：同一个 `System.Random` 种子要得到同一组候选，
-    /// 否则 jack 复现一手牌局时会看到不同的牌。改动本类的抽卡顺序等于改动可复现性。
+    /// **随机数消耗顺序必须保持不变**：同一个 `System.Random` 种子要得到同一组候选。
+    /// 改动本类的抽卡顺序等于改动可复现性。
     /// </summary>
     public static class EmberChoicePool
     {

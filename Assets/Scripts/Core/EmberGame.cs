@@ -3,71 +3,38 @@ using UnityEngine;
 namespace Emberlight
 {
     /// <summary>
-    /// 组合根：本作唯一的入口脚本，挂在主场景的常驻对象上。
+    /// 组合根（M0）：本作唯一的入口脚本，挂在主场景的常驻对象上。
     ///
     /// 它只做四件事——持有阶段与本局状态、装配各单元、驱动每帧顺序、把各单元的回调接起来。
-    /// 具体规则分别属于：血量结算 <see cref = "EmberKeeperVitals"/>、选卡推进
-    /// <see cref = "RunFlowController"/>、开局界面流程 <see cref = "EmberMenuFlow"/>、
-    /// 战斗与波次 <see cref = "EmberCombat"/>、构筑与卡池 <see cref = "RunProgress"/>。
-    ///
-    /// 不要在这里重新堆业务规则：这个文件在 2026-09 的重构前是 361 行的上帝类
-    /// （11 态状态机 + 摇杆输入 + 相机 + 血量 + HUD + 选卡编排），拆开就是为了不让它再长回去。
+    /// 业务规则分别属于：生命结算 <see cref="EmberKeeperVitals"/>、选卡推进 <see cref="RunFlowController"/>、
+    /// 开局界面流程 <see cref="EmberMenuFlow"/>、战斗与波次 <see cref="EmberCombat"/>、构筑与卡池
+    /// <see cref="RunProgress"/>。**不要在这里重新堆业务规则。**
     /// </summary>
     public sealed class EmberGame : MonoBehaviour, IEmberMenuHost, RunFlowController.Host, IEmberCombatHost, EmberInput.Presenter
     {
         [SerializeField] EmberUiRoot uiRoot;
         [SerializeField] EmberIntroView introRoot;
-        // ── UI 只读 API ───────────────────────────────────────────────────────────────────
-        /// <summary>当前局长阶段。</summary>
+
+        /// <summary>当前局长阶段；只有 Playing 阶段推进战斗与 HUD。</summary>
         public EmberRunPhase Phase { get; private set; }
-        /// <summary>本局数据；不在局内时为 null。生命结算经 <see cref = "EmberRunState.Vitals"/> 访问。</summary>
+
+        /// <summary>本局数据；不在局内时为 null。生命结算经 <see cref="EmberRunState.Vitals"/> 访问。</summary>
         public EmberRunState Run { get; private set; }
 
-        // ── 转发给战斗模块的常用只读项（等价于 Run 上的字段，省掉一层解引用） ──────────────
         /// <summary>本局已进行的游戏内秒数。</summary>
-        public float Elapsed
-        {
-            get
-            {
-                return Run.Elapsed;
-            }
-        }
+        public float Elapsed { get { return Run.Elapsed; } }
 
         /// <summary>本局构筑进度；未开局时为 null。</summary>
-        public RunProgress Progress
-        {
-            get
-            {
-                return Run.Progress;
-            }
-        }
+        public RunProgress Progress { get { return Run.Progress; } }
 
         /// <summary>UI API：本局剩余刷新次数。</summary>
-        public int RefreshRemaining
-        {
-            get
-            {
-                return Run.Progress != null ? Run.Progress.RefreshesRemaining : 0;
-            }
-        }
+        public int RefreshRemaining { get { return Run.Progress != null ? Run.Progress.RefreshesRemaining : 0; } }
 
         /// <summary>UI API：当前幸运值。</summary>
-        public float LuckValue
-        {
-            get
-            {
-                return Run.Progress != null ? Run.Progress.Luck : 0f;
-            }
-        }
+        public float LuckValue { get { return Run.Progress != null ? Run.Progress.Luck : 0f; } }
 
         /// <summary>UI API：最近一次发到桌面上的候选。</summary>
-        public EmberOffer[] CurrentOffers
-        {
-            get
-            {
-                return offered;
-            }
-        }
+        public EmberOffer[] CurrentOffers { get { return offered; } }
 
         EmberCombat combat;
         EmberMenuUi ui;
@@ -78,43 +45,19 @@ namespace Emberlight
         EmberInput input;
         readonly System.Random random = new System.Random();
         EmberOffer[] offered = new EmberOffer[0];
-        // ── RunFlowController.Host ────────────────────────────────────────────────────────
-        RunProgress RunFlowController.Host.Progress
-        {
-            get
-            {
-                return Run.Progress;
-            }
-        }
 
-        int RunFlowController.Host.FinalWave
-        {
-            get
-            {
-                return Run.Level != null ? Run.Level.BossWave : 0;
-            }
-        }
+        RunProgress RunFlowController.Host.Progress { get { return Run.Progress; } }
+
+        int RunFlowController.Host.FinalWave { get { return Run.Level != null ? Run.Level.BossWave : 0; } }
 
         int RunFlowController.Host.PicksAfterWave(int clearedWave)
         {
             return Run.Level != null ? Run.Level.PicksAfterWave(clearedWave) : 0;
         }
 
-        EmberRunPhase RunFlowController.Host.Phase
-        {
-            get
-            {
-                return Phase;
-            }
-        }
+        EmberRunPhase RunFlowController.Host.Phase { get { return Phase; } }
 
-        EmberOffer[] RunFlowController.Host.Offers
-        {
-            get
-            {
-                return offered;
-            }
-        }
+        EmberOffer[] RunFlowController.Host.Offers { get { return offered; } }
 
         void RunFlowController.Host.RequestChoices()
         {
@@ -140,8 +83,7 @@ namespace Emberlight
 
         void Start()
         {
-            // Mobile defaults to a 30 fps cap; this is a 2D sprite game with a light
-            // per-frame budget, so ask for 60 and keep VSync out of the way.
+            // 移动端默认封顶 30 fps；这是 2D 精灵游戏，显式要 60 并关掉 VSync。
             QualitySettings.vSyncCount = 0;
             Application.targetFrameRate = 60;
             EmberAudio.Ensure();
@@ -161,8 +103,7 @@ namespace Emberlight
             cam.clearFlags = CameraClearFlags.SolidColor;
             cam.backgroundColor = new Color(.055f, .085f, .12f);
             Run.Cam = cam;
-            // Start the camp ambience while the loading page is visible. ShowMainMenu
-            // calls this again, but EmberAudio keeps the current track playing.
+            // 加载页期间就开始放营地环境音；ShowMainMenu 会再调一次，音频模块会保持当前曲目。
             EmberAudio.Ensure().PlayMenuMusic();
             if (uiRoot == null) uiRoot = Object.FindObjectOfType<EmberUiRoot>(true);
             if (uiRoot == null) throw new System.InvalidOperationException("The scene requires a configured UIRoot prefab.");
@@ -187,7 +128,6 @@ namespace Emberlight
             Time.timeScale = 1;
         }
 
-        // ── 每帧 ──────────────────────────────────────────────────────────────────────────
         void Update()
         {
             if (Phase != EmberRunPhase.Playing)
@@ -196,6 +136,7 @@ namespace Emberlight
             Run.Elapsed += dt;
             Run.Vitals.Tick(dt);
             input.Tick();
+            // 输入与生命结算都可能改阶段（暂停 / 收局），每步之后重新确认还在局内。
             if (Phase != EmberRunPhase.Playing)
                 return;
             EmberKeeperMotion.Step(Run, input.Stick, dt);
@@ -205,7 +146,7 @@ namespace Emberlight
             hud.Push();
         }
 
-        // ── 开局：装配一局 ────────────────────────────────────────────────────────────────
+        /// <summary>装配一局：建关卡配置与世界节点、重置构筑与生命、启动波次。</summary>
         void StartRunWith(int[] weapons, int slots)
         {
             if (ui == null || ui.BattleHud == null)
@@ -228,8 +169,7 @@ namespace Emberlight
             Run.Progress.ConfigureRun(weapons, slots);
             Run.Kills = 0;
             Run.Vitals.Reset();
-            // The keeper rig belongs to EmberKeeperAnimation (hood rim, narrow eyes, swinging
-            // lantern); EmberVisuals.Character only builds the plain shade silhouette.
+            // 灯芯的外形由 EmberKeeperAnimation 负责（兜帽轮廓、细眼、提灯摆动）。
             Run.Keeper = new GameObject("Keeper").transform;
             Run.Keeper.SetParent(Run.World, false);
             Run.Keeper.gameObject.AddComponent<EmberKeeperAnimation>().Initialize(() => Phase);
@@ -243,13 +183,14 @@ namespace Emberlight
             var level = Run.Level;
             level.ApplyWorld();
             EmberWorld.BuildBoundary(Run.World);
-            // Begin activates only weapons in slots (OwnsWeapon gate).
+            // Begin 只激活槽位内的武器（由 OwnsWeapon 门控）。
             combat.Begin(Run.World, Run.Keeper, Run.Cam, Run.Effects, level);
             EmberKeeperMotion.Follow(Run);
             SetPlaying();
             hud.Push();
         }
 
+        /// <summary>收起所有面板、恢复玩家选择的倍速并回到 Playing 阶段。</summary>
         void SetPlaying()
         {
             if (ui.UpgradePanel != null)
@@ -259,7 +200,6 @@ namespace Emberlight
             if (ui.SettingsPanel != null)
                 ui.SettingsPanel.Hide();
             Phase = EmberRunPhase.Playing;
-            // Restore the player's chosen speed; teardown and the editor reset timeScale to 1.
             GameSpeed.Apply();
             EmberAudio.Ensure().PlayCombatMusic();
             ui.Overlay.SetActive(false);
@@ -268,8 +208,7 @@ namespace Emberlight
             ui.StickBase.gameObject.SetActive(false);
         }
 
-        // ── 选卡：规则在 RunFlowController，这里只做呈现与音频 ────────────────────────────
-        /// <summary>进入 Upgrade 阶段并把候选画出来。</summary>
+        /// <summary>进入 Upgrade 阶段并画出候选；选卡规则本身在 <see cref="RunFlowController"/>。</summary>
         void ShowUpgradeNotice(EmberOffer[] offers)
         {
             offered = offers;
@@ -313,7 +252,6 @@ namespace Emberlight
             EmberAudio.Ensure().PlayCardPick();
         }
 
-        // ── 暂停 / 收局 ───────────────────────────────────────────────────────────────────
         public void Pause()
         {
             if (Phase != EmberRunPhase.Playing)
@@ -332,6 +270,7 @@ namespace Emberlight
                 ui.Show(EmberCopy.PauseTitle, EmberCopy.PauseBody, new[] { EmberCopy.PauseChoice }, new UnityEngine.Events.UnityAction[] { SetPlaying });
         }
 
+        /// <summary>收局回营地：拆掉世界、战斗与本局状态，回到主菜单。</summary>
         void ReturnToCamp()
         {
             Time.timeScale = 1f;
@@ -361,6 +300,7 @@ namespace Emberlight
             menuFlow.ShowMainMenu();
         }
 
+        /// <summary>收局：胜利由最终 Boss 死亡触发，失败由生命归零触发。</summary>
         void End(bool won)
         {
             if (Phase == EmberRunPhase.Won || Phase == EmberRunPhase.Lost || Run.Progress == null)
@@ -388,39 +328,23 @@ namespace Emberlight
                 Pause();
         }
 
-        // ── 输入 ──────────────────────────────────────────────────────────────────────────
-        // ── EmberInput.Presenter ──────────────────────────────────────────────────────────
-        /// <summary>摇杆状态交给界面摆放底盘；输入解析本身在 <see cref = "EmberInput"/>。</summary>
+        /// <summary>摇杆状态交给界面摆放底盘；输入解析本身在 <see cref="EmberInput"/>。</summary>
         void EmberInput.Presenter.OnStick(bool active, Vector2 screenOrigin, Vector2 stick)
         {
             if (ui != null)
                 ui.SetStick(active, screenOrigin, stick);
         }
 
-        /// <summary>Esc 等暂停请求。</summary>
         void EmberInput.Presenter.OnPauseRequested()
         {
             Pause();
         }
 
-        // ── 战斗与掉落反过来调用的入口 ────────────────────────────────────────────────────
         /// <summary>UI 与战斗共用：无敌帧是否已结束。</summary>
-        public bool HurtReady
-        {
-            get
-            {
-                return Run.Vitals.HurtReady;
-            }
-        }
+        public bool HurtReady { get { return Run.Vitals.HurtReady; } }
 
         /// <summary>UI 与掉落共用：是否处在"残血且战斗中"。</summary>
-        public bool NeedsHealing
-        {
-            get
-            {
-                return Run.Vitals.NeedsHealing;
-            }
-        }
+        public bool NeedsHealing { get { return Run.Vitals.NeedsHealing; } }
 
         /// <summary>受伤入口：结算护盾与生命，生命归零则收局。</summary>
         public void HurtPlayer(float damage)
@@ -453,40 +377,36 @@ namespace Emberlight
             return true;
         }
 
-        /// <summary>Boss 爆发特效转发（Boss 招式落在世界里）。</summary>
+        /// <summary>Boss 招式落点的爆发特效转发。</summary>
         public void PlayBossBurst(Vector2 point)
         {
             combat.PlayBossBurst(point);
         }
 
-        /// <summary>记一次击杀。</summary>
         public void RegisterKill()
         {
             Run.Kills++;
         }
 
-        /// <summary>收局入口：胜利由最终 Boss 死亡触发。</summary>
         public void EndRun(bool won)
         {
             End(won);
         }
 
-        // ── IEmberMenuHost：开局界面流程的回调宿主 ────────────────────────────────────────
-        // 状态与玩法仍归 EmberGame；界面流程只通过这三个入口请求动作。
-        /// <summary>界面流程请求切换局长阶段。</summary>
+        /// <summary>IEmberMenuHost：界面流程请求切换局长阶段。</summary>
         public void EnterMode(EmberRunPhase mode)
         {
             Phase = mode;
         }
 
-        /// <summary>界面流程回主菜单时，收起上一局的世界。</summary>
+        /// <summary>IEmberMenuHost：界面流程回主菜单时收起上一局的世界。</summary>
         public void HideRunWorld()
         {
             if (Run.World != null)
                 Run.World.gameObject.SetActive(false);
         }
 
-        /// <summary>起始武器选完，正式开一局。</summary>
+        /// <summary>IEmberMenuHost：起始武器选完，正式开一局。</summary>
         public void StartRun(int[] weapons, int slots)
         {
             StartRunWith(weapons, slots);

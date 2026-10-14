@@ -5,8 +5,8 @@ using UnityEngine;
 namespace Emberlight
 {
     /// <summary>
-    /// Early Android perf: reuse combat GameObjects instead of new/Destroy churn.
-    /// Keys are short stable ids (fire / burn / warn / shade / boss).
+    /// 战斗对象的复用池：按 key 复用 GameObject，避免每帧 new/Destroy 产生抖动。
+    /// key 是短而稳定的 id（fire / burn / warn / shade / boss）。
     /// </summary>
     public sealed class EmberPool
     {
@@ -80,7 +80,7 @@ namespace Emberlight
                 r.sortingOrder = order;
                 r.color = new Color(1f, .30f, .055f);
                 r.sprite = EmberArt.Flame;
-                for(int i=0;i<go.transform.childCount;i++) go.transform.GetChild(i).gameObject.SetActive(true);
+                for (int i = 0; i < go.transform.childCount; i++) go.transform.GetChild(i).gameObject.SetActive(true);
             }
             return r;
         }

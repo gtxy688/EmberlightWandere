@@ -6,36 +6,19 @@ using UnityEngine.TextCore.LowLevel;
 namespace Emberlight.Editor
 {
     /// <summary>
-    /// Bakes the Chinese TMP atlas ahead of time and writes it to Resources, so the loading
-    /// screen no longer builds a 2048x2048 SDF atlas from the 16 MB otf at startup.
+    /// 预烘中文 TMP 图集写入 Resources，避免加载页启动时用 16 MB otf 现场烘 2048x2048 SDF。
+    /// 三条硬约束：
+    /// 1. 禁止多图集：2048x2048 / 90 px / 9 px padding 装不下全部字形，TMP 会开第二张图集并把字体指向
+    ///    空槽，随后 TMP 解引用 atlasTextures[atlasIndex] 抛 NullReferenceException。预检固定
+    ///    enableMultiAtlasSupport: false 并逐档降采样点，写盘前由 ApplySingleAtlas 兜住该不变量。
+    /// 2. 写入顺序：先 AddObjectToAsset 贴图与材质、最后写字体资产；CreateAsset 按当时的对象图序列化，
+    ///    顺序反了盘上的图集就没有像素数据。
+    /// 3. 必须真渲染校验：畸形图集只在绘制时才报错，故要从盘上重新加载并真画一遍（VerifyReloaded），
+    ///    只数字形数不算验证；多图集关闭时装不下的字根本不会入表，另需 CoversEveryCharacter 查覆盖率。
+    /// 另外 TryAddCharacters 的 includeFontFeatures 必须为 false，否则会引入本字体不需要的可选特性。
     ///
-    /// This replaces an earlier attempt (commit b87f568, reverted in 745dd98) and supersedes a
-    /// third attempt that shipped an asset which threw on the first frame that drew. Four things
-    /// were wrong across those, and this version is built around each:
-    ///
-    /// 1. NO MULTI-ATLAS. 2048x2048 at 90 px sampling with 9 px padding does not hold the whole
-    ///    glyph set, so TMP allocated a SECOND atlas and set m_AtlasTextureIndex = 1. The asset
-    ///    then carried `m_AtlasTextures: [{fileID: ...}, {fileID: 0}]` with the font pointing at
-    ///    the null slot, and TMP_MaterialManager.GetFallbackMaterial dereferences
-    ///    atlasTextures[atlasIndex] without checking -- NullReferenceException from inside TMP.
-    ///    The bake now preflights with enableMultiAtlasSupport: false and drops the sampling point
-    ///    size until everything fits one atlas, and ApplySingleAtlas enforces the invariant before
-    ///    anything is written.
-    ///
-    /// 2. WRITE ORDER. The old tool called AssetDatabase.CreateAsset(font) and only afterwards
-    ///    AddObjectToAsset(font.atlasTexture, font). CreateAsset serialises the object graph as it
-    ///    stands, so the atlas had no pixel data on disk. Sub-assets go in first here.
-    ///
-    /// 3. NO VERIFICATION. It counted characterTable.Count and stopped. The only operation that
-    ///    actually fails on a malformed atlas is drawing, so this reloads from disk and draws.
-    ///
-    /// 4. includeFontFeatures: true on TryAddCharacters, which pulls optional font features into
-    ///    the atlas. This font needs none of them.
-    ///
-    /// The asset is additive: EmberFonts.CreateChinese prefers it only after ValidateBaked passes,
-    /// and otherwise falls back to the runtime bake. A bad bake costs a console warning.
-    ///
-    /// Menu:   Emberlight/Bake Chinese font atlas
+    /// 资产是可加的：EmberFonts.CreateChinese 只在 ValidateBaked 通过后采用，否则回落运行时动态烘制。
+    /// Menu: Emberlight/Bake Chinese font atlas
     /// Verify: -executeMethod Emberlight.Editor.EmberFontBake.CheckRuntimeLoad
     /// </summary>
     public static class EmberFontBake
@@ -46,7 +29,7 @@ namespace Emberlight.Editor
         const int AtlasPadding = 9;
         const int AtlasSize = 2048;
 
-        // Largest first. The loop stops at the first size whose glyph set fits a single atlas.
+        // 从大到小试，遇到第一个装得进单图集的尺寸就停。
         static readonly int[] CandidatePointSizes = { 90, 80, 72, 64, 56, 48, 40 };
 
         [MenuItem("Emberlight/Bake Chinese font atlas", false, 212)]
@@ -73,7 +56,7 @@ namespace Emberlight.Editor
                 var attempt = TMP_FontAsset.CreateFontAsset(
                     source, candidate, AtlasPadding, GlyphRenderMode.SDFAA,
                     AtlasSize, AtlasSize, AtlasPopulationMode.Dynamic,
-                    false); // enableMultiAtlasSupport -- must stay false, see class comment
+                    false); // enableMultiAtlasSupport，必须为 false，理由见类注释
 
                 if (attempt == null)
                 {
@@ -90,10 +73,8 @@ namespace Emberlight.Editor
 
                 int spilled;
                 bool fits = FitsOneAtlas(attempt, out spilled);
-                // Coverage, not just placement. With multi-atlas off, a character that does not fit
-                // is simply not added -- glyphTable never sees it, so "no glyph points past atlas 0"
-                // stays true while characters silently go missing. That is exactly how the first
-                // single-atlas bake reported fits=True with 109 characters dropped.
+                // 还要查覆盖率：多图集关闭时装不下的字根本不入表，glyphTable 里看不到它，
+                // 于是「没有字形越过 atlas 0」依然成立，字却静默丢失。
                 string dropped;
                 bool complete = CoversEveryCharacter(attempt, glyphs, out dropped);
                 Debug.Log("[EmberFontBake] " + candidate + " px -> " + attempt.characterTable.Count
@@ -135,8 +116,7 @@ namespace Emberlight.Editor
             int glyphCount = font.characterTable.Count;
             int atlasW = font.atlasTextures[0].width, atlasH = font.atlasTextures[0].height;
 
-            // Freeze before saving: a Static atlas cannot accept new glyphs, which is exactly what
-            // is wanted at runtime -- there is nothing left to bake on the loading screen.
+            // 存盘前冻结为 Static：静态图集不再接受新字形，运行时加载页也就无需再烘任何字。
             font.atlasPopulationMode = AtlasPopulationMode.Static;
 
             Write(font);
@@ -160,11 +140,8 @@ namespace Emberlight.Editor
             VerifyReloaded();
         }
 
-        /// <summary>
-        /// True when every distinct character in <paramref name="requested"/> is present in the
-        /// atlas. Placement being valid says nothing about coverage: a character that did not fit
-        /// is absent from the table entirely rather than present-and-invalid.
-        /// </summary>
+        /// <summary><paramref name="requested"/> 里的每个不同字符都在图集中时为真。
+        /// 位置合法不等于覆盖完整：装不下的字符是整条缺失，而不是存在但非法。</summary>
         static bool CoversEveryCharacter(TMP_FontAsset font, string requested, out string dropped)
         {
             var seen = new System.Collections.Generic.HashSet<char>();
@@ -184,13 +161,9 @@ namespace Emberlight.Editor
             return value.Length <= max ? value : value.Substring(0, max) + "...";
         }
 
-        /// <summary>
-        /// True when every glyph lives in atlas 0 and inside its bounds.
-        ///
-        /// NOTE this alone is not sufficient to accept a bake -- see CoversEveryCharacter. With
-        /// multi-atlas off, an overflowing glyph is never added, so the table can be entirely
-        /// valid while characters are missing.
-        /// </summary>
+        /// <summary>每个字形都在 atlas 0 且落在其边界内时为真。
+        /// 注意：这一项不足以接受一次烘制，还需 CoversEveryCharacter——多图集关闭时溢出的字形不会入表，
+        /// 表可以完全合法却缺字。</summary>
         static bool FitsOneAtlas(TMP_FontAsset font, out int spilled)
         {
             spilled = 0;
@@ -215,11 +188,8 @@ namespace Emberlight.Editor
             return spilled == 0;
         }
 
-        /// <summary>
-        /// Enforces "exactly one atlas texture" on the in-memory font, so serialising it cannot
-        /// reproduce the null-slot asset. Returns false rather than guessing if any glyph still
-        /// references a higher atlas.
-        /// </summary>
+        /// <summary>在内存字体上强制「只有一张图集贴图」，避免序列化出带空槽的资产；
+        /// 仍有字形指向更高图集时返回 false，不做猜测。</summary>
         static bool ApplySingleAtlas(TMP_FontAsset font)
         {
             if (font.atlasTextures == null || font.atlasTextures.Length == 0 || font.atlasTextures[0] == null)
@@ -238,12 +208,9 @@ namespace Emberlight.Editor
                 return false;
             }
 
-            // Collapse the array. A null or extra slot left in place is what produced the crash this
-            // whole routine exists to prevent, so it is removed rather than merely ignored.
-            //
-            // atlasTextures has a setter; atlasTexture does NOT (get-only, and it lazily caches
-            // atlasTextures[0] the first time it is read). Nothing here reads the singular property
-            // while the array is mid-repair, so the cache cannot latch onto a stale texture.
+            // 收拢数组：残留的空槽或多余槽正是本方法要防的崩溃条件，必须删掉而不是忽略。
+            // atlasTextures 有 setter，atlasTexture 没有（只读，且首次读取会缓存 atlasTextures[0]）；
+            // 数组修复期间不要读那个单数属性，否则缓存会锁住过期贴图。
             font.atlasTextures = new[] { font.atlasTextures[0] };
 
             font.atlasTextures[0].name = font.name + " Atlas";
@@ -252,16 +219,11 @@ namespace Emberlight.Editor
             return true;
         }
 
-        /// <summary>
-        /// Writes the atlas texture, the material, and finally the font asset.
-        ///
-        /// Sub-assets go in first on purpose: CreateAsset serialises the object graph as it stands,
-        /// so the atlas has to be present with its pixel data before the font asset is written.
-        /// </summary>
+        /// <summary>依次写入图集贴图、材质，最后写字体资产。
+        /// 子资产必须先行：CreateAsset 按当时的对象图序列化，图集得先带上像素数据。</summary>
         static void Write(TMP_FontAsset font)
         {
-            // Rebake in place. Deleting first is safe because the asset is generated and never
-            // hand-edited; the old tool refused instead, which made iterating needlessly manual.
+            // 原地重烘：该资产是生成物、从不手改，先删再写是安全的。
             if (AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(OutPath) != null)
             {
                 AssetDatabase.DeleteAsset(OutPath);
@@ -286,14 +248,8 @@ namespace Emberlight.Editor
             AssetDatabase.Refresh();
         }
 
-        /// <summary>
-        /// Reloads the asset from disk -- not the in-memory object -- and forces TMP to lay out and
-        /// mesh a sample of glyphs through the real text pipeline.
-        ///
-        /// This is the check the earlier attempts lacked, and it is the only one that would have
-        /// caught any of their failures: all of them shipped assets whose serialised tables looked
-        /// healthy and which threw only when something was drawn.
-        /// </summary>
+        /// <summary>从磁盘（而不是内存对象）重新加载资产，并让 TMP 走真实文本管线排版、生成网格。
+        /// 这是唯一能发现问题的一步：坏资产的序列化表看起来总是健康的，只有绘制时才抛异常。</summary>
         static void VerifyReloaded()
         {
             var reloaded = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(OutPath);
@@ -312,8 +268,7 @@ namespace Emberlight.Editor
                 return;
             }
 
-            // The exact invariant whose violation crashed the game: every glyph must index a slot
-            // that actually has a texture.
+            // 关键不变量：每个字形索引到的图集槽位必须真的有贴图，违反即崩溃。
             int offenders = 0, maxIndex = -1;
             for (int i = 0; i < reloaded.glyphTable.Count; i++)
             {
@@ -330,16 +285,14 @@ namespace Emberlight.Editor
                 return;
             }
 
-            // A bounded sample, spread across the set. Long strings make TMP lay out thousands of
-            // characters and page through mesh buffers, which tests the text pipeline rather than
-            // the atlas; 64 characters is enough to prove the texture is readable.
+            // 抽样要限量且分布均匀：长字符串会让 TMP 排版上千字符并反复翻页网格缓冲，
+            // 那测的是文本管线而不是图集；64 个字符足以证明贴图可读。
             string sample = Sample(EmberFonts.AllGlyphs, 64);
             var go = new GameObject("EmberFontBake verify", typeof(RectTransform));
             try
             {
-                // A bare TextMeshProUGUI on a RectTransform produces no geometry: with no Canvas
-                // and a zero-sized rect, TMP has nothing to lay out into. An earlier revision of
-                // this check did exactly that and reported a false failure.
+                // 光秃秃的 RectTransform + TextMeshProUGUI 画不出几何：既没有 Canvas 又没有尺寸，
+                // TMP 无从排版，会误报失败。
                 var canvas = go.AddComponent<Canvas>();
                 canvas.renderMode = RenderMode.ScreenSpaceOverlay;
                 go.GetComponent<RectTransform>().sizeDelta = new Vector2(1024, 1024);
@@ -375,7 +328,7 @@ namespace Emberlight.Editor
             }
         }
 
-        /// <summary>Evenly spaced slice of <paramref name="source"/>, at most <paramref name="count"/> long.</summary>
+        /// <summary>等距抽取 <paramref name="source"/> 的片段，长度不超过 <paramref name="count"/>。</summary>
         static string Sample(string source, int count)
         {
             if (string.IsNullOrEmpty(source) || source.Length <= count) return source ?? "";
@@ -386,12 +339,11 @@ namespace Emberlight.Editor
         }
 
         /// <summary>
-        /// Read-only end-to-end check, runnable from the command line:
+        /// 只读的端到端检查，可命令行执行：
         ///   Unity.exe -batchmode -quit -executeMethod Emberlight.Editor.EmberFontBake.CheckRuntimeLoad
         ///
-        /// Asks the question the bake itself cannot answer, because it writes the asset rather than
-        /// consuming it: does EmberFonts accept what Resources.Load actually returns? Deliberately
-        /// renders nothing, so it works headless.
+        /// 回答烘制本身回答不了的问题（它只写资产、不消费资产）：EmberFonts 是否接受
+        /// Resources.Load 真正返回的对象？刻意不渲染任何东西，因此可无头运行。
         /// </summary>
         public static void CheckRuntimeLoad()
         {

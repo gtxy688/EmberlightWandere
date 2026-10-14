@@ -2,21 +2,16 @@ using UnityEngine;
 
 namespace Emberlight
 {
-    /// <summary>开局界面流程需要的宿主能力。EmberMenuFlow 不持有 EmberGame，只通过这里回调。</summary>
+    /// <summary>开局界面流程需要的宿主能力；阶段本身归组合根持有，EmberMenuFlow 不持有 EmberGame，只通过这里回调。</summary>
     public interface IEmberMenuHost
     {
-        /// <summary>请求把局长阶段切到某个阶段。阶段本身归组合根持有。</summary>
         void EnterMode(EmberRunPhase mode);
-        /// <summary>回主菜单前，把上一局的世界收起来。</summary>
+        /// <summary>回主菜单前收起上一局的世界。</summary>
         void HideRunWorld();
-        /// <summary>起始武器选完，交回宿主真正开一局。</summary>
         void StartRun(int[] weapons, int slots);
     }
 
-    /// <summary>
-    /// 开局前的界面流程：主菜单 → 设置入口 → 选局长 → 选难度 → 选槽位 → 选起始武器。
-    /// 只负责「显示哪个界面、点了之后去哪」，不碰玩法；开一局通过 IEmberMenuHost.StartRun 交回组合根。
-    /// </summary>
+    /// <summary>开局前的界面流程：主菜单 → 设置 → 选局长 → 选难度 → 选槽位 → 选起始武器；只管显示与跳转，不碰玩法，开一局通过 IEmberMenuHost.StartRun 交回组合根。</summary>
     public sealed class EmberMenuFlow
     {
         readonly EmberMenuUi ui;
@@ -27,9 +22,7 @@ namespace Emberlight
         int pendingSlots = 2;
         int[] pendingRoster = new int[0];
 
-        /// <summary>开一局时用：局长波数。</summary>
         public int SelectedWaves { get { return selectedWaves; } }
-        /// <summary>开一局时用：难度。</summary>
         public EmberDifficulty SelectedDifficulty { get { return selectedDifficulty; } }
 
         public EmberMenuFlow(EmberMenuUi menuUi, IEmberMenuHost menuHost)
@@ -49,8 +42,7 @@ namespace Emberlight
                 EmberCopy.MenuChoices,
                 new UnityEngine.Events.UnityAction[] { BeginRun, OpenSettingsFromMenu },
                 true,
-                // Offered once, until the player actually changes the speed. Tapping it counts
-                // as acknowledgement so it does not nag every session.
+                // 一次性提示：只在玩家真正改过速度之前出现，点掉即视为已知晓，不必每局再提示。
                 GameSpeed.ShouldShowHint ? EmberCopy.MenuHint : null,
                 GameSpeed.MarkHintSeen);
         }
@@ -66,7 +58,7 @@ namespace Emberlight
             ui.SettingsPanel.Show(ShowMainMenu, false);
         }
 
-        /// <summary>Entry: pick N then single starter weapon (no skip).</summary>
+        /// <summary>入口：先选 N 再单选 1 把起始武器，开局不可跳过。</summary>
         public void BeginRun()
         {
             if (ui == null || ui.BattleHud == null || ui.GodsSelect == null) return;
@@ -77,8 +69,7 @@ namespace Emberlight
             pendingSlots = 2;
             pendingRoster = new int[0];
             host.EnterMode(EmberRunPhase.SelectLength);
-            // Spells out the Boss schedule before the run starts: every 10th wave is a stage Boss
-            // and the last one is the Nightwarden, so the final wave is not a surprise.
+            // 开跑前先交代 Boss 节奏：每 10 波一个关底 Boss，最后一波是长夜守卫，避免最终波突然袭击。
             ui.Show(EmberCopy.RunSetupTitle,
                 EmberCopy.RunSetupBody,
                 EmberCopy.MenuChoicesWithBack,
@@ -89,8 +80,7 @@ namespace Emberlight
         {
             selectedWaves = waves;
             host.EnterMode(EmberRunPhase.SelectDifficulty);
-            // One difficulty per line: a single wrapped sentence broke "精英" onto a line of its
-            // own and pushed the closing 。with it.
+            // 每个难度独占一行：整句换行会把「精英」挤到单独一行，并把收尾的句号一起带走。
             ui.Show(EmberCopy.DifficultyTitle, EmberCopy.DifficultyBody(selectedWaves),
                 EmberCopy.DifficultyChoices,
                 new UnityEngine.Events.UnityAction[] { () => ChooseDifficulty(EmberDifficulty.Casual),

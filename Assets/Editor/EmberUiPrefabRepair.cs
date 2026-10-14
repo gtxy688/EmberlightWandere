@@ -30,7 +30,7 @@ namespace Emberlight.Editor
                 return;
             }
 
-            // Scene/Prefab Mode: allow Undo, keep changes pending for the user to save/apply.
+            // 场景/预制体模式：允许 Undo，改动留给用户自行保存或应用。
             int count = RepairHierarchy(selected, SpriteDirectory, true);
             if (count > 0) EditorSceneManager.MarkSceneDirty(selected.scene);
             AssetDatabase.SaveAssets();
@@ -66,7 +66,7 @@ namespace Emberlight.Editor
             finally { PrefabUtility.UnloadPrefabContents(root); }
         }
 
-        /// <summary>Restore known runtime UI images, including inactive children. Leave unrelated and intentionally empty images alone.</summary>
+        /// <summary>恢复已知的运行时 UI 图片（含未激活子物体）；不相关或刻意留空的图片不动。</summary>
         public static int RepairHierarchy(GameObject root, string spriteDirectory, bool recordUndo = false)
         {
             if (root == null) throw new ArgumentNullException(nameof(root));
@@ -76,7 +76,7 @@ namespace Emberlight.Editor
             int repaired = 0;
             foreach (var image in root.GetComponentsInChildren<Image>(true))
             {
-                // Never replace a manually assigned, persistent sprite.
+                // 不覆盖手工指定且已持久化的 sprite。
                 if (image.sprite != null && EditorUtility.IsPersistent(image.sprite)) continue;
                 var source = Resolve(image, out string key);
                 if (source == null) continue;
@@ -104,8 +104,8 @@ namespace Emberlight.Editor
             if (AssetDatabase.LoadMainAssetAtPath(path) != null)
                 throw new IOException("Another asset already occupies: " + path);
 
-            // Clone exactly what the runtime draws: keep crop, pivot, PPU and nine-slice border.
-            // The original texture remains an imported PNG; no atlas import settings are changed.
+            // 精确克隆运行时实际绘制的内容：裁剪、轴心、PPU 与九宫格边框都保留；
+            // 源图仍是导入的 PNG，不改任何图集导入设置。
             var saved = UnityEngine.Object.Instantiate(source);
             saved.name = key;
             AssetDatabase.CreateAsset(saved, path);
@@ -166,7 +166,7 @@ namespace Emberlight.Editor
                     ? EmberUiArt.Piece.Secondary : EmberUiArt.Piece.Primary, out key);
             if (name.StartsWith("Slot ", StringComparison.Ordinal) && int.TryParse(name.Substring(5), out int slot))
                 return Ui(slot == 2 ? EmberUiArt.Piece.Primary : EmberUiArt.Piece.Secondary, out key);
-            // Overlay, viewports, card faces and slider hit areas intentionally have no sprite.
+            // 遮罩、视口、卡面与滑条点击区刻意不给 sprite。
             return null;
         }
 
@@ -196,13 +196,13 @@ namespace Emberlight.Editor
                 foreach (var label in badge.GetComponentsInChildren<TMP_Text>(true))
                     for (int i = 0; i < 4; i++)
                         if (label.text.Contains(EmberRarityUtil.Name((EmberRarity)i))) return (EmberRarity)i;
-            // Initialize warms the captured card cache with gold shield cards.
+            // 初始化时捕获的卡面缓存是金色护盾卡，取不到时按金色处理。
             return EmberRarity.Gold;
         }
 
         static bool TryOfferId(Transform card, out int id)
         {
-            // Cached card names can be stale after Show reuses them; prefer the current title.
+            // 缓存卡名在 Show 复用后会过期，优先按当前标题判定。
             var face = card.Find("Card face");
             if (face != null)
                 foreach (Transform child in face)
