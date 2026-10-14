@@ -20,9 +20,9 @@
 | A8 | PlayMode（待建） | `EffectsTests::EmitsOnlyWhilePlaying` | 暂停/选卡/结算态不发射新粒子 | 暂停时仍在放特效会显得未暂停 | 待建（本条独立用例未实现） |
 | A9 | PlayMode（待建） | `EffectsTests::PoolExhaustionDropsSilently` | 池空时丢弃粒子且不抛异常、不无限分配 | — | 待建（本条独立用例未实现） |
 | A10 | PlayMode（待建） | `EffectsTests::NewRunClearsPreviousEffects` | 重新开局后旧特效世界被清理 | — | 待建（本条独立用例未实现） |
-| A11 | 已有（编辑器批处理脚本） | `Tools/atlas_glyph_check.py`（外部工具，非 Test Runner） | 读 `Assembly-CSharp.dll` 的 `#US` 堆取全部字面量 + 读 `.asset` 的 `m_Unicode`，差集必须为空；并显式断言 TMP 特殊字符 `U+005F`、`U+2026` 存在。**非空时退出码 1** | 静态图集不能追加字形，漏字直接表现为游戏内空心方框 | **通过**：`MISSING (0)` / `TMP special chars : all present` / 退出码 0 |
+| A11 | 已有（编辑器批处理脚本） | `Tools/atlas_glyph_check.py`（外部工具，非 Test Runner） | 读 `Library/ScriptAssemblies/Emberlight.Runtime.dll` 的 `#US` 堆取全部字面量 + 读 `.asset` 的 `m_Unicode`，差集必须为空；并显式断言 TMP 特殊字符 `U+005F`、`U+2026` 存在。**非空时退出码 1** | 静态图集不能追加字形，漏字直接表现为游戏内空心方框 | **通过**：`MISSING (0)` / `TMP special chars : all present` / 退出码 0 |
 | A12 | 已有（编辑器批处理方法） | `EmberFontBake.CheckRuntimeLoad` | `EmberFonts.CreateChinese()` 必须返回**预烘静态图集**（`atlasPopulationMode == Static`），且 `atlasTextures.Length == 1`、`max atlasIndex == 0` | 多图集会产生无纹理的 atlas 槽，运行时 `GetFallbackMaterial` 读它即 `NullReferenceException`（历史事故三） | **通过**：`1 atlas texture(s), 529 characters, 529 glyphs, max atlasIndex 0` |
-| A12b | 已有（同 A12） | `EmberFontBake.CheckRuntimeLoad`（输出含 FALLBACK 分支） | 预烘资产被破坏时 `ValidateBaked` 必须拒绝并回落动态图集，**不得崩溃** | 这是"资产坏了不拖挂 UI"的唯一保证 | **通过**（闸门存在且被 A12 覆盖；破坏路径未构造用例） |
+| A12b | 已有（同 A12） | `EmberFontBake.CheckRuntimeLoad`（输出含 FALLBACK 分支） | 预烘资产被破坏时 `ValidateBaked` 必须拒绝并回落动态图集，**不得崩溃** | 这是"资产坏了不拖挂 UI"的唯一保证 | **部分通过**（闸门与回落代码在，A12 只覆盖了正向路径；破坏路径未构造用例，见「未验证」） |
 | A13 | 已有（编辑器批处理方法） | `EmberFontBake.Bake` 的 `CoversEveryCharacter` | 每个请求字符都能在烘出的图集里查到，否则换更小采样点重试，全部失败则拒绝写盘 | 关掉多图集后装不下的字**不进 `glyphTable`**，"没有字形越界"依然成立而字数已缺 | **通过**：`72 px -> 529 chars ... complete=True` |
 | A14 | 已有（编辑器批处理方法） | `EmberFontBake.VerifyReloaded` | 从磁盘**重新加载**资产后真渲染 64 字采样，必须有几何体产出；并校验每个字形的 `atlasIndex` 落在 `atlasTextures` 范围内 | 历史两次事故都是"字段校验全绿、首次绘制才炸"，只有真绘制能拦住 | **通过**：`reloaded 529 glyphs / 1 atlas texture(s) / max atlasIndex 0` |
 | A15 | PlayMode（待建） | `KeeperAnimationTests::FreezesWhileNotPlaying` | 暂停时角色动画停止，恢复后继续 | — | 待建（本条独立用例未实现） |
@@ -86,10 +86,10 @@
 - **已验证**：A11（字形覆盖，外部脚本）、A12（运行时加载预烘单图集）、A13（烘制覆盖校验）、A14（重启后真渲染校验）。四条均为 2026-09-15 批处理实跑通过，命令与输出见「自动化运行记录」。
 - **不适用**：A19 美术风格与动画节奏的审美判断——不做自动化。
 - **待人工验收**：H1–H7、H4b（新增：72 px 采样点的清晰度取舍）。
-- **未验证**：A1–A10、A15–A18（阻塞原因：项目无 asmdef 与测试程序集）；A12b、E5、E6 的**破坏路径**（闸门存在且已被正向路径覆盖，但未构造坏资产用例）。
+- **未验证**：A1–A10、A15–A18——**不是缺基础设施**，而是本模块用例尚未实现。项目已有 EditMode / PlayMode 测试程序集（当前 EditMode 150 个、PlayMode 4 个图形冒烟），只是都不覆盖美术/字体路径；A12b、E5、E6 的**破坏路径**（闸门存在且已被正向路径覆盖，但未构造坏资产用例）。
 - **未通过**：无。
 
-> ⚠️ A11–A14 走的是**编辑器批处理脚本**，不是 Unity Test Runner。项目仍无测试程序集，`00-overview.md` §测试现状所述的阻塞未解除。
+> ⚠️ A11–A14 走的是**编辑器批处理脚本**，不是 Unity Test Runner；它们证明的是"文案都在图集里、图集能被运行时正确加载"，不覆盖任何运行时玩法行为。
 
 ## ⚠️ 已修正的历史记录
 
@@ -115,8 +115,8 @@
 
 ### UIRoot 接入后的资源回归（2026-10-14）
 
-实际 Prefab 经 Unity API 补齐控件并重载：101 个 Image 中 85 个 Sprite/Texture 引用持久化，16 个遮罩或点击区有意为空，再修复为 0。图形编辑器的非 Play 主菜单和设置预览，以及 PlayMode 的 HUD/选卡截图已检查；字体仍经 ValidateBaked，当前程序集字形检查 MISSING (0)。EditMode 137/137、PlayMode 3/3 均通过，命令与证据见 `../实现说明.md`。未修改图集切片或字体资产，重新切片与字体烘制 N/A；当前编辑器观感与手感仍待人工。
+实际 Prefab 经 Unity API 补齐控件并重载：101 个 Image 中 85 个 Sprite/Texture 引用持久化，16 个遮罩或点击区有意为空，再修复为 0。图形编辑器的非 Play 主菜单和设置预览，以及 PlayMode 的 HUD/选卡截图已检查；字体仍经 ValidateBaked，当前程序集字形检查 MISSING (0)。EditMode 150/150、PlayMode 4/4 均通过，命令与证据见 `../实现说明.md`。未修改图集切片或字体资产，重新切片与字体烘制 N/A；当前编辑器观感与手感仍待人工。
 
 ### 加载页 Prefab（2026-10-14）
 
-IntroRoot 的 4 个 Image 均引用可重载的 Sprite/Texture，重复修复 0；Editor API 检查重复连接保留手动字号与锚点。加载中、就绪与真实 Play 的标题/图标/提示截图已查看，字体校验日志正常，字形检查 MISSING (0)、TMP 特殊字符齐全。EditMode 137/137、PlayMode 4/4，退出 0；证据见 `../实现说明.md`。玩家文案未变、无缺字，字体重烘 N/A；字体破坏回落路径未验证，观感仍待人工。
+IntroRoot 的 4 个 Image 均引用可重载的 Sprite/Texture，重复修复 0；Editor API 检查重复连接保留手动字号与锚点。加载中、就绪与真实 Play 的标题/图标/提示截图已查看，字体校验日志正常，字形检查 MISSING (0)、TMP 特殊字符齐全。EditMode 150/150、PlayMode 4/4，退出 0；证据见 `../实现说明.md`。玩家文案未变、无缺字，字体重烘 N/A；字体破坏回落路径未验证，观感仍待人工。

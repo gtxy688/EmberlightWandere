@@ -31,9 +31,10 @@
 
 | 日期 | Unity 版本与环境 | 命令或 Test Runner 过滤器 | 结果文件 | 结论 |
 |------|------------------|---------------------------|----------|------|
-| — | — | 历史计划尚未实现；当前运行记录见 `../实现说明.md` | — | **未验证** |
+| 2026-10-14 | 2022.3.62f3，`-batchmode -nographics -runTests -testPlatform editmode` | EditMode 全量（含本模块的 `EmberKeeperVitalsTests` 8 条、`RunFlowControllerTests` 6 条、`RunProgressChoiceEntryTests` 2 条） | `Library/TestRun/editmode.xml` | **通过**：`total=150 passed=150 failed=0 skipped=0`，Unity 退出码 0 |
+| 2026-10-14 | 2022.3.62f3，`-batchmode -runTests -testPlatform PlayMode`（图形） | PlayMode 图形冒烟（主场景开局→战斗→选卡→暂停→失败回营地） | `Library/TestRun/playmode.xml` | **通过**：`total=4 passed=4 failed=0 skipped=0`，Unity 退出码 0 |
 
-> 注意：本项目已有 Test Runner 套件；上表原计划不是执行证据，最新结果见 `../实现说明.md`。
+> 上表是本模块的**运行记录**；用例级别的红灯理由与最近结果见「自动化测试计划与证据」的 C1–C14。
 > 下面的编译与字形检查是**工程可导入/可编译**的证据，不是行为测试证据。
 
 ### 离线编译校验（已跑，非测试程序集）
@@ -45,10 +46,9 @@
 
 | 日期 | 命令 | 结果 |
 |------|------|------|
-| 2026-09-23 | `powershell -ExecutionPolicy Bypass -File Tools/compile-check.ps1` | **通过**：53 个源文件、0 错误、0 警告 |
-| 2026-09-23 | `python Tools/atlas_glyph_check.py Library/RefactorCheck/Emberlight.dll` | **通过**：`MISSING (0)`，TMP 特殊字符齐全，退出码 0 |
-| 2026-09-23 | `powershell -ExecutionPolicy Bypass -File Tools/unity-batch-verify.ps1`（Unity 2022.3.62f3，`-batchmode -nographics -quit`） | **通过**：退出码 0、`Application will terminate with return code 0`、`AssetDatabase: script compilation time: 1.519s`、日志内 **0 条 `error CS`**；`Library/ScriptAssemblies/Assembly-CSharp.dll` 重新生成，其中含全部 12 个新类型 |
-| 2026-09-23（第二轮拆 `RunProgress` 后，删 `Library/ScriptAssemblies` 强制全量重编） | 同上的 `unity-batch-verify.ps1`；离线编译为 56 源文件 | **通过**：`Assembly-CSharp.dll` 重新生成 179,200 字节、`script compilation time: 2.000s`、0 条 `error CS`；离线编译 0 错误 0 警告；字形覆盖仍 `MISSING (0)` |
+| 2026-10-14 | `powershell -ExecutionPolicy Bypass -File Tools/compile-check.ps1` | **通过**：67 个 Runtime 源文件、0 错误、退出码 0 |
+| 2026-10-14 | `python Tools/atlas_glyph_check.py Library/RefactorCheck/Emberlight.Runtime.dll` | **通过**：`MISSING (0)`，TMP 特殊字符齐全，退出码 0 |
+| 2026-09-23 | `powershell -ExecutionPolicy Bypass -File Tools/unity-batch-verify.ps1`（Unity 2022.3.62f3，`-batchmode -nographics -quit`） | **通过（历史记录）**：退出码 0、`AssetDatabase: script compilation time: 1.519s`、日志内 0 条 `error CS`。**当时程序集还叫 `Assembly-CSharp.dll`**，2026-10-03 起已迁入自建 `Emberlight.Runtime` |
 
 > 批处理通过只证明**工程能导入、代码能编译**，仍**不能替代**进一局。
 
@@ -97,14 +97,13 @@
 ## 交付结论
 
 - **已验证**：
-  - 离线编译 53 文件 / 0 错误 / 0 警告（`Tools/compile-check.ps1`）；
-  - **Unity 批处理导入 + 编译通过**：退出码 0、0 条 `error CS`、`AssetDatabase: script compilation time: 1.519s`、`Assembly-CSharp.dll` 重新生成且含全部 12 个新类型（`Tools/unity-batch-verify.ps1`，2026-09-23）；
+  - C1–C10（EditMode，实际通过）：生命结算的倍率只乘一次、护盾先于生命、无敌帧、非 Playing 拒绝、治疗钳制、满血拾取语义、选卡次数、补偿不连锁、候选外/重复提交、刷新次数；
+  - 离线编译 **67** 个 Runtime 源文件 / 0 错误（`Tools/compile-check.ps1`，2026-10-14）；
   - 字形覆盖 `MISSING (0)`、TMP 特殊字符齐全（`Tools/atlas_glyph_check.py`）；
-  - `Combat/`（含 `Weapons/`）与 `Visuals/` 下零 `EmberGame` 类型引用（源码扫描）。
+  - `Combat/`（含 `Weapons/`）与 `Visuals/`、`UI/` 下零 `EmberGame` 类型引用（源码扫描；**结论已人工确认，但尚无自动化断言守住它**，见 C14）。
 - **不适用**：C15 战斗手感与 UI 观感——属审美判断，不做自动化。
-- **待人工验收**：R1–R10 中的完整胜利、手感与设备场景；已实际执行的冒烟路径见本轮回归。
-- **未验证**：C11/C12 与其他尚未覆盖的场景；不含已验证的 C1–C10。仍需补齐独立用例；已覆盖项见本轮回归与 `../实现说明.md`。
-  注：C14 的**结论**已由源码扫描人工确认，但仍无自动化断言守住它。
+- **待人工验收**：R1–R10（尤其完整胜利路径、0.65 秒无敌手感、摇杆跟手与真机触控）。
+- **未验证**：C11/C12（PlayMode 层面的阶段所有权与每帧顺序断言尚未写成独立用例）。图形 PlayMode 冒烟会实跑开局到回营地，但不构成对这两条的断言。
 - **未通过**：无。
 
 ## 字形覆盖
@@ -123,6 +122,6 @@
 
 ## UIRoot 装配回归（2026-10-14）
 
-主场景图形测试验证启动绑定现有 UIRoot、不替换实例、不覆盖修改过的 HUD 锚点、不新建 Emberlight UI；随后走四步开局到失败回营地。字体加载日志确认 ValidateBaked 通过后才绑定，UI 源码扫描零 EmberGame 类型引用。EditMode 137/137、PlayMode 3/3，Unity 均退出 0；命令和证据见 `../实现说明.md`。完整胜利、手感与当前编辑器观感仍待人工验收。
+主场景图形测试验证启动绑定现有 UIRoot、不替换实例、不覆盖修改过的 HUD 锚点、不新建 Emberlight UI；随后走四步开局到失败回营地。字体加载日志确认 ValidateBaked 通过后才绑定，UI 源码扫描零 EmberGame 类型引用。EditMode 150/150、PlayMode 4/4，Unity 均退出 0；命令和证据见 `../实现说明.md`。完整胜利、手感与当前编辑器观感仍待人工验收。
 
-加载页也已接入 IntroRoot：序列化引用由连接工具保存，缺失时只查找现有视图，不能回落到运行时创建界面。新增 PlayMode 用例验证场景实例保留与 Continue 守卫；本轮完整 PlayMode 4/4、EditMode 137/137，退出 0。完整验证与人工边界见 `../实现说明.md`。
+加载页也已接入 IntroRoot：序列化引用由连接工具保存，缺失时只查找现有视图，不能回落到运行时创建界面。新增 PlayMode 用例验证场景实例保留与 Continue 守卫；本轮完整 PlayMode 4/4、EditMode 150/150，退出 0。完整验证与人工边界见 `../实现说明.md`。

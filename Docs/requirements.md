@@ -286,7 +286,7 @@ Boss 与母体死亡点附近的分裂子体保留现有特殊落点；上述屏
 | 问题 | 候选 | 影响 | 需要谁裁定 |
 |------|------|------|------------|
 | 是否进一步扩充行为测试 | 基础设施已建立；继续补各武器、敌人、Boss 与完整胜负流程 | 当前套件只覆盖已有规则及部分集成路径，不能代替全面验收 | jack |
-| 原 `Emberlight-Design.md` 是否彻底废弃 | 已归档至 `archive/` + 重写为本文 / 彻底删除 | 归档版本含过期数值（6 波节奏、旧血量倍率），虽已加作废头注仍可能被误读 | jack |
-| 冲击波是否恢复入口 | 恢复为不占槽的 Stat 词条 / 永久删除 | 涉及 `WavePower` 与 `EmberPulseWeapon` 死代码 | jack + xiaoPlanner |
-| `RunProgress` 的历史兼容成员是否清理 | 直接删除 / 保留待用 | 清单见 `architecture/02-run-progression.md`；误当成契约会浪费排查时间 | jack + xiaoCoder |
+| 是否补一个可观察的 debuff | 现在做（限时减速/易伤，扩展点现成）/ 不做 | 笔试题 2 的进阶项里 buff 与 aoe 已实现，debuff 是唯一空白 | jack |
+| 冲击波是否恢复入口 | 恢复为不占槽的 Stat 词条 / 永久删除 `EmberPulseWeapon` | `WavePower` 恒 0，该类当前零调用点 | jack + xiaoPlanner |
+| 敌人主题是否要向"丧尸"靠拢 | 改默认追击怪外观与命名 / 保留现有熄灯主题 | 题面写"丧尸"，当前是暗影披风造型；属主题替换而非功能缺失 | jack |
 | `EmberRunState` 是否再拆为"纯数据 + 场景句柄" | 拆 / 维持现状 | 拆开后可脱离 Unity 单测的面更大，但多一层间接；当前 `EmberKeeperVitals` 与 `RunFlowController` 已可测 | jack + xiaoCoder |

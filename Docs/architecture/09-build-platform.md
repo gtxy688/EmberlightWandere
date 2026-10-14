@@ -127,7 +127,7 @@ Unity.exe -batchmode -projectPath <项目> `
 | `EmberAndroidBuild.BuildLocalApk` | 静态方法 | — | APK | debug keystore；不启用开发调试功能 |
 | `EmberAndroidBuild.BuildSignedApk` | 静态方法 | 环境变量 | APK | 缺变量即停止；不改动持久签名设置 |
 | `EmberAndroidBuild.Prepare` | 静态方法 | — | — | 预检 SDK/NDK/JDK/主场景/字体并应用 Release 配置 |
-| `EmberFontBake` | 静态方法 | — | 图集资产 + 渲染校验 | 见 M7：**不作为运行时字体来源** |
+| `EmberFontBake` | 静态方法 | — | 图集资产 + 渲染校验 | 生成 M7 运行时**优先使用**的预烘静态图集；校验不通过时运行时回落动态图集 |
 | 4 个 `AssetPostprocessor` | 编辑器钩子 | 导入事件 | — | 见 M7 |
 
 ## Unity 装配

@@ -27,7 +27,7 @@
 | M1 | 配置与调参 | 难度倍率、波次配额/间隔、Boss 与敌人基础数值、游戏速度 | 不含战斗逻辑与状态推进 | `01-config-tuning.md` | `01-config-tuning-test.md` |
 | M2 | 单局进度与构筑 | Id 空间（`EmberWeaponCatalog`）、候选卡生成（`EmberChoicePool`）、构筑状态推进与品质 roll（`RunProgress`）、刷新、结算分 | 不含战斗、不含 UI 呈现 | `02-run-progression.md` | `02-run-progression-test.md` |
 | M3 | 战斗与波次 | 刷怪、遭遇事件、伤害结算、死亡/分裂/重生、清波判定、Boss 招式 | 不含选卡内容、不含落卡 UI | `03-combat-waves.md` | `03-combat-waves-test.md` |
-| M4 | 武器系统 | 6 把武器的 Tick 行为与专属/质变形态 | 不反向依赖 `EmberGame`，不做敌人生成 | `04-weapon-system.md` | — |
+| M4 | 武器系统 | 6 把武器的 Tick 行为与专属/质变形态 | 不反向依赖 `EmberGame`，不做敌人生成 | `04-weapon-system.md` | `04-weapon-system-test.md` |
 | M5 | 敌人系统 | 行为策略、暗弹弹幕、剪影与动画表现、治疗掉落 | 不做伤害应用（由 M3 结算） | `05-enemy-system.md` | `05-enemy-system-test.md` |
 | M6 | 界面与流程 | 主菜单、开局四步、HUD、选卡面板、设置与暂停 | 不拥有游戏状态，只读参数 | `06-ui-flow.md` | `06-ui-flow-test.md` |
 | M7 | 美术与表现 | 程序化精灵、图集取图、粒子、中文 TMP 字体 | 不改玩法数值与碰撞 | `07-art-presentation.md` | `07-art-presentation-test.md` |
@@ -118,6 +118,9 @@ RunFlowController ──► Host 契约 ──► M0  选卡推进规则不持�
 | 工程源码交付 / 打包工程 / 导入验证 | M9 | `09-build-platform.md` → `../../README.md` |
 | 测试运行 / run-tests / PlayMode 冒烟 | 验证 | `../实现说明.md` |
 | 离线编译校验 / 不启动 Unity 验证改动 | 工具 | `../../Tools/compile-check.ps1` |
+| 笔试题要求对照 / 符合性核查 / 提交前改进项 | 交付 | `../笔试题2符合性核查.md` |
+| 设计取舍说明 / 阅卷入口 | 交付 | `../技术分析.md` → `../../README.md` |
+| 历史决策 / 踩坑记录 / 重构过程 | 归档（只读） | `../archive/` |
 
 映射不唯一时不要猜测：列出候选模块和影响，请用户裁定后再改。
 
@@ -146,10 +149,12 @@ RunFlowController ──► Host 契约 ──► M0  选卡推进规则不持�
 | 问题 | 位置 | 影响 |
 |------|------|------|
 | `LevelConfig.ApplyWorld()` 被重复调用 | `EmberGame` 与 `EmberCombat` 各调一次 | 幂等，暂无实际危害，但属重复副作用 |
-| 死代码 | `EmberPulseWeapon`（`WavePower` 恒 0）、`RunProgress` 中 `FullRoster` / `HasEvolved` / `CanEvolve` / `OwnedWeaponsView` / `AddShield` / `OfferCountExpected` / `ScoreMult` / `HealAmount`（历史兼容成员；部分已有测试调用，不能再声称全仓零引用） | 增加误读成本 |
+| 未接线的武器实现 | `EmberPulseWeapon`（`RunProgress.WavePower` 恒 0，本版无出卡入口；类本身零调用点） | 增加误读成本；去留待裁定，见 `04-weapon-system.md` |
 | `LevelConfig.Default` 每次访问新建对象 | `LevelConfig.cs` | 属性而非缓存，高频访问会有额外分配 |
 | `EmberHud` 每帧拼字符串 | `EmberHud.Set` / `Stage` | 热路径分配；且 `Stage` 写 `waveText` 与 `Set` 重复（当前行为：`Stage` 覆盖 `Set`） |
 | Runtime 内模块尚未按目录拆 asmdef | `Assets/Scripts/Emberlight.Runtime.asmdef` | Runtime 与 Editor/Tests 已隔离，但 Runtime 内依赖仍靠契约与审查约束 |
+
+> **2026-10-14 注释精简中删除的死成员**（`RunProgress`）：`AddShield`（把护盾硬钳到 250 的旧口径陷阱）、`HasEvolved` / `CanEvolve` / `OwnedWeaponsView` / `HealAmount`，以及 `EmberRarityUtil.Magnitude` / `CountBonus`——均经全仓零调用点确认。`WavePower` / `ScoreMult` / `FullRoster` / `OfferCountExpected` 仍被武器或测试读取，**保留**。
 
 > **2026-09-23 已修复的历史技术债**（勿再按旧描述理解代码）：
 >

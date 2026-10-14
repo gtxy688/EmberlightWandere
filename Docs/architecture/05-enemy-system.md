@@ -115,7 +115,7 @@ EmberCombat 刷怪：RollKind(wave, rng) → kind
 | `ChaseBehavior` / `ShooterBehavior` / `SplitBehavior` / `ShieldBehavior` / `BomberBehavior` | 类 | — | — | 由 M3 按 kind 构造 |
 | `EnemyAffix` | 枚举 | — | `Burning` / `Wind` / `Rebirth` | 与 `LevelConfig` 概率配合 |
 | `EmberEnemyProjectiles` | 类 | — | 暗弹弹幕 | 上限 48；`Intercept` 可击毁 |
-| `EmberHealingDrops` | 类 | `EmberGame` 引用 | 掉落生成与拾取 | 依赖注入 `EmberGame`（非反查） |
+| `EmberHealingDrops` | 类 | `EmberPool` + `IEmberCombatHost` | 掉落生成与拾取 | 构造时注入契约（非反查）：**不持有 `EmberGame`**，只经 `IEmberCombatHost.Phase / NeedsHealing / PickHealingDrop` 工作 |
 | `EmberEnemySilhouette` | `MonoBehaviour` | kind | 外观 | 借出时应用、归还前还原 |
 | `EmberEnemyVisual` | 类 | 敌人实例 | 提示与动画 | 仅动外观子节点 |
 

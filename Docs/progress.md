@@ -1,273 +1,88 @@
 # 进度追踪
 
 > 更新日期：2026-10-14
-> 本文件**只记录状态和阻塞，不定义需求或架构**。需求见 `requirements.md`，模块边界见 `architecture/00-overview.md`。
+> 本文件**只记录当前状态和阻塞，不定义需求或架构**。需求见 [`requirements.md`](requirements.md)，模块边界见 [`architecture/00-overview.md`](architecture/00-overview.md)。
+> 历史轮次的详细记录（重构过程、每轮实测输出、踩坑经过）见 [`archive/development-history.md`](archive/development-history.md)。
 
 ## 版本状态
 
 - 当前版本 **0.1.0**，最后提交 `b60d8b1 release: 完成 0.1.0 版本，完善 UI 与 Android 打包配置`。
+- 主分支 `main`；本轮重构与提交前优化从 `refactor/decouple-embergame` 合入。
 - **尚未实际构建过 APK，也未做任何真机检查。**
-- 主分支 `main`；本轮重构与提交前优化从 `refactor/decouple-embergame` 合入，基线提交为 `a216de7 重构前基线`（含 2026-09-15 那批未提交改动）。
+- `Delivery/` 下已有的工程包**早于** 2026-10-13 之后的改动，提交前必须用 `Tools/export-project.ps1` 重新导出。
 
-## 2026-10-14 提交前优化（第 1、3、4 项）
+## 自动化现状
 
-普通/遭遇杂兵改用完整视口外沿带取点，地图边缘仍保证屏外；无合法区域时延后生成且不消耗配额。旧 UI 动态创建回退已删除，控件工厂和旧快照补建移至 Editor，运行时只绑定 Prefab。HUD 文字按对应值变化刷新，时间按秒更新，波次文案只由 Stage 写入。
+| 项 | 状态 |
+|----|------|
+| 程序集 | `Emberlight.Runtime` / `Emberlight.Editor` / `Emberlight.EditMode.Tests` / `Emberlight.PlayMode.Tests` |
+| EditMode | **150 个用例，全绿**（2026-10-14 注释精简后复跑：`total=150 passed=150 failed=0 skipped=0`，Unity 退出 0）。分项见 `architecture/02-run-progression-test.md` 与 `实现说明.md` |
+| PlayMode | **4 个图形冒烟，全绿**（主场景开局 → 战斗 → 选卡 → 暂停 → 失败回营地；另有面板复用与加载页绑定），Unity 退出 0 |
+| 字形覆盖 | `MISSING (0)`，TMP 特殊字符齐全（`atlas holds 529`） |
+| 未覆盖 | M1 配置、M3 波次/Boss 边界、M4 六武器行为、M5 敌人行为、M8 音频接线、M9 平台——这些模块的验收文档里各自的 A 类项仍标「待建」 |
 
-新增 13 条 EditMode 回归，最终 150/150、图形 PlayMode 4/4，Unity 均退出 0；离线编译、字形覆盖与 Editor Prefab 配置检查通过。技术分析、实现说明及 M1/M3/M6 契约与验收记录同步，证据见 `实现说明.md`。刷怪节奏、当前编辑器观感与手感待 jack 验收；第 2 项 debuff 方案由 jack 考虑，第 5 项最终工程打包由 jack 完成，本次未重新导出。
-
-## 2026-10-14 UIRoot 运行时引用
-
-主场景已绑定 UIRoot Prefab，停止 Play 可预览主菜单；运行时复用视图与控件，保留字体闸门，菜单/开局选择/设置/升级替换最新回调。Editor 连接工具与持久图片已保存，技术分析及模块契约同步。离线编译、字形检查、EditMode 137/137、图形 PlayMode 3/3 通过，证据见 `实现说明.md`。当前编辑器观感/手感仍待 jack 验收；现有导出包早于本次改动，提交前须重新导出。
-
-加载页补齐：新增 IntroRoot Prefab 与场景引用，保留字体闸门、加载时序和继续输入，运行时绑定已有控件并在结束时隐藏。完整 EditMode 137/137、图形 PlayMode 4/4，离线编译和字形检查通过；Editor API 验证图片持久化及重连保留布局，渲染截图已检查。源码、需求/架构/验收记录同步；当前编辑器观感与手感仍待 jack 验收。
-
-## 2026-10-03 第四轮：补上自动化测试基础设施（第一套真实测试）
-
-**动因**：前三轮重构的核心论据是"这些逻辑纯了、可以单测了"，但**一个测试都没写**——
-`RunProgress`、`EmberChoicePool`、`EmberWeaponCatalog`、`EmberRarityUtil` 已是零 `UnityEngine` 引用，
-却没有任何断言守着它们。本轮把这块补上。
-
-| 主题 | 内容 |
-|------|------|
-| **程序集边界** | 新增 3 个 asmdef：`Emberlight.Runtime`（`Assets/Scripts`）→ `Emberlight.Editor`（`Assets/Editor`）+ `Emberlight.EditMode.Tests`（`Assets/Tests/EditMode`）。**本项目代码已不在 `Assembly-CSharp`** |
-| **EditMode 套件** | 4 个测试类共 **103 个用例**：`EmberWeaponCatalogTests` 18、`EmberRarityUtilTests` 25、`EmberChoicePoolTests` 25、`RunProgressTests` 35 |
-| **覆盖范围** | M2 全覆盖：Id 分区与名册映射、品质权重三锚点与插值、五张通用词条数值表、`3+空位` 张数、`(Id, WeaponId)` 同屏唯一、满槽不出新武器、旧通用不回流、开局构筑与槽位钳制、攻击力/攻速单武器作用域、护盾叠加、刷新 2 次、护盾先于生命、计分 |
-| **工具修复** | `Tools/atlas_glyph_check.py` 默认读取的程序集同步为 `Emberlight.Runtime.dll`（**否则无参调用会静默扫空集并报"覆盖完整"**），并补上"找不到程序集 / 字面量为空"的显式报错 |
-
-### 本轮实测结果（2026-10-03）
-
-| 检查 | 命令 | 结果 |
-|------|------|------|
-| **EditMode 测试** | `Unity.exe -batchmode -nographics -projectPath <项目> -runTests -testPlatform editmode -testResults Library/TestRun/editmode.xml` | **通过**：`total=103 passed=103 failed=0 skipped=0 result=Passed`，Unity 退出码 **0** |
-| 字形覆盖（无参调用） | `python Tools/atlas_glyph_check.py` | **通过**：`MISSING (0)`，TMP 特殊字符齐全，退出码 0 |
-| Unity 批处理编译 | `Tools/unity-batch-verify.ps1` | **通过**（asmdef 导入后重编，0 条 `error CS`） |
-| 真进一局 | — | **待人工验收**（R1） |
-
-### 测试暴露的三个既有问题（已记录，未擅自改产品行为）
-
-| # | 现象 | 影响 | 处置 |
-|---|------|------|------|
-| 1 | **中间幸运值的品质权重和不是 100**：15 → `69/24/7/2 = 102`、45 → 102、75 → 101、90 → 101（四通道各自四舍五入所致）。锚点 0/60/120 恰好为 100 | `RollWeighted` 以 `weights.Sum()` 为分母，故这些幸运档的实际出率有约 1–2% 相对偏移（钻石 4/101 而非 4/100） | 已用测试**钉住漂移 ≤ 2**；是否归一化属**待裁定**（写入 `02-run-progression-test.md`） |
-| 2 | **`ConfigureRun` 不是"开局只给 1 把"的守卫**：传 2 把 + `slots=3` 会真的给 2 把（循环上限是 `granted < slots`） | 当前 UI 只传 1 把，**线上行为不受影响**；但从别处传多把会绕过硬约束 4 | 已用测试记录真实行为并注明"若加守卫则应红灯"；是否加守卫属**待裁定** |
-| 3 | **`RunProgress.AddShield` 是死代码**（全仓仅 1 处匹配＝其自身定义），且把护盾硬钳到 **250** = "护盾 /2"之前的旧口径 | 无运行时影响，但**是陷阱**：若有人用它发护盾，钻石护盾会被砍成青铜 | 已加 XML 注释显式警告并指向真正的发放点；删除与否属**待裁定** |
-
-### 过程教训（测试相关，追加）
-
-8. **改 asmdef 会静默打断依赖产物路径的工具**：`atlas_glyph_check.py` 默认读 `Assembly-CSharp.dll`，
-   代码搬进 `Emberlight.Runtime` 后，无参运行会扫到空集并打印 "coverage complete"——**看着通过，其实什么都没查**。
-   已修脚本默认路径并加"字面量为空即报错"。**结论：把"空输入"当成失败，而不是当成通过。**
-9. **测试断言要符合统计学**：我最初写了"幸运 0 时连抽 10 次必须全青铜"——但白银权重有 22%，
-   抽到白银是正常结果，那条断言本身就是错的（红灯后已改为比较两个幸运档的实际分布）。
-10. **我写错成员名**：测试里用了 `EmberWeaponCatalog.WeaponOrbit`（沿用 `RunProgress` 的命名），
-    实际是 `EmberWeaponCatalog.Orbit`；Unity 报 15 个 `CS0117` 才暴露。**离线编译检查不含测试程序集，所以必须真跑 Unity 测试才知道测试编不编得过。**
-
-## 2026-09-23 第三轮：拆 `EmberCombat`
-
-**动因**：`EmberCombat.cs` 509 行把波次状态机、刷怪参数、伤害结算、死亡处理、分裂与遭遇压在一个类里。
-其中 `ApplyDamageFrom` + `ResolveDeaths` + `TryBeginRebirth` 约 90 行是一条"扣血 → 闪白 → 击退 →
-重生 → 行为 OnLethal → 判定死亡 → 掉落 → 记分 → 分裂子体 → 触发清波"的长链，很难分清哪一步属于谁。
-
-| 主题 | 内容 | 行数 |
-|------|------|------|
-| **波次推进抽离** | 新增 `EmberWaveDirector`：配额、刷怪间隔、Boss 预警、遭遇事件、清波判定、HUD 只读量。经 `Host` 契约请求刷怪，**自己不造敌人、不含伤害** | 216 |
-| **敌人实例化抽离** | 新增 `EmberEnemyRoster`：种类/落点/颜色/体型/血量/词缀/部件，以及对象池的借出与归还 | 160 |
-| **伤害与死亡结算抽离** | 新增 `EmberCombatDamage`（纯静态）：正面减伤、闪白击退、重生词缀、记分、掉落触发。经 `Outcome` 回报击杀数与 Boss 阵亡，**不改波次、不造敌人** | 143 |
-| **敌人数据类型提升** | `EmberCombat.Enemy` 嵌套类 → 顶层 `EmberEnemy`。此前 `EmberEnemyContext`（M5 契约）写着 `EmberCombat.Enemy`，导致刷怪、结算、行为策略全被迫挂在战斗根上 | 62 |
-| **战斗根瘦身** | `EmberCombat` 509 → 328 行，只保留：拥有 7 个武器、装配单元、每帧顺序、接回调 | 328 |
-
-### 本轮抓到的两个真实缺陷（都在重构过程中发现并修掉）
-
-1. **Boss 被逐帧双推**：我把 Boss 单独 Tick 了一次，同时它仍在名册里由 `TickEnemies` 的 `ai` 分支推进——
-   效果是 Boss 招式速度翻倍。已删除多余的调用，并在代码里留注释警告。
-2. **`ResolveDeaths` 的"待分裂"标志是多余的**：真正决定"生成多少子体"的是 `pendingBroods` 里的落点条数，
-   标志位只用在一个 `if` 条件里，而两个分支内容相同。已删掉该字段，避免下次有人误以为它能控制分裂数量。
-
-### 本轮实测结果（2026-09-23）
-
-| 检查 | 命令 | 结果 |
-|------|------|------|
-| 离线编译 | `Tools/compile-check.ps1` | **通过**：60 源文件、0 错误、0 警告 |
-| **Unity 批处理全量重编** | `Tools/unity-batch-verify.ps1`（先删 `Library/ScriptAssemblies`） | **通过**：`Assembly-CSharp.dll` 重新生成（184,320 字节）、0 条 `error CS` |
-| 字形覆盖 | `Tools/atlas_glyph_check.py` | **通过**：`MISSING (0)`，TMP 特殊字符齐全 |
-| 边界（源码扫描） | `Combat/`、`Visuals/`、`UI/` 的 `EmberGame` 引用 | **通过**：三处均零代码引用 |
-| 真进一局 | — | **待人工验收**（R1） |
-
-> ⚠️ 本轮动的是战斗主循环、刷怪与死亡结算，是三轮里**运行时风险最高**的一轮。
-> 编译通过不能证明波次节奏、Boss 招式、分裂子体数量仍然正确——请务必走 R1，并重点看波次推进与 Boss 出场。
-
-## 2026-09-23 第二轮：拆 `RunProgress`，并让 M2 真正零 `UnityEngine`
-
-**动因**：`RunProgress.cs` 528 行同时承担三件事——词条 Id 空间、候选卡生成、构筑状态推进。
-而 `02-run-progression-test.md` 把 M2 列为自动化收益最高的目标，"候选怎么拼"与"状态怎么变"混在一起时无法单独验证。
-
-| 主题 | 内容 | 验证 |
-|------|------|------|
-| **Id 空间抽离** | 新增 `EmberWeaponCatalog`：0–4 通用 / 10–15 武器 / 20–25 质变 / 30–35 专属的唯一出处；`Roster` / `WeaponForMeta` / `WeaponForExcl` / `IsRosterWeapon` | 编译通过 |
-| **候选池抽离** | 新增 `EmberChoicePool`：基础 3 张 + 空位补新武器、权重抽卡、同屏唯一键、补位与兜底；`RunProgress.Choices` 改为转发 | 编译通过；**随机数消耗顺序逐字保留** |
-| **`RunProgress` 只留状态** | 528 → 380 行；`OfferCountExpected` / `FullRoster` 改为转发，公式不再有第二版 | 编译通过 |
-| **消除名册数组重复** | `EmberGodsSelectPanel` 的本地 `Roster` 数组改为读 `EmberWeaponCatalog.Roster`（此前名册字面量在 4 处各有一份） | 源码扫描：全仓已无重复名册字面量 |
-| **M2 真正零 `UnityEngine`** | `EmberRarityUtil` 的 `Mathf.Lerp/RoundToInt` 改 `System.Math`；配色由返回 `Color` 改为返回 `float[3]`（`Tint`），UI 侧新增 `EmberRarityTint.ToColor()` 适配 | 源码扫描：`EmberRarity` / `RunProgress` / `EmberChoicePool` / `EmberWeaponCatalog` 均无 `using UnityEngine`、`Mathf`、`Color`、`Vector2` |
-
-> ⚠️ **订正一条既有文档断言**：`02-run-progression-test.md` 原先声称"`RunProgress` 与 `EmberRarityUtil`
-> 零 `UnityEngine` 依赖"，但当时 `EmberRarityUtil` 既用 `Mathf` 又返回 `Color`，**该断言不成立**。
-> 现已按上面两项改动使其成立，文档与实现一致。
-
-### 本轮实测结果（2026-09-23）
-
-| 检查 | 命令 | 结果 |
-|------|------|------|
-| 离线编译 | `Tools/compile-check.ps1` | **通过**：56 源文件、0 错误、0 警告 |
-| **Unity 批处理全量重编** | `Tools/unity-batch-verify.ps1`（先删 `Library/ScriptAssemblies` 强制重编） | **通过**：`Assembly-CSharp.dll` 重新生成（179,200 字节）、`script compilation time: 2.000s`、日志 0 条 `error CS` |
-| 字形覆盖 | `Tools/atlas_glyph_check.py` | **通过**：`MISSING (0)`，TMP 特殊字符齐全 |
-| 边界（源码扫描） | M2 纯 C# + 无重复名册 | **通过** |
-| 真进一局 | — | **待人工验收**（R1；本轮未改玩法规则，但改了发牌代码路径） |
-
-## 2026-09-23 第一轮：拆解上帝类 `EmberGame`
-
-**动因**：全项目只有一个入口脚本 `EmberGame`，361 行里承担 5 种职责（11 态状态机 + 开局装配/销毁 +
-摇杆与键盘输入 + 相机跟随 + 血量存亡 + HUD 推送 + 选卡编排）；M3（战斗）与 M7（表现）反向依赖 `EmberGame` 类型，
-使这两块无法脱离场景验证。这些都已记在 `00-overview.md` 的「已知边界问题」里。
-
-| 主题 | 内容 | 验证 |
-|------|------|------|
-| **组合根瘦身** | `EmberGame` 361 → 约 300 行，只保留装配、阶段所有权与每帧顺序 | 离线编译通过 |
-| **阶段提为顶层类型** | `EmberGame.Mode` → `EmberRunPhase`（取值与顺序不变） | 离线编译通过 |
-| **本局状态抽离** | 新增 `EmberRunState`（构筑/关卡/计时/击杀/世界与相机引用） | 离线编译通过 |
-| **生命结算抽离** | 新增 `EmberKeeperVitals`：难度倍率只乘一次、护盾先吸收、0.65s 无敌帧、治疗溢出丢弃 | 离线编译通过 |
-| **选卡推进抽离** | 新增 `RunFlowController`：选卡次数、新武器补偿（不连锁）、免费刷新 | 离线编译通过 |
-| **战斗解除对 `EmberGame` 的依赖** | 新增 `IEmberCombatHost`；`EmberCombat` / `EmberBoss` / `EmberHealingDrops` 改用它 | 源码扫描：`Combat/` 下零 `EmberGame` 引用 |
-| **表现层解除反向依赖** | `EmberKeeperAnimation` 去掉 `FindObjectOfType<EmberGame>()`；与 `EmberEffects` 一起改为注入阶段委托 | 源码扫描：`Visuals/` 下零 `EmberGame` 引用 |
-| **输入 / 位移 / 相机抽离** | 新增 `EmberInput`（经 `Presenter` 回调，不持有 `EmberGame`）、`EmberKeeperMotion` | 离线编译通过 |
-| **HUD 推送点抽离** | 新增 `EmberHudPresenter`；只在 `Playing` 阶段推送（重构前每帧推，含暂停/结算态） | 离线编译通过；**待人工验收 R1** |
-| **安全区轮询改事件** | 新增 `EmberSafeAreaWatcher`，`EmberMenuUi` 订阅、`EmberGame.OnDestroy` 退订 | 离线编译通过 |
-| **离线编译校验工具** | 新增 `Tools/compile-check.ps1`：用 Unity 自带 Roslyn 编译，**不启动编辑器** | 基线 42 文件 → 现状 53 文件，均 0 错误 0 警告 |
-
-### 本轮实测结果（2026-09-23）
-
-| 检查 | 命令 | 结果 |
-|------|------|------|
-| 离线编译 | `powershell -ExecutionPolicy Bypass -File Tools/compile-check.ps1` | **通过**：53 源文件、0 错误、0 警告 |
-| **Unity 批处理导入 + 编译** | `powershell -ExecutionPolicy Bypass -File Tools/unity-batch-verify.ps1`（Unity 2022.3.62f3，需先关 Unity） | **通过**：退出码 0、0 条 `error CS`、`script compilation time: 1.519s`、`Assembly-CSharp.dll` 重新生成且含全部 12 个新类型 |
-| 字形覆盖 | `python Tools/atlas_glyph_check.py Library/RefactorCheck/Emberlight.dll` | **通过**：`MISSING (0)`，TMP 特殊字符齐全，退出码 0 |
-| 边界（源码扫描） | 见 `00-composition-root-test.md` C14 | **通过**：`Combat/`、`Combat/Weapons/`、`Visuals/` 下零 `EmberGame` 类型引用 |
-| 真进一局 | — | **待人工验收**（R1） |
-
-> ⚠️ 编译通过（无论离线 Roslyn 还是 Unity 批处理）只证明**工程能导入、代码能编译**，**不能替代**进一局。
-> 本次重构是行为保持型搬代码，但回归仍必须手测一遍主闭环。
-
-### 批处理编译的环境坑
-
-Unity 授权客户端走命名管道，**在沙箱 shell 里必定失败**（`Connection to channel LicenseClient-<n> refused`
-→ `IPC channel to LicensingClient doesn't exist; aborting` → 退出码 199）。必须在普通终端运行
-`Tools/unity-batch-verify.ps1`，且**先把 Unity 编辑器关掉**。另外 Unity 返回后仍可能在刷日志，
-脚本已加等待；若日志里没有 `script compilation time`，说明是增量导入（没东西要编），不是失败。
-
-### 未做（有意决定，不是欠债）
-
-- **仍未建 `.asmdef` 与测试程序集**：`Assets` 下依然 0 个 asmdef。模块边界目前靠文档 + 纪律 + 源码扫描维持。
-- **未清理既有死代码**：`RunProgress` 的 8 个零调用点成员、`EmberPulseWeapon` 仍留着（清单见 `02-run-progression.md`）。
-- **未修 `EmberHud` 每帧拼字符串**：热路径分配仍在；顺带记录 `Stage()` 写入的 `waveText` 会被 `Set()` 覆盖（当前行为，未改）。
-- **未改 `LevelConfig.ApplyWorld()` 的重复调用**（`EmberGame` 与 `EmberCombat` 各一次，幂等）。
-
-### 过程教训（工具链）
-
-1. **PowerShell 5.1 会按 ANSI 读 UTF-8 无 BOM 文件**：用 `Get-Content -Raw` + `Set-Content` 批量改含中文注释的文件，
-   会把注释写成乱码（本次污染了 `EmberMenuFlow.cs` 与 `EmberCombat.cs`，已从基线提交恢复并改用 UTF-8 安全工具重做）。
-   结论：**改含中文的源文件只用编辑工具，或显式 `-Encoding UTF8` + `[System.IO.File]::WriteAllText`**。
-2. **`$PSScriptRoot` 在 `powershell -File` 下可能为空**：`compile-check.ps1` 已改为从 `$MyInvocation.MyCommand.Definition` 回退。
-3. **执行策略会挡住 `.ps1`**：需 `-ExecutionPolicy Bypass` 运行。
-4. **Unity 授权客户端需要命名管道**：在沙箱 shell 里批处理必定以退出码 199 失败
-   （`IPC channel to LicensingClient doesn't exist; aborting`）。必须在普通终端跑 `Tools/unity-batch-verify.ps1`。
-5. **Unity 进程返回后仍在刷日志**：立刻检查日志会读到"文件不存在/为空"的假失败；脚本已加等待，
-   且区分"增量导入（无需编译）"与"编译失败"。
-6. **Unity 退出 ≠ 产物写好**：`Library/ScriptAssemblies/*.dll` 是 Bee 在进程结束前才拷贝出来的。
-   脚本原先只检查一次，误报过"produced no Assembly-CSharp.dll"，而那一轮其实编译成功（日志有
-   `script compilation time: 2.000s`）。**判断"是否编译过"要看产物时间戳轮询，不要只看日志措辞。**
-7. **增量导入时日志不会出现 `CompileScripts`**：没东西要编时 Unity 直接跳过，此时"日志里没有编译记录"
-   是正常现象，不是失败。要拿到真实编译信号，先删 `Library/ScriptAssemblies`。
-
-## 2026-09-15 本轮改动（工作区，已并入基线提交 `a216de7`）
-
-| 主题 | 内容 | 验证 |
-|------|------|------|
-| **中文字体改为预烘静态图集** | 新增 `Assets/Editor/EmberFontBake.cs` 与 `Resources/Fonts/NotoSansCJKsc-Regular SDF.asset`（529 字形、单 2048² 图集、72 px 采样）。`EmberFonts` 预烘优先 + `ValidateBaked` 闸门 + 动态图集回落 | **通过**（A11–A14，见 `architecture/07-art-presentation-test.md`） |
-| **加载页文字第 0 帧可见** | `EmberIntro` 原先把 `CreateChinese()` 排在 0.5 s 动画之后，导致中文"慢半拍"；现改为字体优先、动画在后 | 批处理编译通过；**待人工验收 H4** |
-| **图集切为真正的 sprite sheet** | 四张图集 `textureType: Sprite` + `spriteMode: Multiple`；四个 `Ember*ArtImporter` 不再强制 `Default`（此前每次重导入都会清掉切片） | 资产结构核验通过；**待人工验收 H1/H2** |
-| **取图三级链** | `EmberUiArt` / `EmberCardFrames` / `EmberCardIcons` / `EmberWorldArt` 改为「子 Sprite 优先 → 运行时 `Sprite.Create` 兜底 → 程序化占位」 | 同上 |
-| **选武器改滚动** | `EmberGodsSelectPanel` 去掉 3 张一页的翻页，改为 `ScrollRect`，与升级面板同一套交互 | **待人工验收** |
-| UI 文案与排版 | 难度页三档各占一行；武器卡说明与开局选武器文案逐字一致；菜单文案提为 `EmberGame` 命名常量 | 文案已提取并比对 |
-| 每帧 `UpdateSafeArea` 轮询 | 改为仅在分辨率/安全区变化时更新 | 编译通过 |
-
-> **未做**：纹理压缩（`doodle-*` 仍为 Uncompressed，约 24 MB VRAM）。经确认本轮**不压**，属有意决定而非欠债。
-> **未做**：UI prefab 化。前置阻塞（`Image.sprite` 无资产可指）随切图已解除，但仍未开始。
+跑测试与检查的命令见根目录 `README.md` 的「验证」一节。
 
 ## 模块进度
 
-| 模块 | 阶段 | 最近验证 | 待人工验收 | 阻塞 | 下一步 |
-|------|------|----------|------------|------|--------|
-| M0 组合根 | **已重构** | **Unity 批处理编译通过**（退出码 0、0 条 `error CS`）+ 离线编译 53 文件 0 警告 + 源码边界扫描通过；实跑未做 | **R1–R10**（`00-composition-root-test.md`） | 无测试程序集 | **jack 进一局走查主闭环** |
-| M1 配置与调参 | 已实现 | **无自动化**（数值已对照代码） | H1–H4 | 无测试程序集 | 补 EditMode 测试（最高收益） |
-| M2 单局进度与构筑 | 已实现 | **✅ EditMode 103 用例全绿**（其中本模块 78 个：catalog 18 / rarity 25 / choicepool 25 / runprogress 35），2026-10-03 实跑 | H1–H8 | 无 | 补 M0/M1 测试；裁定权重漂移 |
-| M3 战斗与波次 | 已实现 | **无自动化**；宿主契约已解耦（源码扫描通过） | H1–H9 | 无测试程序集；PlayMode 需可脚本化装配 | 打一局走查主闭环 |
-| M4 武器系统 | 已实现 | **无自动化** | W8–W10 | 无测试程序集 | jack 试玩六线平衡 |
-| M5 敌人系统 | 已实现 | **无自动化** | H1–H9 | 无测试程序集 | jack 试玩验收（2026-09-13 起挂起） |
-| M6 界面与流程 | 已实现 | **无自动化**；HUD 推送点与安全区已解耦 | H1–H10、**R1/R8** | 无测试程序集 | 真机触控与窄屏适配 |
-| M7 美术与表现 | 已实现 | **部分自动化**：A11–A14（字形覆盖 / 预烘加载 / 烘制覆盖 / 重启后渲染）2026-09-15 批处理实跑通过；2026-09-23 字形覆盖复跑通过 | H1–H7、**H4b（72 px 清晰度）** | 其余项目无测试程序集 | jack 试玩验收字体清晰度与切图后的取图 |
-| M8 音频 | 已实现 | **无自动化**（v1 时期的 Play Mode 实测已过期） | H1–H7 | 无测试程序集 | jack 听感验收 |
-| M9 构建与平台 | **配置就绪，未构建** | **无** | H1–H11 | **keystore 签名未定；未执行过构建** | 打调试包 → 真机走查 |
+| 模块 | 阶段 | 最近验证 | 待人工验收 | 下一步 |
+|------|------|----------|------------|--------|
+| M0 组合根 | 已重构 | EditMode 覆盖 `EmberKeeperVitals` 8 条 + `RunFlowController` 6 条；源码扫描 `Combat`/`Visuals`/`UI` 零 `EmberGame` 引用 | 完整胜利路径、0.65 秒无敌手感 | 补 C11/C12 的 PlayMode 断言 |
+| M1 配置与调参 | 已实现 | 数值已逐项对照代码；**无自动化** | 波次节奏体感 | 补 EditMode（纯函数，收益最高） |
+| M2 单局进度与构筑 | 已实现 | **EditMode 105 条覆盖本模块，全绿** | 出卡体感、六线平衡 | 裁定权重和漂移与 `ConfigureRun` 守卫 |
+| M3 战斗与波次 | 已实现 | 宿主契约已解耦；图形冒烟覆盖开局到回营地 | 波次推进、Boss 出场、分裂数量 | 补波次/Boss 边界用例 |
+| M4 武器系统 | 已实现 | **无自动化** | 六线平衡、狙击手感、质变可辨识 | 补逐武器行为用例 |
+| M5 敌人系统 | 已实现 | **无自动化** | 敌人可读性与辨识度 | 补行为与回池用例 |
+| M6 界面与流程 | 已实现 | 图形冒烟覆盖四步开局、HUD、暂停、面板复用 | 布局观感、点击手感、宽高比适配 | 补窄屏与触控用例 |
+| M7 美术与表现 | 已实现 | 字形覆盖 `MISSING (0)`；批处理烘制与重载校验通过 | 72 px 采样点清晰度、切图取图效果 | 破坏路径用例（坏资产回落） |
+| M8 音频 | 已实现 | **无自动化** | 听感与混音平衡 | 补接线与节流用例 |
+| M9 构建与平台 | 配置就绪，**未构建** | 包解析与编辑器编译通过 | 真机全流程 | 打调试包 → 真机走查 |
 
-> 「已实现」指代码存在于工作区且能编译；**不等于已验收**。按 `AGENTS.md` 的口径，只有适用自动化检查通过**且**适用人工验收完成后才可标记「已验收」。
+> 「已实现」指代码存在于工作区且能编译，**不等于已验收**。按 `AGENTS.md` 的口径，只有适用自动化检查通过**且**适用人工验收完成后才可标记「已验收」；**当前无模块达到「已验收」**。
 
 ## 当前阻塞
 
 | 阻塞项 | 影响 | 需要谁 |
 |--------|------|--------|
-| **本次重构尚未真进过一局** | 编译与 EditMode 测试全绿，但重构面覆盖全部模块（含战斗、选卡、输入、HUD），且 **asmdef 改变了编译单元**，必须手测主闭环 R1 | jack |
-| **PlayMode 测试为空** | 依赖帧推进的行为（波次节奏、Boss 招式、摇杆、HUD、卡动画）仍只能手测；`03-/06-/07-`-test 的 A 类项多为待建 | jack 裁定优先级 |
+| **本次改动尚未真进过一局** | 注释精简面覆盖全部 Runtime 与 Editor 文件；虽已证明"代码行逐字节一致"，仍需按流程在编辑器里确认中文无方框、Console 干净 | jack |
+| **PlayMode 覆盖薄** | 依赖帧推进的行为（波次节奏、Boss 招式、摇杆、卡动画、状态效果）只能手测 | jack 裁定优先级 |
 | **未构建过 APK** | M9 全部真机验收无法开始 | jack |
 | **keystore 签名身份未创建** | 阻塞正式发布（不阻塞调试包） | jack |
 | 应用图标 / 启动图未配置 | 阻塞上架 | jack + xiaoUI |
-| **字体改为静态图集后，每次改文案都要重跑烘制** | 漏字会静默显示为空心方框，不会报错 | 流程已固化：`python Tools/atlas_glyph_check.py` → 关 Unity → 批处理烘制 → 复查（见 `AGENTS.md` 硬约束 1） |
-| `Assets/Prefabs/` 三个 UI prefab 为早期失败路线的残留在盘产物，未被任何场景引用 | 易被误当作可用资产 | jack 决定删除或保留 |
+| **字体改为静态图集后，每次改文案都要重跑烘制** | 漏字会静默显示为空心方框，不报错 | 流程已固化在 `AGENTS.md` 硬约束 1 |
+| `Assets/Prefabs/` 三个 UI prefab 是早期失败路线的残留，未被任何场景引用 | 易被误当作可用资产 | jack 决定删除或保留 |
+
+## 待裁定事项（汇总）
+
+各模块文档的「待裁定事项」小节是权威列表，这里只做导航：
+
+| 事项 | 位置 |
+|------|------|
+| 中间幸运值的品质权重和漂到 101–102 | `architecture/02-run-progression-test.md` |
+| `ConfigureRun` 是否加"只取第一把"的守卫 | `architecture/02-run-progression-test.md` |
+| `EmberPulseWeapon` / `WavePower` 去留（当前零调用点） | `architecture/04-weapon-system.md`、`requirements.md` §9 |
+| 满血拾取治疗掉落的语义（历史验收条目与实际实现不一致） | `architecture/05-enemy-system-test.md`、`实现说明.md` |
+| Runtime 内是否按目录拆 asmdef | `architecture/00-composition-root.md` |
+| `EmberRunState` 是否拆为"纯数据 + 场景句柄" | `requirements.md` §9 |
+| 是否进一步扩充行为测试 | `requirements.md` §9 |
+| 是否补一个可观察的 debuff（笔试题进阶项唯一缺口） | `笔试题2符合性核查.md` |
 
 ## 建议的下一步顺序
 
-1. **在 Unity 编辑器里走查一遍主闭环（R1）**，确认本次重构没有破坏战斗、选卡与阶段流转——这是当前最高优先项，因为重构面覆盖了全部模块。
-2. **裁定是否补齐测试基础设施**（`requirements.md` §9）。建议起点：只为 M1（`LevelConfig`）与 M2（`RunProgress`）建 `Runtime` + `EditMode.Tests` 两个 asmdef——这两个模块不依赖场景与帧推进，收益最高、风险最低。抽出的 `EmberKeeperVitals` 与 `RunFlowController` 现在也属同一档，可一并纳入。
-3. 把 M1/M2 的验收文档中「待建」项落成真实测试并记录首次结果。
-4. 打调试 APK，开始 M9 真机走查。
-5. 逐模块补 jack 的手感与审美验收（M4 W8–W10、M5、M6、M7、M8）。
+1. **在编辑器里真进一局**，确认中文无方框、Console 干净、四步开局到结算的闭环正常——本轮改动了全部 Runtime 源文件（仅注释），属流程必修项。
+2. **补 debuff 示例**：这是笔试题 2 进阶项唯一的实质缺口，扩展点现成（`IEnemyBehavior.Tick(dt, ctx)`）。
+3. **确认敌人主题**：当前默认追击怪是暗影披风造型，题面写的是"丧尸"。
+4. **补 M1 与 M3 的用例**：纯函数与边界规则，收益最高、风险最低。
+5. **打调试 APK**，开始 M9 真机走查。
+6. **重新导出工程包**，再走一遍"无 Library 新目录首次导入"。
 
 ## 文档健康度
 
-- [x] 已实现模块的公开契约与代码一致（2026-09-14 逐文件核对；2026-09-23 随重构再核一次受影响章节）
-- [x] 需求数值集中在 `Docs/requirements.md`，架构文档不再复制数值表
-- [x] 任务索引唯一维护在 `architecture/00-overview.md`（已加入 M0 与「拆类 / 解耦 / 编译校验」关键词）
-- [x] 被取代的文档已移入 `Docs/archive/` 并标注作废
-- [x] 已订正的数值冲突记入 `AGENTS.md` 与各模块验收文档
-- [x] **`requirements.md` §7 中文字体与程序集口径已按现行代码订正**（2026-09-23 裁定；原「固定走动态图集」表述已标注为旧口径）
-- [x] 行为变化已更新对应验收文档 —— M7 的 A11–A14 附 2026-09-15 运行记录；**新增 M0 的 `00-composition-root.md` / `-test.md`**
-- [x] 引用了已迁走文案位置（`EmberGame.UpgradeNames` → `EmberCopy.UpgradeNames`）的文档已订正：`06-ui-flow.md`、`07-art-presentation.md`、`04-weapon-system.md`、`02-run-progression.md`
-- [ ] 其余模块验收文档的自动化项目前仍为「待建/未验证」
-- [ ] 所有「已验收」模块的适用自动化检查均已通过 —— **无模块达到「已验收」**，因自动化基础设施缺失
-
-## 前几轮暴露的流程教训（字体）
-
-静态图集**不会告诉你少了什么**——只会静默画方框或打警告。2026-09-15 那轮连续踩到四类漏字，各自成因不同：
-
-| # | 漏的是什么 | 为什么常规手段抓不到 |
-|---|------------|----------------------|
-| 1 | 难度页整句文案 | 是 `ChooseLength` **方法体内的内联字面量**，反射与数组遍历都够不到 |
-| 2 | 设置页 / 敌人图鉴 / 结算文案 | 同上，散落在多个方法体 |
-| 3 | `_`（U+005F） | **TMP 的内部要求**，不来自任何文案；又是 ASCII，看着"显然存在" |
-| 4 | 图集只烘了卡面字 | `AllGlyphs` 的来源是人工枚举的数组清单，漏一个来源就整片缺字 |
-
-因此把判断依据从"代码里有哪些来源"换成**"编译产物里有哪些字面量"**：`Tools/atlas_glyph_check.py` 读 `Assembly-CSharp.dll` 的 `#US` 堆，能看见方法体内的字符串，并额外显式检查 TMP 的两个特殊码点。**这是目前唯一不依赖人记得同步的检查。**
-
-## 2026-10-13 可维护性与工程交付整理
-
-- 生命结算与选卡宿主缩小依赖；武器身份表、基础参数与实现注册集中；共享燃地独立，保持原时序。
-- 卡面展示模型与 uGUI 创建分离，修正武器说明 ID 错位与过期预览；补回死亡结果到整局击杀计数的已有回调。
-- 离线编译输出隔离，测试脚本拒绝 0 用例；补工程源码导出脚本和 README / 技术分析 / 实现说明。
-- 基线 EditMode 103/103，最终 133/133；图形 PlayMode 2/2，无 Library 工程重新导入后 133/133；验证记录见 `实现说明.md`，不据此标记全部模块已验收。
-- 屏幕外刷怪保证、通用 buff/debuff、完整胜利与 Android 专项尚未完成，保持此次工作范围。
+- [x] 模块文档引用的 `requirements.md` 章节仍然存在
+- [x] 「对外契约」与实现一致（2026-10-14 复核并修正 `EmberHealingDrops`、`EmberFontBake`、字体字形数、asmdef/测试口径等 20 余处过期断言）
+- [x] 任务索引唯一维护在 `architecture/00-overview.md`
+- [x] `progress.md` 只记状态；历史轮次已移入 `archive/development-history.md`
+- [x] `Docs/archive/` 已建立并附归档说明；历史文档的下落可追溯
+- [ ] 数值仍散落在多篇模块文档（多数带"不在此复制"声明）。**冲突时一律以 `requirements.md` 为准**
+- [ ] 各模块验收文档中仍有大量「待建」的自动化项
+- [ ] 无模块达到「已验收」

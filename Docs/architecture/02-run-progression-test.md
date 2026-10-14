@@ -46,16 +46,18 @@
 
 | 日期 | Unity 版本与环境 | 命令或 Test Runner 过滤器 | 结果文件 | 结论 |
 |------|------------------|---------------------------|----------|------|
-| 2026-10-03 | Unity 2022.3.62f3，`-batchmode -nographics`，EditMode | `Unity.exe -batchmode -nographics -projectPath <项目> -runTests -testPlatform editmode -testResults Library/TestRun/editmode.xml -logFile Library/TestRun/tests.log` | `Library/TestRun/editmode.xml` | **通过**：`total=103 passed=103 failed=0 skipped=0 result=Passed`，Unity 退出码 **0** |
+| 2026-10-14 | Unity 2022.3.62f3，`-batchmode -nographics`，EditMode | `Unity.exe -batchmode -nographics -projectPath <项目> -runTests -testPlatform editmode -testResults Library/TestRun/editmode.xml -logFile Library/TestRun/tests.log` | `Library/TestRun/editmode.xml` | **通过**：`total=150 passed=150 failed=0 skipped=0`，Unity 退出码 **0** |
+| 2026-10-03 | 同上（本模块基线首跑） | 同上 | `Library/TestRun/editmode.xml` | **通过（历史）**：`total=103 passed=103 failed=0`。当时全仓只有本模块的 4 个测试类 |
 
-覆盖本模块的测试类与用例数：
+覆盖本模块的测试类与用例数（2026-10-14）：
 
 | 测试类 | 用例数 | 覆盖内容 |
 |--------|--------|----------|
-| `EmberWeaponCatalogTests` | 18 | Id 分区、名册顺序与副本隔离、`WeaponForMeta` / `WeaponForExcl` 逐项映射、越界返回 0 |
-| `EmberRarityUtilTests` | 25 | 权重表三个锚点、插值、边界钳制、`RollByLuck` 可复现性与分布、通用词条五张数值表、`KindOf` / `IsGenericId` / `AllNames` / `Tint` |
+| `EmberWeaponCatalogTests` | 17 | Id 分区、名册顺序与副本隔离、`WeaponForMeta` / `WeaponForExcl` 逐项映射、越界返回 0 |
+| `EmberRarityUtilTests` | 24 | 权重表三个锚点、插值、边界钳制、`RollByLuck` 可复现性与分布、通用词条五张数值表、`KindOf` / `IsGenericId` / `AllNames` / `Tint` |
 | `EmberChoicePoolTests` | 25 | `3 + 空位` 张数、`(Id, WeaponId)` 同屏唯一、满槽不出新武器、专属/质变归属、旧通用不回流、兜底不空手、发牌可复现 |
-| `RunProgressTests` | 35 | 开局构筑与槽位钳制、跨局状态清零、攻击力/攻速单武器作用域、扩幅全局、护盾叠加不被钳、刷新 2 次、护盾先于生命、计分 |
+| `RunProgressTests` | 37 | 开局构筑与槽位钳制、跨局状态清零、攻击力/攻速单武器作用域、扩幅全局、护盾叠加不被钳、刷新 2 次、护盾先于生命、计分 |
+| `RunProgressChoiceEntryTests` | 2 | 真实选卡入口：`Choices` 置待选状态后才可提交；刷新替换候选而不累加选择次数 |
 
 ### 本轮通过测试发现的既有问题（未擅自改产品行为）
 
@@ -91,7 +93,7 @@
 | E1 | 槽位传 0 / 6 / 负数 | 钳制到 [1,5]，不产出非法 `EmptySlots` | EditMode 待建 | 未验证 | 对应 A2 |
 | E2 | 名册全非法或为空 | 兜底授予火球，仍能开局 | EditMode 待建 | 未验证 | 对应 A3 |
 | E3 | 候选池枯竭（全武器已拥有 + 满槽） | 用通用补齐，绝不返回空候选 | EditMode 待建 | 未验证 | 对应 A12 |
-| E4 | 伪造 `EmberOffer` / 重复提交同一张卡 | 防伪校验拒绝，状态不变 | EditMode 待建 | 未验证 | 对应 A26 |
+| E4 | 伪造 `EmberOffer` / 重复提交同一张卡 | 防伪校验拒绝，状态不变 | EditMode 待建 | 未验证 | 对应 `RunFlowControllerTests.ForgedOrRepeatedChoice_DoesNotChangeBuild` |
 | E5 | 连续开局两局 | 第二局不携带第一局的构筑与 Score | EditMode 待建 | 未验证 | 对应 A4 |
 | E6 | `Progress` 为 null 时（已回营地）战斗 Tick | 不抛空引用 | PlayMode 待建 | 未验证 | 依赖 M3 的 null 容忍 |
 
@@ -106,9 +108,9 @@
 
 ## 交付结论
 
-- **已验证**（2026-10-03 实跑，命令与结果见上表）：
-  - EditMode 测试套件 **103 个用例全部通过**（`total=103 passed=103 failed=0`），Unity 退出码 **0**；
-  - 其中覆盖本模块的用例：`EmberWeaponCatalogTests` 18、`EmberRarityUtilTests` 25、`EmberChoicePoolTests` 25、`RunProgressTests` 35；
+- **已验证**（2026-10-14 实跑，命令与结果见上表）：
+  - EditMode 测试套件 **150 个用例全部通过**（`total=150 passed=150 failed=0`），Unity 退出码 **0**；
+  - 其中覆盖本模块的用例：`EmberWeaponCatalogTests` 17、`EmberRarityUtilTests` 24、`EmberChoicePoolTests` 25、`RunProgressTests` 37、`RunProgressChoiceEntryTests` 2，共 **105** 条；
   - 源码扫描确认 M2 四个文件零 `UnityEngine` 引用。
 - **不适用**：场景装配与 Prefab 检查——`RunProgress` 无场景对象。
 - **待手动验收**：H1–H8（开局流程、槽位手感、同屏唯一、补偿选卡、刷新、幸运体感、六线平衡）。
@@ -116,14 +118,14 @@
 - **未通过**：无。
 - **本轮测试发现的既有问题（待裁定，未擅自改产品行为）**：
   1. 中间幸运值的品质权重和漂到 101–102（`RollWeighted` 以权重和为分母 → 出率约 1–2% 相对偏移）；
-  2. `ConfigureRun` 并非"开局只给 1 把"的守卫（当前 UI 只传 1 把，故线上无影响）；
-  3. `RunProgress.AddShield` 是死代码且把护盾硬钳到 250（与现行 250/500/750/1250 冲突）。
+  2. `ConfigureRun` 并非"开局只给 1 把"的守卫（当前 UI 只传 1 把，故线上无影响）。
 
   | 问题 | 候选方案 | 影响 | 需要谁裁定 |
   |------|----------|------|------------|
   | 权重和漂移 | 归一化到 100 / 维持现状并把 ±2 写进需求 | 影响各幸运档的实际出率口径；改则需重跑 A13 与 jack 的体感验收 | jack + xiaoPlanner |
   | `ConfigureRun` 多把输入 | 加"只取第一把"的守卫 / 维持现状（视为越界调用） | 加守卫可编译期外防住硬约束 4 被绕过 | jack + xiaoCoder |
-  | `AddShield` 死代码 | 删除 / 改为转发到 `Choose` 的发放逻辑 | 保留是个陷阱：钻石护盾会被砍成青铜数值 | jack + xiaoCoder |
+
+> 2026-10-14 注释精简时已删除 `RunProgress` 的死成员：`AddShield`（把护盾硬钳到 250 的旧口径陷阱）、`HasEvolved` / `CanEvolve` / `OwnedWeaponsView` / `HealAmount` / `EmberRarityUtil.Magnitude` / `CountBonus`（全仓零调用点）。`WavePower` / `ScoreMult` 等仍被测试或武器读取，保留。因此原「`AddShield` 死代码去留」待裁定项已关闭。
 
 ## ⚠️ 已修正的历史记录
 

@@ -1,7 +1,7 @@
 # M4 武器系统
 
 > 相关需求：`../requirements.md` §4.2、§4.4、§4.6
-> 验收文档：本文档 §验收（无独立 `-test.md`；武器行为需 PlayMode 且与 M3 强耦合）
+> 验收文档：`04-weapon-system-test.md`
 > 代码：`Assets/Scripts/Combat/Weapons/`（武器基类、实现与注册工厂）
 
 ## 职责边界
@@ -12,7 +12,7 @@
   - 敌人生成与死亡结算 → M3（本模块只投递伤害）
   - 卡面文案与图标 → M6 / M7
 
-**最重要的边界约束**：`EmberWeapon.cs` 的文件头注释明文规定 *"Weapons must not reverse-depend on EmberGame."*，且**经全文件验证成立**——6 把武器（含 Pulse）零处 `EmberGame` 引用，只通过 `EmberWeaponContext` 与 `RunProgress` 工作。**这是本仓库最干净的模块边界，改武器时不要引入 `EmberGame`。**
+**最重要的边界约束**：`EmberWeapon.cs` 的文件头明文规定 *"武器不得反向依赖 `EmberGame`"*，且**经全仓验证成立**——6 把武器（含未接线的 Pulse）零处 `EmberGame` 引用，只通过 `EmberWeaponContext` 与 `RunProgress` 工作。**这是本仓库最干净的模块边界，改武器时不要引入 `EmberGame`。**
 
 ## 依赖
 
@@ -62,7 +62,7 @@ public abstract class EmberWeapon
 | 10 | `EmberPierceWeapon` | 穿透火矢 | ✅ |
 | 11 | `EmberBoomerangWeapon` | 回旋烬蝶 | ✅ |
 | 12 | `EmberMeteorWeapon` | 天降火雨 | ✅ |
-| — | `EmberPulseWeapon` | 冲击波 | ❌ **死代码** |
+| — | `EmberPulseWeapon` | 冲击波 | ❌ 未接线：`RunProgress.WavePower` 恒为 0，本版没有出卡入口 |
 
 ### 逐武器数值接线
 
@@ -158,24 +158,13 @@ public abstract class EmberWeapon
 
 ## 验收
 
-| 编号 | 层级 | 检查 | 状态 |
-|------|------|------|------|
-| W1 | PlayMode（待建） | 每把武器单独一局，`Tick` 能产出伤害且不抛异常 | 未验证（无测试程序集） |
-| W2 | PlayMode（待建） | 未拥有武器不产生任何弹体与伤害 | 未验证 |
-| W3 | PlayMode（待建） | `火球·攻击力` 只抬火球，其他武器伤害不变 | 未验证 |
-| W4 | PlayMode（待建） | 穿透火矢仅静止时开火，移动中不产生新箭 | 未验证 |
-| W5 | PlayMode（待建） | 烬蝶去程/回程各结算一次 | 未验证 |
-| W6 | PlayMode（待建） | 火雨射程内预警结束后才结算伤害 | 未验证 |
-| W7 | PlayMode（待建） | 环火多球命中同一敌人时只有最近球满伤 | 未验证 |
-| W8 | 手动 | N=1 六条线各打一局，成型强度不超模 | 待人工验收（jack） |
-| W9 | 手动 | 穿透"站住才开火"的狙击手感成立 | 待人工验收（jack） |
-| W10 | 手动 | 专属/质变的视觉差异可辨认 | 待人工验收（jack） |
+本模块的验收项已独立成 `04-weapon-system-test.md`（W1–W10 自动化计划、H1–H5 手动验收、E1–E5 边界、回归范围与交付结论）。
 
 ## 待裁定事项
 
 | 问题 | 候选方案 | 影响 | 需要谁裁定 |
 |------|----------|------|------------|
-| `EmberPulseWeapon` 死代码去留 | 恢复为不占槽词条 / 删除 | 当前 `WavePower` 恒 0，永不生效 | jack + xiaoPlanner |
+| `EmberPulseWeapon` 去留 | 恢复为不占槽词条 / 删除 | 当前 `WavePower` 恒 0，永不生效；`EmberPulseWeapon` 类本身零调用点 | jack + xiaoPlanner |
 | 策划档位表与代码常量的一致性维护点 | 以代码为准并回写需求 / 保持双份 | 当前存在未同步风险 | xiaoCoder + xiaoPlanner |
 | 是否给武器补音效 pitch 抖动 | 加随机 pitch / 维持一致音色 | 多次连发听感偏机械 | jack |
 

@@ -42,7 +42,7 @@
    程序化占位（EmberArt.Panel / Flame）
 
 中文字体
-   Resources/Fonts/NotoSansCJKsc-Regular SDF.asset（预烘，491 字形 / 2048×2048）
+   Resources/Fonts/NotoSansCJKsc-Regular SDF.asset（预烘静态，529 字形 / 2048×2048）
        ↓ ValidateBaked 不通过或资产缺失
    CreateChineseDynamic()：otf → CreateFontAsset → 两段式字形预热
 
@@ -67,7 +67,7 @@
 `EmberFonts.CreateChinese()` **优先使用预烘静态图集**，加载不到或校验不通过时回落到运行时动态图集：
 
 1. `Resources.Load<TMP_FontAsset>("Fonts/NotoSansCJKsc-Regular SDF")`
-2. `EmberFonts.ValidateBaked` 逐项校验（图集纹理存在且非空、`characterTable` 非空、`material` 存在、每个 `characterTable` 条目的 `glyphIndex` 都能在 `glyphLookupTable` 里查到）
+2. `EmberFonts.ValidateBaked` 逐项校验（图集纹理存在且非空、`characterTable` 非空、`material` 存在、每个 `characterTable` 条目都有对应 glyph、每个 glyph 的 `atlasIndex` 都落在 `atlasTextures` 范围内）
 3. 通过 → 直接用；任一不通过 → `Debug.LogWarning` + 回落 `CreateChineseDynamic()`
 
 **历史：预烘曾失败三次，都让整个 UI 挂掉、游戏进不去，而资产字段校验全绿。**三次的根因已逐条定位并修正：
@@ -76,9 +76,9 @@
 |------|------|------------|
 | 一 | `m_AtlasTextures` 数组从未序列化 → `UnassignedReferenceException`（`GetFallbackMaterial`） | 旧工具先 `CreateAsset(font)` 再 `AddObjectToAsset(atlasTexture)`；`CreateAsset` 序列化的是**当时**的对象图，图集像素还没落盘。修正：**先写图集纹理与材质子资产，最后写字体资产**（`EmberFontBake.Write`） |
 | 二 | 资产有 1 个图集槽，但字形指向 atlas index 1 → `IndexOutOfRangeException` | 全程只数 `characterTable.Count`，**从未真正绘制过任何字形**。修正：`VerifyReloaded` 从磁盘重新加载后**真渲染一遍** |
-| 三 | `m_AtlasTextures: [{fileID: …}, {fileID: 0}]` + `m_AtlasTextureIndex: 1` → `NullReferenceException`（`GetFallbackMaterial` 读 `atlasTextures[1].name`） | **TMP 开了第二张图集**：2048² 装不下 491 个 90px/9padding 的 CJK 字形，`enableMultiAtlasSupport` 默认 `true`，于是数组里多了一个无纹理的槽，而字体指向它。修正：烘制传 `enableMultiAtlasSupport: false`，并**自动降采样点**直到全部装进一张；`ApplySingleAtlas` 在写盘前强制数组只含一张，有字形指向更高索引就**拒绝写盘** |
+| 三 | `m_AtlasTextures: [{fileID: …}, {fileID: 0}]` + `m_AtlasTextureIndex: 1` → `NullReferenceException`（`GetFallbackMaterial` 读 `atlasTextures[1].name`） | **TMP 开了第二张图集**：2048² 装不下全部 90px/9padding 的 CJK 字形，`enableMultiAtlasSupport` 默认 `true`，于是数组里多了一个无纹理的槽，而字体指向它。修正：烘制传 `enableMultiAtlasSupport: false`，并**自动降采样点**直到全部装进一张；`ApplySingleAtlas` 在写盘前强制数组只含一张，有字形指向更高索引就**拒绝写盘** |
 
-**采样点必须是 72px，不是 90px。** 单图集容量实测：
+**采样点必须是 72px，不是 90px。** 单图集容量实测（下面是 2026-09-15 那一次烘制的数据，当时图集收 491 字；后来字形收集器又补入了卡面与菜单文案，缓存资产现为 **529 字**，见本节末尾）：
 
 | 采样点 | 烘入字形 | 丢失 |
 |--------|----------|------|
@@ -88,7 +88,7 @@
 
 `FitsOneAtlas` 单独用是不够的：关掉多图集后，装不下的字**根本不会进 `glyphTable`**，所以"没有字形指向 atlas 0 以外"依然成立而字数已经缺了。因此烘制还要求 `CoversEveryCharacter` 通过（逐字符 `HasCharacter`），两者**都**满足才接受该采样点。
 
-现行实现的实测结果：
+当初那次烘制的实测结果：
 
 ```text
 [EmberFontBake] 90 px -> 384 chars, ... fits=True,  complete=False, dropped 107
@@ -102,13 +102,21 @@
 
 > `493 distinct` − 2（`\r`、`\n` 控制字符，TMP 不为其生成字形）= **491**，与烘入数完全一致，无遗漏。
 
+**缓存资产的当前状态**（2026-10-14 由 `EmberFontBake.CheckRuntimeLoad` 复核）：
+
+```text
+[EmberFonts] pre-baked atlas validated: 1 atlas texture(s), 529 characters, 529 glyphs, max atlasIndex 0
+```
+
+即字形收集器扩充后仍**装得进同一张 2048×2048 图集**，`max atlasIndex` 仍为 0，无需回退到更小采样点；`07-art-presentation-test.md` 的 A12/A13/A14 记录的 `529` 就是这个口径。
+
 结果与取舍：
 
 - **首屏中文字第 0 帧即可绘制**，加载页不必再 `SetActive(false)` 藏文字。
 - 运行时不再 `CreateFontAsset`、不再 `TryAddCharacters`，`PrewarmInBackground` 对静态图集直接 `yield break`。
 - **SDF 采样点由 90px 降到 72px**，字形轮廓精度略有下降；显示字号为 11–40px，余量仍充足，但**观感需人工验收**。
 - **包体仍带完整 Noto CJK SC（约 16.4 MB）**：静态图集的 `m_SourceFontFile` 仍引用该 otf，裁剪需把字体移出 Resources 并确认引用关系，属未做的优化。
-- 新增/修改文案若引入图集里没有的字，**该字会缺失**（静态图集不能追加字形）。改文案后必须重跑 `Emberlight/Bake Chinese font atlas`。
+- 新增/修改文案若引入图集里没有的字，**该字会缺失**（静态图集不能追加字形）。改文案后必须按下面的批处理命令重跑烘制。
 - 重跑命令（批处理）：
   `Unity.exe -batchmode -quit -projectPath <proj> -executeMethod Emberlight.Editor.EmberFontBake.Bake`
   只读自检：`-executeMethod Emberlight.Editor.EmberFontBake.CheckRuntimeLoad`
@@ -213,7 +221,7 @@ python Tools/atlas_glyph_check.py
 - 4 个 `AssetPostprocessor`（`EmberCardFrameImporter` / `EmberCardIconImporter` / `EmberUiArtImporter` / `EmberWorldArtImporter`）在导入时设置切片；**不要手改 `.meta` 的切片，改导入器**。
 - Android 压缩覆写位于 `.meta` 平台块（`overridden: 1` + `textureCompression: 0`），涉及三张 doodle 图集。
 - `EmberEffects` 与 `EmberKeeperAnimation` 是场景 `MonoBehaviour`；其余为静态类。
-- `EmberKeeperAnimation` 用 `FindObjectOfType` 反查游戏实例——**场景中必须有且只有一个 `EmberGame`**。
+- `EmberKeeperAnimation` 与 `EmberEffects` 都是场景 `MonoBehaviour`；其余为静态类。阶段门控由组合根**构造时注入委托**，没有任何 `FindObjectOfType` 反查。
 
 ## 影响与回归范围
 
