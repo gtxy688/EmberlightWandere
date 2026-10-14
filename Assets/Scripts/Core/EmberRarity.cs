@@ -18,48 +18,23 @@ namespace Emberlight
         Metamorph = 3
     }
 
+    /// <summary>
+    /// 品质（稀有度）规则：幸运 → 权重 → 品质，以及各品质对应的通用词条数值。
+    /// **零 `UnityEngine` 引用**，与 <see cref="RunProgress"/> / <see cref="EmberChoicePool"/> 同层。
+    /// 权威数值见 `Docs/requirements.md` §4.4 / §4.5。
+    /// </summary>
     public static class EmberRarityUtil
     {
-        // Legacy Magnitude retained for non-generic systems / Validate continuity.
-        public static float Magnitude(EmberRarity rarity)
-        {
-            switch (rarity)
-            {
-                case EmberRarity.Silver: return 0.40f;
-                case EmberRarity.Gold: return 0.65f;
-                case EmberRarity.Diamond: return 0.90f;
-                default: return 0.20f;
-            }
-        }
-
-        public static int CountBonus(EmberRarity rarity)
-        {
-            switch (rarity)
-            {
-                case EmberRarity.Silver: return 2;
-                case EmberRarity.Gold: return 2;
-                case EmberRarity.Diamond: return 3;
-                default: return 1;
-            }
-        }
-
-        /// <summary>幸运品质百分比（"青铜 ×20%"这类展示用），与 <see cref="Magnitude"/> 同源。</summary>
-        public static int Percent(EmberRarity rarity)
-        {
-            return (int)Math.Round(Magnitude(rarity) * 100f, MidpointRounding.AwayFromZero);
-        }
-
         /// <summary>
-        /// Rarity display names, indexed by the EmberRarity enum. The single source for these
-        /// four strings: Name() reads from here, and EmberFonts prewarms them so the first card
-        /// that shows 钻石 does not rasterise its glyphs mid-run.
+        /// 品质名，下标即 <see cref="EmberRarity"/>。这四串字是该名称的唯一出处，
+        /// <see cref="EmberFonts"/> 也读它们做字形预热。
         /// </summary>
         public static readonly string[] AllNames =
         {
-            "\u9752\u94dc",  // Bronze
-            "\u767d\u94f6",  // Silver
-            "\u9ec4\u91d1",  // Gold
-            "\u94bb\u77f3",  // Diamond
+            "\u9752\u94dc",  // 青铜
+            "\u767d\u94f6",  // 白银
+            "\u9ec4\u91d1",  // 黄金
+            "\u94bb\u77f3",  // 钻石
         };
 
         public static string Name(EmberRarity rarity)
@@ -69,9 +44,9 @@ namespace Emberlight
         }
 
         /// <summary>
-        /// 稀有度配色，以纯 `float[3]`（RGB, 0–1）表达。**不返回 `UnityEngine.Color`**，
-        /// 这样本文件（以及依赖它的 `RunProgress` / `EmberChoicePool`）保持零 `UnityEngine` 引用，
-        /// 可以脱离 Unity 做 EditMode 测试。UI 侧用 <see cref="EmberRarityTint.ToColor"/> 转换。
+        /// 品质配色，用纯 `float[3]`（RGB, 0–1）表达而非 `UnityEngine.Color`，
+        /// 这样本文件与依赖它的构筑逻辑都能脱离 Unity 单测。UI 侧用
+        /// <see cref="EmberRarityTint.ToColor"/> 转换。
         /// </summary>
         public static float[] Tint(EmberRarity rarity)
         {
@@ -84,14 +59,7 @@ namespace Emberlight
             }
         }
 
-        /// <summary>Legacy wave gate (not used for Gods-Select-v3 generics).</summary>
-        public static EmberRarity Roll(System.Random random, int wave)
-        {
-            int[] weights = WeightsForWave(wave);
-            return RollWeighted(random, weights);
-        }
-
-        /// <summary>Luck-driven rarity for G-ATK/AS/LUCK/AMP. Luck 0..120.</summary>
+        /// <summary>通用词条按幸运 roll 品质（`requirements.md` §4.5）。</summary>
         public static EmberRarity RollByLuck(System.Random random, float luck)
         {
             return RollWeighted(random, WeightsForLuck(luck));
@@ -106,7 +74,7 @@ namespace Emberlight
             if (luck <= 60f)
             {
                 t = luck / 60f;
-                a = new[] { 72f, 22f, 5f, 1f }; // rarity nerf 2026-09-13
+                a = new[] { 72f, 22f, 5f, 1f };
                 b = new[] { 58f, 28f, 11f, 3f };
             }
             else
@@ -124,21 +92,11 @@ namespace Emberlight
             };
         }
 
-        /// <summary>
-        /// 线性插值后四舍五入（远离零方向，与 `Mathf.RoundToInt` 一致），下限 0。
-        /// 用 `System.Math` 而非 `Mathf`，是为了让本文件不引入 `UnityEngine`。
-        /// </summary>
+        /// <summary>线性插值后四舍五入（远离零方向），下限 0。用 `System.Math` 以免引入 `UnityEngine`。</summary>
         static int LerpWeight(float from, float to, float t)
         {
             float v = from + (to - from) * t;
             return Math.Max(0, (int)Math.Round(v, MidpointRounding.AwayFromZero));
-        }
-
-        static int[] WeightsForWave(int wave)
-        {
-            if (wave <= 2) return new[] { 70, 25, 5, 0 };
-            if (wave <= 4) return new[] { 55, 30, 12, 3 };
-            return new[] { 50, 28, 15, 7 };
         }
 
         static EmberRarity RollWeighted(System.Random random, int[] weights)
@@ -156,7 +114,8 @@ namespace Emberlight
             return EmberRarity.Bronze;
         }
 
-        // Gods-Select-v3 generic magnitudes (ATK/AS as additive fractions).
+        // 通用词条数值（攻击力/攻速为单武器加算比例）。见 `requirements.md` §4.4。
+
         public static float GenericAtkAs(EmberRarity rarity)
         {
             switch (rarity)
@@ -201,6 +160,18 @@ namespace Emberlight
             }
         }
 
+        public static float ShieldAmount(EmberRarity rarity)
+        {
+            switch (rarity)
+            {
+                case EmberRarity.Silver: return 500;
+                case EmberRarity.Gold: return 750;
+                case EmberRarity.Diamond: return 1250;
+                default: return 250;
+            }
+        }
+
+        /// <summary>按 Id 分区判定候选类型（`requirements.md` §4.7）。</summary>
         public static EmberOfferKind KindOf(int id)
         {
             if (id >= 30 && id <= 39) return EmberOfferKind.Exclusive;
@@ -209,10 +180,8 @@ namespace Emberlight
             return EmberOfferKind.Generic;
         }
 
-        public static float ShieldAmount(EmberRarity rarity)
-        { switch (rarity) { case EmberRarity.Silver: return 500; case EmberRarity.Gold: return 750; case EmberRarity.Diamond: return 1250; default: return 250; } }
-
-        public static bool IsGenericId(int id) { return id == 0 || id == 1 || id == 2 || id == 3 || id == 4; } // ATK/AS/Luck/Amp/Shield
+        /// <summary>通用词条 Id：攻击力 / 攻速 / 幸运 / 增幅 / 护盾。</summary>
+        public static bool IsGenericId(int id) { return id == 0 || id == 1 || id == 2 || id == 3 || id == 4; }
     }
 
     public struct EmberOffer
@@ -220,8 +189,9 @@ namespace Emberlight
         public int Id;
         public EmberRarity Rarity;
         public EmberOfferKind Kind;
-        /// <summary>-1 = global (luck/amp/shield). StatAtk/StatAs target an owned weapon id.</summary>
+        /// <summary>-1 表示全局项（幸运/增幅/护盾）；攻击力/攻速指向某把已拥有武器。</summary>
         public int WeaponId;
+
         public EmberOffer(int id, EmberRarity rarity, int weaponId = -1)
         {
             Id = id;

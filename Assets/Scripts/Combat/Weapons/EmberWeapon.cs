@@ -52,7 +52,6 @@ namespace Emberlight
             return enemy.hp < before;
         }
 
-        public Action PlayingGate; // no-op helper reserved
         public Func<bool> StillPlaying;
         /// <summary>Shared burn patches (trail weapon + evo hit trails).</summary>
         public Action<Vector2, float> SpawnBurnPatch;

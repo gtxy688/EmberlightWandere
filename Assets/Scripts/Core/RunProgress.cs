@@ -4,41 +4,44 @@ using System.Collections.Generic;
 namespace Emberlight
 {
     /// <summary>
-    /// Gods-Select-v3 run state: slots, owned weapons, generic stats, luck/amp, exclusives/metamorphs,
-    /// free refreshes. 只负责"构筑状态怎么变"，不管"候选怎么拼"——后者见 <see cref = "EmberChoicePool"/>。
-    /// Id 空间见 <see cref = "EmberWeaponCatalog"/>。本类**零 `UnityEngine` 引用**，可脱离 Unity 单测。
+    /// 单局构筑状态（M2）：槽位、已拥有武器、通用属性、幸运/增幅、专属/质变、免费刷新。
+    /// 只负责"构筑状态怎么变"；候选怎么拼见 <see cref="EmberChoicePool"/>，Id 空间见
+    /// <see cref="EmberWeaponCatalog"/>。**零 `UnityEngine` 引用**，可脱离 Unity 单测。
     /// </summary>
     public sealed class RunProgress
     {
-        // ── 通用词条 Id（转发自 EmberWeaponCatalog，保持既有调用点可用）─────────────────────
         public const int StatAtk = EmberWeaponCatalog.StatAtk;
         public const int StatAs = EmberWeaponCatalog.StatAs;
         public const int StatLuck = EmberWeaponCatalog.StatLuck;
         public const int StatAmp = EmberWeaponCatalog.StatAmp;
         public const int StatShield = EmberWeaponCatalog.StatShield;
-        // ── 武器 Id ────────────────────────────────────────────────────────────────────────
+
         public const int WeaponPierce = EmberWeaponCatalog.Pierce;
         public const int WeaponBoom = EmberWeaponCatalog.Boom;
         public const int WeaponMeteor = EmberWeaponCatalog.Meteor;
         public const int WeaponBasic = EmberWeaponCatalog.Basic;
         public const int WeaponOrbit = EmberWeaponCatalog.Orbit;
         public const int WeaponTrail = EmberWeaponCatalog.Trail;
-        // ── 质变 Id ────────────────────────────────────────────────────────────────────────
+
         public const int MetaBasic = EmberWeaponCatalog.MetaBasic;
         public const int MetaOrbit = EmberWeaponCatalog.MetaOrbit;
         public const int MetaTrail = EmberWeaponCatalog.MetaTrail;
         public const int MetaPierce = EmberWeaponCatalog.MetaPierce;
         public const int MetaBoom = EmberWeaponCatalog.MetaBoom;
         public const int MetaMeteor = EmberWeaponCatalog.MetaMeteor;
-        // ── 专属 Id ────────────────────────────────────────────────────────────────────────
+
         public const int ExclBasic = EmberWeaponCatalog.ExclBasic;
         public const int ExclOrbit = EmberWeaponCatalog.ExclOrbit;
         public const int ExclTrail = EmberWeaponCatalog.ExclTrail;
         public const int ExclPierce = EmberWeaponCatalog.ExclPierce;
         public const int ExclBoom = EmberWeaponCatalog.ExclBoom;
         public const int ExclMeteor = EmberWeaponCatalog.ExclMeteor;
+
+        /// <summary>幸运上限（`requirements.md` §4.4）。</summary>
         public const int MaxLuck = 120;
+        /// <summary>整局免费刷新次数（`requirements.md` §4.3）。</summary>
         public const int FreeRefreshes = 2;
+
         public int Score { get; private set; }
         public int Pending { get; private set; }
         public int ExtraShots { get; private set; }
@@ -61,14 +64,9 @@ namespace Emberlight
         public bool TrailRing { get; private set; }
         public int WeaponSlots { get; private set; }
         public int CoreWeaponId { get; private set; }
+        public int RefreshesRemaining { get; private set; }
 
-        public int OwnedWeaponCount
-        {
-            get
-            {
-                return ownedWeapons.Count;
-            }
-        }
+        public int OwnedWeaponCount { get { return ownedWeapons.Count; } }
 
         public int EmptySlots
         {
@@ -79,25 +77,11 @@ namespace Emberlight
             }
         }
 
-        public int RefreshesRemaining { get; private set; }
+        /// <summary>恒为 1.0；本项目不做随槽位数变化的分数倍率。</summary>
+        public float ScoreMult { get { return 1.0f; } }
 
-        /// <summary>Always 1.0 (no ScoreMult).</summary>
-        public float ScoreMult
-        {
-            get
-            {
-                return 1.0f;
-            }
-        }
-
-        /// <summary>Global amp only (Hotfix-Weapon-AtkAs-v1). Per-weapon ATK uses WeaponMagnitude.</summary>
-        public float DamageMul
-        {
-            get
-            {
-                return 1f + DamageAmp;
-            }
-        }
+        /// <summary>全局伤害乘区（仅增幅词条）；单武器攻击力见 <see cref="WeaponMagnitude"/>。</summary>
+        public float DamageMul { get { return 1f + DamageAmp; } }
 
         readonly HashSet<int> ownedWeapons = new HashSet<int>();
         readonly HashSet<int> metamorphs = new HashSet<int>();
@@ -105,31 +89,15 @@ namespace Emberlight
         readonly Dictionary<int, int> weaponCount = new Dictionary<int, int>();
         readonly Dictionary<int, float> weaponMagnitude = new Dictionary<int, float>();
         readonly Dictionary<int, float> weaponAttackSpeed = new Dictionary<int, float>();
-        /// <summary>候选项与 id 空间的唯一出处在 EmberWeaponCatalog / EmberChoicePool。</summary>
+
         public RunProgress()
         {
             ConfigureRun(new[] { WeaponBasic }, 2);
         }
 
-        public bool OwnsWeapon(int id)
-        {
-            return ownedWeapons.Contains(id);
-        }
-
-        public bool HasEvolved(int id)
-        {
-            return metamorphs.Contains(id);
-        }
-
-        public bool HasMetamorph(int id)
-        {
-            return metamorphs.Contains(id);
-        }
-
-        public bool HasExclusive(int id)
-        {
-            return exclusives.Contains(id);
-        }
+        public bool OwnsWeapon(int id) { return ownedWeapons.Contains(id); }
+        public bool HasMetamorph(int id) { return metamorphs.Contains(id); }
+        public bool HasExclusive(int id) { return exclusives.Contains(id); }
 
         public int WeaponCount(int id)
         {
@@ -167,21 +135,13 @@ namespace Emberlight
             weaponAttackSpeed[id] = v + amount;
         }
 
-        public IReadOnlyCollection<int> OwnedWeaponsView
-        {
-            get
-            {
-                return ownedWeapons;
-            }
-        }
-
-        /// <summary>武器名册副本（顺序即开局选武器界面的显示顺序）。转发自 <see cref = "EmberWeaponCatalog"/>。</summary>
+        /// <summary>武器名册副本（顺序即开局选武器界面的显示顺序）。</summary>
         public static int[] FullRoster()
         {
             return EmberWeaponCatalog.RosterCopy();
         }
 
-        /// <summary>Open-run: fill N slots from roster picks (at least 1). No skip fallback.</summary>
+        /// <summary>开一局：用名册内的武器填 <paramref name="slots"/> 个槽位，至少给 1 把。</summary>
         public void ConfigureRun(int[] slotWeapons, int slots)
         {
             if (slots < 1)
@@ -217,10 +177,7 @@ namespace Emberlight
             RefreshesRemaining = FreeRefreshes;
             CoreWeaponId = WeaponBasic;
             if (slotWeapons == null || slotWeapons.Length == 0)
-                slotWeapons = new[]
-                {
-                    WeaponBasic
-                };
+                slotWeapons = new[] { WeaponBasic };
             int granted = 0;
             for (int i = 0; i < slotWeapons.Length && granted < slots; i++)
             {
@@ -242,7 +199,7 @@ namespace Emberlight
             }
         }
 
-        /// <summary>Back-compat: single core + N empty slots.</summary>
+        /// <summary>兼容旧入口：单把起始武器 + N 个槽位。</summary>
         public void ConfigureRun(int coreWeaponId, int slots)
         {
             if (!IsRosterWeapon(coreWeaponId))
@@ -250,7 +207,7 @@ namespace Emberlight
             ConfigureRun(new[] { coreWeaponId }, slots);
         }
 
-        /// <summary>是否为占槽武器（10–19 名册内）。判定放在 <see cref = "EmberWeaponCatalog"/>。</summary>
+        /// <summary>是否为占槽武器（10–19 名册内）。判定归 <see cref="EmberWeaponCatalog"/>。</summary>
         static bool IsRosterWeapon(int id)
         {
             return EmberWeaponCatalog.IsRosterWeapon(id);
@@ -268,7 +225,7 @@ namespace Emberlight
                 int cur;
                 weaponCount.TryGetValue(WeaponPierce, out cur);
                 if (cur < 1)
-                    weaponCount[WeaponPierce] = 0; // fan starts at 1 bolt (1+0)
+                    weaponCount[WeaponPierce] = 0; // 起手 1 支箭（1+0）
             }
         }
 
@@ -279,22 +236,14 @@ namespace Emberlight
             Score += amount;
         }
 
-        public int FinalScore()
-        {
-            return Score;
-        }
+        public int FinalScore() { return Score; }
 
-        public void OfferChoices()
-        {
-            Pending = 1;
-        }
+        /// <summary>标记"有一张待选的卡"；候选生成后调用一次。</summary>
+        public void OfferChoices() { Pending = 1; }
 
-        public bool SlotsFree()
-        {
-            return ownedWeapons.Count < WeaponSlots;
-        }
+        public bool SlotsFree() { return ownedWeapons.Count < WeaponSlots; }
 
-        /// <summary>Metamorph: own weapon + not yet taken. No exclusive prerequisite.</summary>
+        /// <summary>质变可否进池：已拥有对应武器且本局未拿过；无专属前置。</summary>
         public bool CanMetamorph(int metaId)
         {
             if (metamorphs.Contains(metaId))
@@ -303,11 +252,7 @@ namespace Emberlight
             return w > 0 && ownedWeapons.Contains(w);
         }
 
-        public bool CanEvolve(int evoId)
-        {
-            return CanMetamorph(evoId);
-        }
-
+        /// <summary>专属可否进池：已拥有对应武器且本局未拿过。</summary>
         public bool CanExclusive(int exclId)
         {
             if (exclusives.Contains(exclId))
@@ -316,20 +261,12 @@ namespace Emberlight
             return w > 0 && ownedWeapons.Contains(w);
         }
 
-        static int WeaponForMeta(int metaId)
-        {
-            return EmberWeaponCatalog.WeaponForMeta(metaId);
-        }
-
-        static int WeaponForExcl(int exclId)
-        {
-            return EmberWeaponCatalog.WeaponForExcl(exclId);
-        }
+        static int WeaponForMeta(int metaId) { return EmberWeaponCatalog.WeaponForMeta(metaId); }
+        static int WeaponForExcl(int exclId) { return EmberWeaponCatalog.WeaponForExcl(exclId); }
 
         /// <summary>
-        /// 生成候选：基础 3 张（通用/专属/质变，同屏唯一键 `(Id, WeaponId)`）+ 每个空位补 1 张未拥有武器。
-        /// 具体规则与随机数消耗顺序见 <see cref = "EmberChoicePool.Build"/>——
-        /// **不要在这里重建一套抽卡逻辑**，否则 jack 复现同一手牌局会看到不同的牌。
+        /// 生成候选并进入待选状态。抽卡规则与随机数消耗顺序全在 <see cref="EmberChoicePool.Build"/>，
+        /// **不要在这里重建第二套抽卡逻辑**，否则同一随机种子的牌局会变。
         /// </summary>
         public EmberOffer[] Choices(Random random, int waveCleared)
         {
@@ -338,7 +275,7 @@ namespace Emberlight
             return offers;
         }
 
-        /// <summary>Spend one free refresh; rebuild offer list. Returns false if none left.</summary>
+        /// <summary>消耗一次免费刷新并重建候选；没有次数或当前无待选卡时返回 false。</summary>
         public bool TryRefresh(Random random, int waveCleared, out EmberOffer[] offers)
         {
             offers = null;
@@ -349,13 +286,16 @@ namespace Emberlight
             return true;
         }
 
-        /// <summary>Apply pick. Returns true on success. grantedNewWeapon set when a roster weapon was newly owned.</summary>
+        /// <summary>
+        /// 应用一次选择。<paramref name="grantedNewWeapon"/> 为 true 表示这次拿到了一把新武器
+        /// （调用方据此补发一次选卡）。Id 分区见 `requirements.md` §4.7。
+        /// </summary>
         public bool Choose(EmberOffer offer, out bool grantedNewWeapon)
         {
             grantedNewWeapon = false;
             if (Pending == 0 || offer.Id < 0)
                 return false;
-            // Generics 0-3
+
             if (EmberRarityUtil.IsGenericId(offer.Id))
             {
                 switch (offer.Id)
@@ -403,7 +343,6 @@ namespace Emberlight
                 return true;
             }
 
-            // New / owned roster weapons 10-15 (v3: picking owned mid-run is not offered; still safe-guard)
             if (offer.Id >= 10 && offer.Id <= 19)
             {
                 if (!IsRosterWeapon(offer.Id))
@@ -421,7 +360,6 @@ namespace Emberlight
                 return true;
             }
 
-            // Metamorphs 20-29
             if (offer.Id >= 20 && offer.Id <= 29)
             {
                 if (!CanMetamorph(offer.Id))
@@ -432,7 +370,6 @@ namespace Emberlight
                 return true;
             }
 
-            // Exclusives 30-39
             if (offer.Id >= 30 && offer.Id <= 39)
             {
                 if (!CanExclusive(offer.Id))
@@ -446,31 +383,13 @@ namespace Emberlight
             return false;
         }
 
-        /// <summary>
-        /// ⚠️ **零调用点，且与现行需求冲突，不要调用它。**
-        ///
-        /// 它把护盾硬钳到 250——那是"护盾数值 /2"之前的旧口径残留。
-        /// 现行需求（`requirements.md` §4.4）是 250 / 500 / 750 / 1250 且可叠加，
-        /// 所以走这条路的钻石护盾会被砍成青铜护盾。
-        ///
-        /// 真正的护盾发放点在 <see cref = "Choose"/> 的 `StatShield` 分支（直接加算、不限上限）。
-        /// 保留本方法只是不想在这轮动公开 API；清理前先确认全仓无引用。
-        /// </summary>
-        public void AddShield(float amount)
+        public bool Choose(EmberOffer offer)
         {
-            if (amount <= 0)
-                return;
-            Shield += amount;
-            if (Shield > ShieldCapacity)
-                ShieldCapacity = Shield;
-            if (Shield > 250f)
-            {
-                Shield = 250f;
-                if (ShieldCapacity > 250f)
-                    ShieldCapacity = 250f;
-            }
+            bool unused;
+            return Choose(offer, out unused);
         }
 
+        /// <summary>先扣护盾、再算溢出伤害；返回仍需扣掉的生命值。</summary>
         public float AbsorbDamage(float damage)
         {
             damage = System.Math.Max(0, damage);
@@ -479,28 +398,22 @@ namespace Emberlight
             return damage - absorbed;
         }
 
-        public bool Choose(EmberOffer offer)
-        {
-            bool unused;
-            return Choose(offer, out unused);
-        }
-
         void ApplyExclusive(int id)
         {
             switch (id)
             {
                 case ExclBasic:
                     ExtraShots += EmberWeaponTuning.Basic.ExtraShots;
-                    break; // Weapon-Balance-v1
+                    break;
                 case ExclOrbit:
                     Orbits += EmberWeaponTuning.Orbit.ExtraOrbs;
-                    break; // Weapon-Balance-v1
+                    break;
                 case ExclTrail:
                     TrailExtend = true;
                     TrailPower += EmberWeaponTuning.Trail.ExtraPower;
                     break;
                 case ExclPierce:
-                    PierceLimit += EmberWeaponTuning.Pierce.ExtraTargets; // Weapon-Balance-v1: +1 layer only
+                    PierceLimit += EmberWeaponTuning.Pierce.ExtraTargets;
                     break;
                 case ExclBoom:
                     BoomExtraLegHit = true;
@@ -513,6 +426,7 @@ namespace Emberlight
 
         void ApplyMetamorph(int id)
         {
+            // MetaTrail / MetaBoom 需要额外状态；其余质变由武器 Tick 自查 HasMetamorph。
             switch (id)
             {
                 case MetaTrail:
@@ -521,22 +435,10 @@ namespace Emberlight
                 case MetaBoom:
                     BoomExtraTrips += EmberWeaponTuning.Boom.ExtraTrips;
                     break;
-                case MetaMeteor:
-                    // size/dmg handled in weapon via HasMetamorph
-                    break;
-            // MetaBasic / MetaOrbit / MetaPierce: weapon Tick gates on HasEvolved/HasMetamorph
             }
         }
 
-        public float HealAmount(EmberRarity rarity)
-        {
-            return 20f + 10f * (int)rarity;
-        }
-
-        /// <summary>
-        /// UI API：候选张数公式 `3 + 空位数`。
-        /// 转发到 <see cref = "EmberChoicePool.ExpectedCount"/>，避免公式出现第二个版本。
-        /// </summary>
+        /// <summary>UI API：候选张数公式 `3 + 空位数`，转发到 <see cref="EmberChoicePool.ExpectedCount"/>。</summary>
         public int OfferCountExpected()
         {
             return EmberChoicePool.ExpectedCount(this);
