@@ -118,6 +118,7 @@ EmberCombat 每帧 / 每波查询同一 config 实例：
 
 ## 影响与回归范围
 
+- `SpawnScreenPadding` / `SpawnBandWidth` / `SpawnMapInset` 控制普通与遭遇杂兵的屏外外沿带和地图内缩，完整权威值见 requirements §3.1；只影响落点，不改变配额、间隔、Boss 与分裂规则。回归覆盖地图边缘、不同视口比例、无合法区域和配额重试。
 - **直接影响模块**：M3（消费全部数值）、M2（消费 `PicksAfterWave`）、M6（显示 `DifficultyName` / `WaveName`）、M5（消费敌人血量/速度/词缀概率）。
 - **必须复验的契约**：难度倍率表、`QuotaForWave` 与 `SpawnInterval` 的钳制、`PicksAfterWave` 的三种分支、`IsBossWave` / `IsEliteWave` 的互斥性。
 - **对应验收项**：`01-config-tuning-test.md`。
@@ -129,3 +130,7 @@ EmberCombat 每帧 / 每波查询同一 config 实例：
 | `Default` 是否改为缓存实例 | 缓存为 `static readonly` / 保持每次新建 | 高频访问时的分配；语义上 `Default` 可被误改 | xiaoCoder |
 | 配置载体是否迁移 ScriptableObject | 保持代码类 / 迁 SO 资产 | 影响策划自主调参能力与资源管线 | jack + xiaoPlanner |
 | 波次数组字段是否收为只读 | 改 `IReadOnlyList` / 保持 `public int[]` | 防止运行时误改配置 | xiaoCoder |
+
+## 武器配置边界（2026-10-13）
+
+武器基础参数与专属增量集中在 `Core/EmberWeaponTuning.cs`，供构筑应用、武器计算与 UI 预览共用；所属行为路由见 M4。LevelConfig 仍负责关卡与敌人参数，本次没有改动数值表。回归包括六武器冷却、伤害、专属与质变预览一致性，结果见 `../实现说明.md`。

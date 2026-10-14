@@ -56,6 +56,10 @@
 | 间隔修正 | 乘难度 `IntervalMultiplier`，下限 0.14 秒 |
 | 清波条件 | 本波配额刷完 **且** 场上敌人为 0 |
 | 同时存在敌人上限 | 150 |
+| 普通/遭遇杂兵出生 | 完整相机视口外的随机外沿带，且位于地图内；无合法区域时暂缓，不消耗配额 |
+| 屏外预留边距 / 外沿带宽 / 地图内缩 | 1.2 / 2 / 0.8 世界单位（LevelConfig 配置） |
+
+Boss 与母体死亡点附近的分裂子体保留现有特殊落点；上述屏外规则不改变其出场机制。
 
 ### 3.2 精英与 Boss
 
@@ -238,10 +242,11 @@
 | 命名空间 | `Emberlight`；编辑器为 `Emberlight.Editor` |
 | 渲染 | Built-in；正交相机 |
 | UI | uGUI + TextMeshProUGUI；竖屏 540×960 锚点 |
+| UI 编辑预览 | 场景持有 UIRoot 与 IntroRoot Prefab 实例；停止 Play 默认预览主菜单，加载页可在 IntroRoot 的 Prefab Mode 预览。图片使用持久资源引用；运行时绑定已有视图，不另建主 UI 或加载页，不覆盖手动布局；中文字体仍先经过 ValidateBaked |
 | 输入 | 旧版 Input（`Input.GetKeyDown` 等）；虚拟摇杆为自绘 |
 | 中文 | **预烘静态图集优先**：`EmberFonts.CreateChinese()` 读取 `Resources/Fonts/NotoSansCJKsc-Regular SDF.asset`（由 `Emberlight.Editor.EmberFontBake.Bake` 烘制）；经 `EmberFonts.ValidateBaked` 闸门校验通过才使用，失败则**回落运行时动态 SDF 图集** |
 | 帧率 | `targetFrameRate = 60`、`vSyncCount = 0`（移动端默认封顶 30，必须显式设置） |
-| 程序集 | `Assets` 下**无自建 `.asmdef`**，全部编译进 `Assembly-CSharp` / `Assembly-CSharp-Editor`（`Packages/` 内第三方包的 asmdef 不计） |
+| 程序集 | Runtime、Editor、EditMode.Tests、PlayMode.Tests 分离；源码与测试不在 Assembly-CSharp。Runtime 内模块边界见架构契约 |
 | 包名 / 版本 | `com.Emberlight.Wanderer` / `0.1.0`（versionCode 1） |
 | 最低 / 目标 API | 24 / 35；IL2CPP；ARM64 + ARMv7 |
 
@@ -253,9 +258,15 @@
 >
 > 本节旧口径（「`EmberFonts` 固定走动态图集，不要改回预烘」）是 **2026-09-15 之前**的表述，已被预烘静态图集方案取代，不要再引用。
 
+### 源码维护与工程交付（2026-10-13）
+
+生命规则与选卡推进不得读取场景句柄或创建音频单例。武器身份与基础文案集中在 `EmberWeaponCatalog`；基础参数与升级增量集中在 `EmberWeaponTuning`。卡牌预览应与实际效果一致。共享燃地由独立效果模块管理。死亡结算须同时更新整局击杀与波次记录。提交物包含可重新导入的工程、实际资源、源码与 .meta，不能只有可执行程序。
+
 ### UI 复用与状态栏呈现（2026-09-15）
 
-设置与升级面板应复用运行时创建的控件，重复打开不重建整个界面。刷新、关闭和再次打开须正确重置交互状态，不改变选项规则和设置语义。战斗 HUD 保留生命、护盾、波次、武器、幸运和暂停功能，通过细条与独立文字行改善层次与可读性。
+菜单、开局选择、设置与升级面板复用 Prefab 中的控件，重复打开不重建整个界面。刷新、关闭和再次打开须正确重置交互状态与业务回调，不改变选项规则和设置语义。战斗 HUD 保留生命、护盾、波次、武器、幸运和暂停功能，通过细条与独立文字行改善层次与可读性。EmberIntro 绑定 IntroRoot 已有控件并推进加载；校验字体后才显示加载页，加载就绪后接受继续输入并隐藏视图，不销毁 Prefab 实例。
+
+运行时不回落到代码创建控件；缺少面板引用或缓存容量不足时报配置错误。控件工厂与旧快照补建仅在 Editor 中运行。HUD 的生命/护盾/构筑/击杀文字随对应值变化更新，时间按显示秒更新；波次文案只有一个写入点，内容和原展示一致。
 
 
 ## 8. 验收口径
@@ -274,8 +285,8 @@
 
 | 问题 | 候选 | 影响 | 需要谁裁定 |
 |------|------|------|------------|
-| 是否补齐自动化测试基础设施 | 建 asmdef + EditMode/PlayMode 测试程序集 / 维持现状纯手测 | 当前全部验收依赖手测，回归成本随规模上升 | jack |
+| 是否进一步扩充行为测试 | 基础设施已建立；继续补各武器、敌人、Boss 与完整胜负流程 | 当前套件只覆盖已有规则及部分集成路径，不能代替全面验收 | jack |
 | 原 `Emberlight-Design.md` 是否彻底废弃 | 已归档至 `archive/` + 重写为本文 / 彻底删除 | 归档版本含过期数值（6 波节奏、旧血量倍率），虽已加作废头注仍可能被误读 | jack |
 | 冲击波是否恢复入口 | 恢复为不占槽的 Stat 词条 / 永久删除 | 涉及 `WavePower` 与 `EmberPulseWeapon` 死代码 | jack + xiaoPlanner |
-| `RunProgress` 的 8 个零调用点成员是否清理 | 直接删除 / 保留待用 | 清单见 `architecture/02-run-progression.md`；误当成契约会浪费排查时间 | jack + xiaoCoder |
+| `RunProgress` 的历史兼容成员是否清理 | 直接删除 / 保留待用 | 清单见 `architecture/02-run-progression.md`；误当成契约会浪费排查时间 | jack + xiaoCoder |
 | `EmberRunState` 是否再拆为"纯数据 + 场景句柄" | 拆 / 维持现状 | 拆开后可脱离 Unity 单测的面更大，但多一层间接；当前 `EmberKeeperVitals` 与 `RunFlowController` 已可测 | jack + xiaoCoder |

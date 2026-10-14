@@ -2,7 +2,7 @@
 
 > 对应架构：`09-build-platform.md`
 > 对应需求：`../requirements.md` §7
-> ⚠️ 项目当前**无测试基础设施**，见 `00-overview.md` §测试现状。
+> ⚠️ 工程已有 EditMode / PlayMode 基础设施；本表未实现的条目仍标待建，见 `00-overview.md` §测试现状。
 > 已执行本地工具清理后的包解析与编辑器编译；尚未实际构建过 APK，也未做真机检查（见 `09-build-platform.md`）。
 
 ## 自动化测试计划与证据
@@ -11,18 +11,18 @@
 
 | 编号 | 层级 | 拟测试路径与名称 | 行为 | 红灯原因或 N/A 理由 | 最近结果 |
 |------|------|------------------|------|---------------------|----------|
-| A1 | EditMode（待建） | `PlayerSettingsTests::OrientationIsPortraitOnly` | `Default Orientation = Portrait`，自动旋转仅竖屏 | 横屏会让按 540×960 硬编码的 UI 错乱 | 未执行（无测试程序集） |
-| A2 | EditMode（待建） | `PlayerSettingsTests::ScriptingBackendIsIl2CppArm64` | IL2CPP + ARM64 且含 ARMv7 | ARM64 是 Google Play 强制项 | 未执行（无测试程序集） |
-| A3 | EditMode（待建） | `PlayerSettingsTests::ApiLevelsArePinned` | Min 24、Target 35（不跟随本机最高 SDK） | — | 未执行（无测试程序集） |
-| A4 | EditMode（待建） | `PlayerSettingsTests::PackageNameAndVersionAreSet` | `com.Emberlight.Wanderer`、`0.1.0`、versionCode 1 | — | 未执行（无测试程序集） |
-| A5 | EditMode（待建） | `PlayerSettingsTests::MainSceneIsEnabledAndUnique` | `Emberlight.unity` 在 Scenes In Build 且已勾选 | — | 未执行（无测试程序集） |
-| A6 | EditMode（待建） | `PlayerSettingsTests::ManagedStrippingIsLow` | Managed Stripping = Low | 提高剥离级别可能剥掉反射用类型 | 未执行（无测试程序集） |
-| A7 | EditMode（待建） | `TextureOverrideTests::DoodleAtlasesAreUncompressedOnAndroid` | 三张图集 `.meta` 的 Android 覆写为 Uncompressed | 回退 ETC2 会让描边起块状伪影 | 未执行（无测试程序集） |
-| A8 | EditMode（待建） | `BuildConfigTests::DevelopmentBuildDisabledForRelease` | Release 配置下 Development Build / Script Debugging / Profiler 连接 / 深度分析全部关闭 | 误带调试开关会拖慢并对玩家暴露信息 | 未执行（无测试程序集） |
-| A9 | EditMode（待建） | `BuildConfigTests::SignedBuildStopsWhenEnvVarsMissing` | 缺任一 keystore 环境变量时构建停止并列出缺失项 | — | 未执行（无测试程序集） |
-| A10 | EditMode（待建） | `BuildConfigTests::PasswordsAreNeverPersisted` | 口令不写入 `ProjectSettings.asset`，构建后签名设置被还原 | 明文口令进 git 是安全事故 | 未执行（无测试程序集） |
-| A11 | EditMode（待建） | `RepoHygieneTests::KeystoreFilesAreGitIgnored` | `*.keystore` / `*.jks` 命中 `.gitignore` | — | 未执行（无测试程序集） |
-| A12 | EditMode（待建） | `RepoHygieneTests::DoesNotReferenceDeletedValidationEntryPoints` | 仓库中不存在对已删除 `EmberChecks` / `Validate*` / `EmberUIRenderCheck` 的活引用 | 防止文档与代码继续引用不存在的验收入口 | 未执行（无测试程序集） |
+| A1 | EditMode（待建） | `PlayerSettingsTests::OrientationIsPortraitOnly` | `Default Orientation = Portrait`，自动旋转仅竖屏 | 横屏会让按 540×960 硬编码的 UI 错乱 | 待建（本条独立用例未实现） |
+| A2 | EditMode（待建） | `PlayerSettingsTests::ScriptingBackendIsIl2CppArm64` | IL2CPP + ARM64 且含 ARMv7 | ARM64 是 Google Play 强制项 | 待建（本条独立用例未实现） |
+| A3 | EditMode（待建） | `PlayerSettingsTests::ApiLevelsArePinned` | Min 24、Target 35（不跟随本机最高 SDK） | — | 待建（本条独立用例未实现） |
+| A4 | EditMode（待建） | `PlayerSettingsTests::PackageNameAndVersionAreSet` | `com.Emberlight.Wanderer`、`0.1.0`、versionCode 1 | — | 待建（本条独立用例未实现） |
+| A5 | EditMode（待建） | `PlayerSettingsTests::MainSceneIsEnabledAndUnique` | `Emberlight.unity` 在 Scenes In Build 且已勾选 | — | 待建（本条独立用例未实现） |
+| A6 | EditMode（待建） | `PlayerSettingsTests::ManagedStrippingIsLow` | Managed Stripping = Low | 提高剥离级别可能剥掉反射用类型 | 待建（本条独立用例未实现） |
+| A7 | EditMode（待建） | `TextureOverrideTests::DoodleAtlasesAreUncompressedOnAndroid` | 三张图集 `.meta` 的 Android 覆写为 Uncompressed | 回退 ETC2 会让描边起块状伪影 | 待建（本条独立用例未实现） |
+| A8 | EditMode（待建） | `BuildConfigTests::DevelopmentBuildDisabledForRelease` | Release 配置下 Development Build / Script Debugging / Profiler 连接 / 深度分析全部关闭 | 误带调试开关会拖慢并对玩家暴露信息 | 待建（本条独立用例未实现） |
+| A9 | EditMode（待建） | `BuildConfigTests::SignedBuildStopsWhenEnvVarsMissing` | 缺任一 keystore 环境变量时构建停止并列出缺失项 | — | 待建（本条独立用例未实现） |
+| A10 | EditMode（待建） | `BuildConfigTests::PasswordsAreNeverPersisted` | 口令不写入 `ProjectSettings.asset`，构建后签名设置被还原 | 明文口令进 git 是安全事故 | 待建（本条独立用例未实现） |
+| A11 | EditMode（待建） | `RepoHygieneTests::KeystoreFilesAreGitIgnored` | `*.keystore` / `*.jks` 命中 `.gitignore` | — | 待建（本条独立用例未实现） |
+| A12 | EditMode（待建） | `RepoHygieneTests::DoesNotReferenceDeletedValidationEntryPoints` | 仓库中不存在对已删除 `EmberChecks` / `Validate*` / `EmberUIRenderCheck` 的活引用 | 防止文档与代码继续引用不存在的验收入口 | 待建（本条独立用例未实现） |
 | A13 | 手动/CI | 实际 APK 构建 | 构建成功并产出 APK | **尚未执行过** | 未验证 |
 | A14 | N/A | PlayerSettings 之外的平台服务（支付、推送、云存档） | — | 项目明确不做联网与付费 | N/A |
 
@@ -30,7 +30,7 @@
 
 | 日期 | Unity 版本与环境 | 命令或 Test Runner 过滤器 | 结果文件 | 结论 |
 |------|------------------|---------------------------|----------|------|
-| — | — | 尚无可执行的测试程序集 | — | **未验证** |
+| — | — | 历史计划尚未实现；当前运行记录见 `../实现说明.md` | — | **未验证** |
 | — | Unity 2022.3.62f3 | `-executeMethod Emberlight.Editor.EmberAndroidBuild.BuildLocalApk` | `Builds/android-build.log`（预期） | **未执行** |
 
 ## 手动验收前置条件
@@ -84,3 +84,7 @@
 - **未验证**：A1–A12 全部（阻塞原因：项目无 asmdef 与测试程序集）；A13 因**尚未执行构建**而未验证。
 - **未通过**：无。
 - **下一步建议顺序**：打调试包 → 真机手感与性能 → 定 keystore 与图标 → 修崩溃 → 出 AAB。
+
+## 工程交付回归（2026-10-13）
+
+`run-tests.ps1` 拒绝 Unity 退出 0 但测试数为 0 的假通过；离线编译只输出隔离目录，不覆盖 Bee 引用程序集。`export-project.ps1` 验证实际资源/.meta，并导出可重新导入工程。无 Library 的导入、测试以及具体结果见 `../实现说明.md`；本轮没有 APK/真机或签名验收。

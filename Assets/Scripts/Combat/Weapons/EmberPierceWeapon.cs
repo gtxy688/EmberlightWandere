@@ -18,7 +18,6 @@ namespace Emberlight
 
         readonly List<Arrow> arrows = new List<Arrow>();
         float cd;
-
         public override void Reset()
         {
             arrows.Clear();
@@ -27,18 +26,17 @@ namespace Emberlight
 
         public override void Tick(float dt, EmberWeaponContext ctx)
         {
-            if (ctx.Progress == null || !ctx.Progress.OwnsWeapon(RunProgress.WeaponPierce)) return;
-
+            if (ctx.Progress == null || !ctx.Progress.OwnsWeapon(RunProgress.WeaponPierce))
+                return;
             cd -= dt;
             // Hotfix: only shoot while standing; in-flight arrows keep ticking below.
             if (cd <= 0 && ctx.PlayerStanding && ctx.EnemyCount() > 0)
             {
                 Fire(ctx, ctx.PlayerPos, null, false);
-                cd = 1.1f / (1f + ctx.Progress.WeaponAttackSpeed(RunProgress.WeaponPierce));
+                cd = EmberWeaponTuning.Pierce.Cooldown / (1f + ctx.Progress.WeaponAttackSpeed(RunProgress.WeaponPierce));
             }
 
             bool splitMeta = ctx.Progress.HasMetamorph(RunProgress.MetaPierce);
-
             for (int i = arrows.Count - 1; i >= 0; i--)
             {
                 var a = arrows[i];
@@ -47,16 +45,23 @@ namespace Emberlight
                 a.view.transform.position += (Vector3)(a.velocity * dt);
                 if (!ctx.Visible(a.view.transform.position) || a.life <= 0 || a.hitsLeft <= 0)
                 {
-                    if (ctx.Pool != null) ctx.Pool.Release("fire", a.view); else Object.Destroy(a.view.gameObject);
+                    if (ctx.Pool != null)
+                        ctx.Pool.Release("fire", a.view);
+                    else
+                        Object.Destroy(a.view.gameObject);
                     arrows.RemoveAt(i);
                     continue;
                 }
-                if (ctx.Intercept != null) ctx.Intercept(previous, a.view.transform.position, .2f);
+
+                if (ctx.Intercept != null)
+                    ctx.Intercept(previous, a.view.transform.position, .2f);
                 for (int j = ctx.EnemyCount() - 1; j >= 0; j--)
                 {
                     var e = ctx.GetEnemy(j);
-                    if (e == null || !e.Targetable) continue;
-                    if (a.hit.Contains(e)) continue;
+                    if (e == null || !e.Targetable)
+                        continue;
+                    if (a.hit.Contains(e))
+                        continue;
                     if (Vector2.Distance(a.view.transform.position, e.view.position) < e.radius + .2f)
                     {
                         a.hit.Add(e);
@@ -64,7 +69,11 @@ namespace Emberlight
                         a.hitsLeft--;
                         if (splitMeta && !a.isSplit)
                             SpawnSplit(ctx, a.view.transform.position, a.velocity.normalized);
-                        if (a.hitsLeft <= 0) { a.life = 0; break; }
+                        if (a.hitsLeft <= 0)
+                        {
+                            a.life = 0;
+                            break;
+                        }
                     }
                 }
             }
@@ -79,36 +88,33 @@ namespace Emberlight
         void Fire(EmberWeaponContext ctx, Vector2 origin, Vector2? forcedDir, bool isSplit)
         {
             Vector2 dir;
-            if (forcedDir.HasValue) dir = forcedDir.Value.normalized;
+            if (forcedDir.HasValue)
+                dir = forcedDir.Value.normalized;
             else
             {
                 int nearest = ctx.FindNearestVisibleEnemy();
-                if (nearest < 0) return;
+                if (nearest < 0)
+                    return;
                 var target = ctx.GetEnemy(nearest);
                 dir = ((Vector2)target.view.position - origin).normalized;
             }
+
             int count = isSplit ? 1 : (1 + ctx.Progress.WeaponCount(RunProgress.WeaponPierce));
-            float dmg = 30f * ctx.Progress.DamageMul * (1f + ctx.Progress.WeaponMagnitude(RunProgress.WeaponPierce)) * (isSplit ? 0.45f : 1f);
+            float dmg = EmberWeaponTuning.Pierce.Damage * ctx.Progress.DamageMul * (1f + ctx.Progress.WeaponMagnitude(RunProgress.WeaponPierce)) * (isSplit ? EmberWeaponTuning.Pierce.SplitDamage : 1f);
             int limit = ctx.Progress.PierceLimit;
-            if (limit < 1) limit = 1;
+            if (limit < 1)
+                limit = 1;
             float size = isSplit ? .18f : .28f;
-            float speed = isSplit ? 10f : 12f;
-            if (!isSplit) EmberAudio.Ensure().PlayWeaponPierceArrow();
+            float speed = isSplit ? EmberWeaponTuning.Pierce.SplitSpeed : EmberWeaponTuning.Pierce.Speed;
+            if (!isSplit)
+                ctx.PlaySound?.Invoke(EmberWeaponSound.PierceArrow);
             for (int i = 0; i < count; i++)
             {
                 Vector2 v = Quaternion.Euler(0, 0, (i - (count - 1) * .5f) * 12f) * dir;
                 var r = ctx.Pool != null ? ctx.Pool.RentFire(ctx.World, origin, size) : EmberArt.Fire(ctx.World, origin, size);
-                EmberWorldArt.Projectile(r,11,isSplit?.25f:.40f,isSplit?.48f:.80f);
+                EmberWorldArt.Projectile(r, 11, isSplit ? .25f : .40f, isSplit ? .48f : .80f);
                 r.transform.rotation = Quaternion.Euler(0, 0, Mathf.Atan2(v.y, v.x) * Mathf.Rad2Deg - 90);
-                arrows.Add(new Arrow
-                {
-                    view = r,
-                    velocity = v * speed,
-                    life = isSplit ? 1.0f : 2.2f,
-                    damage = dmg,
-                    hitsLeft = isSplit ? 1 : limit,
-                    isSplit = isSplit
-                });
+                arrows.Add(new Arrow { view = r, velocity = v * speed, life = isSplit ? EmberWeaponTuning.Pierce.SplitLifetime : EmberWeaponTuning.Pierce.Lifetime, damage = dmg, hitsLeft = isSplit ? 1 : limit, isSplit = isSplit });
             }
         }
     }

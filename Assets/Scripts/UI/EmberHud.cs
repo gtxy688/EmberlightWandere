@@ -4,132 +4,106 @@ using TMPro;
 
 namespace Emberlight
 {
+    /// <summary>绑定 HUD 视图；条形值随状态更新，文字仅在对应显示数据变化时刷新。</summary>
     public sealed class EmberHud
     {
-        public readonly GameObject Root;
-        readonly Image health, waveFill, bossFill, shield;
-        readonly TextMeshProUGUI shieldText;
-        readonly TextMeshProUGUI healthText, waveText, clock, bossText;
+        public GameObject Root { get; }
+        readonly Image health, shield, waveFill, bossFill;
+        readonly TextMeshProUGUI healthText, shieldText, waveText, clock, bossText, encounterLabel;
         readonly GameObject bossRoot, encounterRoot;
-        readonly TextMeshProUGUI encounterLabel;
-        readonly TMP_FontAsset font;
+        bool hasStats;
+        float lastHealth, lastMaxHealth, lastShield;
+        int lastSecond, lastKills, lastOwned, lastSlots, lastLuck;
+        int lastWave = -1, lastTotal = -1;
+        string lastDifficulty, lastWaveName, lastBossPhase;
 
-        public EmberHud(Transform parent, TMP_FontAsset fontAsset, System.Action pause)
+        public EmberHud(EmberUiRoot.HudReferences view, System.Action pause)
         {
-            font = fontAsset;
-            Root = Box(parent, "Battle HUD", new Vector2(.04f, .83f), new Vector2(.96f, .995f), new Color(.02f, .035f, .055f, .9f)).gameObject;
-            var frame = Root.GetComponent<Image>();
-            frame.sprite = EmberUiArt.Get(EmberUiArt.Piece.Panel);
-            frame.color = Color.white;
-            frame.pixelsPerUnitMultiplier = 4f;
-            clock = Text(Root.transform, font, "", 14, new Vector2(.055f, .76f), new Vector2(.80f, .95f));
-            clock.enableAutoSizing = true;
-            clock.fontSizeMin = 10;
-            clock.fontSizeMax = 14;
-            clock.overflowMode = TextOverflowModes.Ellipsis;
-            health = Bar(Root.transform, "Life", new Vector2(.06f, .46f), new Vector2(.94f, .66f), new Color(.72f, .22f, .22f));
-            healthText = Text(health.transform.parent, font, "", 16, Vector2.zero, Vector2.one);
-            shield = Bar(Root.transform, "Shield", new Vector2(.06f, .35f), new Vector2(.94f, .40f), new Color(.20f, .72f, .96f));
-            shieldText = Text(Root.transform, font, "", 12, new Vector2(.60f, .235f), new Vector2(.94f, .35f));
-            shieldText.alignment = TextAlignmentOptions.Right;
-            waveFill = Bar(Root.transform, "Wave", new Vector2(.06f, .08f), new Vector2(.94f, .115f), new Color(.94f, .66f, .22f));
-            waveText = Text(Root.transform, font, "", 13, new Vector2(.06f, .115f), new Vector2(.94f, .235f));
-            var b = Box(Root.transform, "Pause", new Vector2(.82f, .74f), new Vector2(.95f, .95f), new Color(.12f, .19f, .25f));
-            b.sprite = EmberCardFrames.Get(EmberRarity.Silver);
-            b.color = Color.white;
-            b.pixelsPerUnitMultiplier = 7f;
-            Text(b.transform, font, "\u6682\u505c", 13, Vector2.zero, Vector2.one);
-            b.gameObject.AddComponent<Button>().onClick.AddListener(() => pause());
-            bossRoot = Box(parent, "Boss HUD", new Vector2(.10f, .745f), new Vector2(.90f, .815f), new Color(.025f, .02f, .045f, .93f)).gameObject;
-            var bossFrame = bossRoot.GetComponent<Image>();
-            bossFrame.sprite = EmberCardFrames.Get(EmberRarity.Gold);
-            bossFrame.color = Color.white;
-            bossFrame.pixelsPerUnitMultiplier = 5f;
-            bossText = Text(bossRoot.transform, font, "", 16, new Vector2(.02f, .47f), new Vector2(.98f, 1));
-            bossFill = Bar(bossRoot.transform, "Boss life", new Vector2(.04f, .13f), new Vector2(.96f, .42f), new Color(.83f, .27f, .58f));
-            bossRoot.SetActive(false);
-            encounterRoot = Box(Root.transform, "Encounter banner", new Vector2(.06f, -.40f), new Vector2(.94f, -.06f), new Color(.12f, .04f, .10f, .92f)).gameObject;
-            encounterRoot.GetComponent<Image>().raycastTarget = false;
-            encounterLabel = Text(encounterRoot.transform, font, "", 21, Vector2.zero, Vector2.one);
+            Root = view.Root;
+            health = view.Health;
+            shield = view.Shield;
+            waveFill = view.WaveFill;
+            bossFill = view.BossFill;
+            healthText = view.HealthText;
+            shieldText = view.ShieldText;
+            waveText = view.WaveText;
+            clock = view.Clock;
+            bossText = view.BossText;
+            bossRoot = view.BossRoot;
+            encounterRoot = view.EncounterRoot;
+            encounterLabel = view.EncounterLabel;
+            view.Pause.onClick.AddListener(() => pause?.Invoke());
+            Show(false);
             encounterRoot.SetActive(false);
         }
 
         public void Set(float hp, float max, RunProgress progress, float seconds, int kills, int wave, int waveRemaining, int waveQuota)
         {
-            shield.fillAmount = progress.ShieldCapacity > 0 ? progress.Shield / progress.ShieldCapacity : 0;
-            shieldText.text = "护盾 " + progress.Shield.ToString("0");
-            health.fillAmount = Mathf.Clamp01(hp / max);
-            healthText.text = "\u751f\u547d\u0020\u0020" + Mathf.Max(0, hp).ToString("0") + " / " + max.ToString("0");
-            float progress01 = waveQuota > 0 ? 1f - Mathf.Clamp01((float)waveRemaining / waveQuota) : 1f;
-            if (waveQuota <= 0) progress01 = 1f;
-            waveFill.fillAmount = progress01;
-            if (waveQuota > 0)
-                waveText.text = "\u7b2c\u0020" + wave + "\u0020\u6ce2\u0020\u0020\u00b7\u0020\u0020\u5269\u4f59\u0020" + waveRemaining + "\u0020/\u0020" + waveQuota;
-            else
-                waveText.text = "\u7b2c\u0020" + wave + "\u0020\u6ce2\u0020\u0020\u00b7\u0020\u0020Boss";
-            string slots = progress != null
-                ? ("     \u6b66\u5668 " + progress.OwnedWeaponCount + "/" + progress.WeaponSlots
-                   + "     \u5e78\u8fd0 " + Mathf.RoundToInt(progress.Luck))
-                : "";
-            clock.text = ((int)seconds / 60).ToString("00") + ":" + ((int)seconds % 60).ToString("00")
-                + "     \u51fb\u6740 " + kills
-
-                + slots;
+            float shieldValue = progress != null ? progress.Shield : 0;
+            float capacity = progress != null ? progress.ShieldCapacity : 0;
+            shield.fillAmount = capacity > 0 ? shieldValue / capacity : 0;
+            health.fillAmount = max > 0 ? Mathf.Clamp01(hp / max) : 0;
+            waveFill.fillAmount = waveQuota > 0 ? 1f - Mathf.Clamp01((float)waveRemaining / waveQuota) : 1f;
+            if (!hasStats || shieldValue != lastShield)
+            {
+                shieldText.text = "护盾 " + shieldValue.ToString("0");
+                lastShield = shieldValue;
+            }
+            if (!hasStats || hp != lastHealth || max != lastMaxHealth)
+            {
+                healthText.text = "生命  " + Mathf.Max(0, hp).ToString("0") + " / " + max.ToString("0");
+                lastHealth = hp;
+                lastMaxHealth = max;
+            }
+            int second = Mathf.Max(0, (int)seconds);
+            int owned = progress != null ? progress.OwnedWeaponCount : -1;
+            int slots = progress != null ? progress.WeaponSlots : -1;
+            int luck = progress != null ? Mathf.RoundToInt(progress.Luck) : -1;
+            if (!hasStats || second != lastSecond || kills != lastKills || owned != lastOwned || slots != lastSlots || luck != lastLuck)
+            {
+                string build = progress != null ? "     武器 " + owned + "/" + slots + "     幸运 " + luck : "";
+                clock.text = (second / 60).ToString("00") + ":" + (second % 60).ToString("00") + "     击杀 " + kills + build;
+                lastSecond = second;
+                lastKills = kills;
+                lastOwned = owned;
+                lastSlots = slots;
+                lastLuck = luck;
+            }
+            hasStats = true;
         }
 
+        /// <summary>波次文字的唯一写入点，保留原难度/波数/波名呈现。</summary>
         public void Stage(int wave, int total, string difficulty, string name)
         {
+            if (wave == lastWave && total == lastTotal && difficulty == lastDifficulty && name == lastWaveName) return;
             waveText.text = difficulty + " · " + wave + "/" + total + " 波 · " + name;
+            lastWave = wave;
+            lastTotal = total;
+            lastDifficulty = difficulty;
+            lastWaveName = name;
         }
 
         public void Encounter(string message)
         {
             bool show = !string.IsNullOrEmpty(message);
-            encounterRoot.SetActive(show);
+            if (encounterRoot.activeSelf != show) encounterRoot.SetActive(show);
             if (show && encounterLabel.text != message) encounterLabel.text = message;
         }
 
-        public void Show(bool visible) { Root.SetActive(visible); if (!visible) bossRoot.SetActive(false); }
+        public void Show(bool visible)
+        {
+            if (Root.activeSelf != visible) Root.SetActive(visible);
+            if (!visible) bossRoot.SetActive(false);
+        }
+
         public void Boss(float ratio, string phase, bool show)
         {
-            bossRoot.SetActive(show);
+            if (bossRoot.activeSelf != show) bossRoot.SetActive(show);
+            if (!show) return;
             bossFill.fillAmount = Mathf.Clamp01(ratio);
-            bossText.text = "\u957f\u591c\u5b88\u536b\u0020\u0020\u00b7\u0020\u0020" + phase;
-        }
-
-        public static Image Box(Transform parent, string name, Vector2 min, Vector2 max, Color color)
-        {
-            var g = new GameObject(name, typeof(RectTransform), typeof(Image));
-            g.transform.SetParent(parent, false);
-            var r = (RectTransform)g.transform;
-            r.anchorMin = min; r.anchorMax = max; r.offsetMin = r.offsetMax = Vector2.zero;
-            var im = g.GetComponent<Image>();
-            im.sprite = EmberArt.Panel; im.type = Image.Type.Sliced; im.color = color;
-            return im;
-        }
-
-        public static Image Bar(Transform parent, string name, Vector2 min, Vector2 max, Color color)
-        {
-            var track = Box(parent, name + " track", min, max, new Color(.04f, .075f, .105f));
-            var fill = Box(track.transform, name + " fill", Vector2.zero, Vector2.one, color);
-            fill.type = Image.Type.Filled; fill.fillMethod = Image.FillMethod.Horizontal; fill.fillOrigin = 0; fill.raycastTarget = false;
-            return fill;
-        }
-
-        public static TextMeshProUGUI Text(Transform parent, TMP_FontAsset font, string value, float size, Vector2 min, Vector2 max)
-        {
-            var g = new GameObject("Label", typeof(RectTransform));
-            g.transform.SetParent(parent, false);
-            var r = (RectTransform)g.transform;
-            r.anchorMin = min; r.anchorMax = max; r.offsetMin = r.offsetMax = Vector2.zero;
-            var t = g.AddComponent<TextMeshProUGUI>();
-            t.font = font; t.text = value; t.fontSize = size;
-            t.alignment = TextAlignmentOptions.Center;
-            t.color = new Color(1, .92f, .76f);
-            t.raycastTarget = false;
-            t.enableWordWrapping = false;
-            t.overflowMode = TextOverflowModes.Overflow;
-            return t;
+            if (phase == lastBossPhase) return;
+            bossText.text = "长夜守卫  ·  " + phase;
+            lastBossPhase = phase;
         }
     }
 }

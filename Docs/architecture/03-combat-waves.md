@@ -42,10 +42,10 @@ EmberGame.Update()                       ← 组合根只负责顺序（见 00-c
    └─ combat.Tick(dt)                    ← EmberCombat 只是战斗根：装配 + 每帧顺序
         ├─ waves.Tick(dt)                            EmberWaveDirector
         │     ├─ 刷怪：waveSpawned < QuotaForWave(wave) && EnemyCount < EnemyLimit
-        │     │     └─ host.SpawnRolledTrash() → roster.Spawn(...)
+        │     │     └─ host.TrySpawnRolledTrash() → roster.Spawn(...)，成功才消耗配额
         │     │           └─ RollKind(wave, rng) → TrashHp(wave, kind) → AffixChance(wave)
         │     ├─ Boss 预警倒计时结束 → host.SpawnBoss()
-        │     └─ 遭遇事件：waveSpawned 达本波 50% 配额时触发一次 → host.SpawnTrashAt(...)
+        │     └─ 遭遇事件：waveSpawned 达本波 50% 配额时触发一次 → host.TrySpawnTrashAt(...)
         ├─ healingDrops.Tick(dt, player)
         ├─ enemyProjectiles.Move(dt)
         ├─ TickEnemies(dt)：闪白 / 重生读条 / e.ai.Tick（Boss）/ behavior.Tick / 接触伤害 / 灼热检测
@@ -159,7 +159,8 @@ Loading → Menu → SelectLength → SelectDifficulty → SelectSlots → Selec
 | `EmberCombat.Wave` / `WaveQuota` / `WaveSpawned` / `WaveKilled` / `WaveRemaining` / `KillsRemaining` / `EnemyCount` / `Boss` / `BossAlive` | 属性 | — | `int` / `EmberEnemy` / `bool` | HUD 只读数据源；Boss 波 `WaveRemaining` 返回 0。**这些全部转发自 `EmberWaveDirector`**，战斗根不再自己存波次状态 |
 | `EmberEnemy` | 类 | — | 敌人实例 | 顶层类型（原 `EmberCombat.Enemy` 嵌套类）；`Targetable` 是所有武器命中判定的统一门 |
 | `EmberWaveDirector` | 类 | `Host` 契约 | 波次只读量 | 不造敌人：需要刷怪时回调 `Host`。**不含伤害逻辑** |
-| `EmberEnemyRoster` | 类 | 池、配置、世界、玩家、随机源 | `EmberEnemy` | 唯一有权借出/归还敌人节点的地方 |
+| `EmberEnemyRoster` | 类 | 池、配置、世界、玩家、随机源、显式相机 | `EmberEnemy` 或 null | 杂兵保证屏外且在地图内；无法落点时返回 null，只有成功才借出节点 |
+| `EmberSpawnPlacement.TryFind` | 静态方法 | 相机视口/地图区域、随机源、请求落点 | 成功标记与位置 | 从视口外沿带和地图交集取点，无合法区不回落到屏内；数值归 M1 |
 | `EmberCombatDamage.Apply` / `.ResolveDeaths` | 静态方法 | `Context` + 目标下标 | `Outcome` | **不改波次、不造新敌人**；击杀数与 Boss 阵亡经 `Outcome` 回报 |
 | `EmberWeaponContext` | 类 | — | 委托包 | 见下表；由本模块在 `Begin` 时**全部赋值** |
 
@@ -197,6 +198,7 @@ Loading → Menu → SelectLength → SelectDifficulty → SelectSlots → Selec
 
 - **直接影响模块**：M4（经 context）、M5（行为与表现）、M6（HUD/流程）、M7（粒子与池）、M8（音效触发点）。
 - **必须复验的契约**：`OnWaveCleared` 的发牌时机、`SelectUpgrade` 防伪、`HurtPlayer` 的倍率与护盾顺序、死亡→分裂→清波的处理顺序、暗弹拦截。
+- 屏外落点改动需复验完整视口/地图交集、遭遇请求点迁移和生成失败后的配额重试；Boss 与分裂特殊落点不纳入普通杂兵落点规则。
 - **对应验收项**：`03-combat-waves-test.md`。
 
 ## 待裁定事项
@@ -224,3 +226,7 @@ Loading → Menu → SelectLength → SelectDifficulty → SelectSlots → Selec
 | Ember.UI.Upgrade.Show | 显示/刷新选卡，包括初始化阶段的预建 |
 
 在 Development Build 中采集并在 CPU Hierarchy 搜索 Ember.；父子时间包含关系不应重复相加。对照 Calls、Time ms、GC Alloc 判断批量调用与单次开销。
+
+## 2026-10-13 死亡回报契约与回归
+
+最终死亡由 `EmberCombatDamage.ResolveDeaths` 返回 `Outcome.Kills`；战斗对每次击杀同时调用 `waves.NoteKill` 与已有 `IEmberCombatHost.RegisterKill`，修正旧实现只更新波次、不更新整局击杀的问题。重生被接管时不记最终死亡。共享燃地装配与音效回调见 M4 文档；Regression 包含 HUD/结算击杀同步、清波、治疗掉落与阶段切换。图形冒烟覆盖真实自动攻击后的击杀计数，结果见 `../实现说明.md`。

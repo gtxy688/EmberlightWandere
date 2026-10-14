@@ -3,6 +3,9 @@
     "rootNamespace": "Emberlight.Tests",
     "references": [
         "Emberlight.Runtime",
+    "Emberlight.Editor",
+    "Unity.TextMeshPro",
+    "Unity.ugui",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

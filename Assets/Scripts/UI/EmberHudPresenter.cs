@@ -15,6 +15,8 @@ namespace Emberlight
         readonly EmberRunState run;
         readonly EmberCombat combat;
         readonly System.Func<EmberRunPhase> phase;
+        LevelConfig shownLevel;
+        int shownWave = -1, shownTotal = -1;
 
         public EmberHudPresenter(EmberHud battleHud, EmberRunState runState, EmberCombat battle, System.Func<EmberRunPhase> phaseProvider)
         {
@@ -35,9 +37,16 @@ namespace Emberlight
             int quota = combat != null ? combat.WaveQuota : 0;
 
             hud.Set(run.Health, run.MaxHealth, run.Progress, run.Elapsed, run.Kills, wave, remaining, quota);
-            hud.Stage(wave, level != null ? level.BossWave : 0,
-                LevelConfig.DifficultyName(level != null ? level.Difficulty : EmberDifficulty.Standard),
-                level != null ? level.WaveName(wave) : "");
+            int total = level != null ? level.BossWave : 0;
+            if (wave != shownWave || total != shownTotal || level != shownLevel)
+            {
+                hud.Stage(wave, total,
+                    LevelConfig.DifficultyName(level != null ? level.Difficulty : EmberDifficulty.Standard),
+                    level != null ? level.WaveName(wave) : "");
+                shownWave = wave;
+                shownTotal = total;
+                shownLevel = level;
+            }
 
             if (combat == null) return;
             hud.Encounter(combat.EncounterText);

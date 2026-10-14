@@ -62,9 +62,12 @@ Write-Host "Importing + compiling (this takes a few minutes)..."
 Write-Host ''
 
 # -quit + an existing project forces a full asset import and script compilation.
-& $UnityExe -batchmode -nographics -quit -projectPath $ProjectPath -logFile $logFull
-$code = $LASTEXITCODE
-if ($null -eq $code) { $code = 0 }
+$process = Start-Process -FilePath $UnityExe -ArgumentList @(
+    '-batchmode', '-nographics', '-quit', '-projectPath', ('"' + $ProjectPath + '"'),
+    '-logFile', ('"' + $logFull + '"')
+) -WindowStyle Hidden -PassThru
+$process.WaitForExit()
+$code = $process.ExitCode
 
 # Unity can still be flushing the log file when the process returns, so wait for it to settle.
 $deadline = (Get-Date).AddSeconds(20)
@@ -134,8 +137,8 @@ if ($rebuilt) {
         Write-Host 'Nothing needed recompiling. To force a full rebuild: close Unity,' -ForegroundColor Yellow
         Write-Host 'delete Library/ScriptAssemblies, then re-run this script.' -ForegroundColor Yellow
     } else {
-        Write-Host "WARNING: Unity exited cleanly but produced no $([System.IO.Path]::GetFileName($asmPaths[0]))." -ForegroundColor Yellow
-        Write-Host 'If the project has no asmdef, check Assembly-CSharp.dll instead.' -ForegroundColor Yellow
+        Write-Host "FAILED: Unity produced no $([System.IO.Path]::GetFileName($asmPaths[0]))." -ForegroundColor Red
+        exit 1
     }
 }
 

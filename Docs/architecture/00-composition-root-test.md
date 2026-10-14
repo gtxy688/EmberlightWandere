@@ -2,7 +2,7 @@
 
 > 对应架构：`00-composition-root.md`
 > 对应需求：`../requirements.md` §2、§7
-> ⚠️ 项目当前**无测试基础设施**，见 `00-overview.md` §测试现状。
+> ⚠️ 工程已有 EditMode / PlayMode 基础设施；本表未实现的条目仍标待建，见 `00-overview.md` §测试现状。
 
 ## 自动化测试计划与证据
 
@@ -11,29 +11,29 @@
 
 | 编号 | 层级 | 拟测试路径与名称 | 行为 | 红灯原因或 N/A 理由 | 最近结果 |
 |------|------|------------------|------|---------------------|----------|
-| C1 | EditMode（待建） | `VitalsTests::Hurt_AppliesDifficultyMultiplierExactlyOnce` | 伤害经难度倍率后只乘一次 | 重复乘会双倍扣血 | 未执行（无测试程序集） |
-| C2 | EditMode（待建） | `VitalsTests::Hurt_ShieldAbsorbsBeforeHealth` | 护盾先扣、溢出部分才进生命 | 顺序错会让护盾形同虚设 | 未执行（无测试程序集） |
-| C3 | EditMode（待建） | `VitalsTests::Hurt_DuringCooldownIsRejected` | 无敌帧内再次受伤返回 `Rejected` 且生命不变 | 历史缺陷：连击秒杀 | 未执行（无测试程序集） |
-| C4 | EditMode（待建） | `VitalsTests::Hurt_OutsidePlayingIsRejected` | 非 Playing 阶段伤害不生效 | 结算后仍会掉血 | 未执行（无测试程序集） |
-| C5 | EditMode（待建） | `VitalsTests::Heal_ClampsToMaxHealth` | 治疗不超上限，溢出丢弃 | — | 未执行（无测试程序集） |
-| C6 | EditMode（待建） | `VitalsTests::PickHealingDrop_AtFullHealthStillReturnsPickup` | 满血拾取返回 `NoChange` 但仍算拾取 | 满血时应仍播提示音并消耗掉落 | 未执行（无测试程序集） |
-| C7 | EditMode（待建） | `FlowTests::WaveCleared_SchedulesPicksFromLevelConfig` | 选卡次数取自 `LevelConfig.PicksAfterWave` | — | 未执行（无测试程序集） |
-| C8 | EditMode（待建） | `FlowTests::NewWeaponGrantsSingleNonChainingCompensation` | 新武器补偿一次且**不连锁** | 连锁会导致无限选卡 | 未执行（无测试程序集） |
-| C9 | EditMode（待建） | `FlowTests::Choose_RejectsOfferNotInCurrentOffers` | 候选外的卡不能被选中 | 防伪造/重复提交 | 未执行（无测试程序集） |
-| C10 | EditMode（待建） | `FlowTests::TryRefresh_FailsWhenExhausted` | 免费刷新用尽后返回 false | — | 未执行（无测试程序集） |
-| C11 | PlayMode（待建） | `CompositionRootTests::PhaseIsOnlyWrittenByRoot` | `Phase` 无公开 setter，外部只能经契约请求 | 防止阶段被任意改写 | 未执行（无测试程序集） |
-| C12 | PlayMode（待建） | `CompositionRootTests::UpdateOrder_TicksVitalsBeforeCombat` | 无敌帧在接触伤害判定前已推进 | 顺序错会让无敌帧晚一帧失效 | 未执行（无测试程序集） |
-| C13 | PlayMode（待建） | `CompositionRootTests::ReturnToCamp_ClearsRunState` | 回营地后 `Run.IsActive == false` 且世界对象已销毁 | 残留引用会拖住下一局 | 未执行（无测试程序集） |
-| C14 | 源码扫描（待建） | `BoundaryTests::CombatAndVisualsDoNotReferenceEmberGame` | `Combat/`（含 Weapons）与 `Visuals/` 下不出现 `EmberGame` 类型引用 | 防边界腐化；这是本次重构的主要成果 | 未执行（无测试程序集） |
+| C1 | EditMode | `EmberKeeperVitalsTests.Hurt_AppliesDifficultyOnceThenConsumesShield` | 伤害经难度倍率后只乘一次 | 重复乘会双倍扣血 | 已验证：见 `../实现说明.md` / EditMode XML |
+| C2 | EditMode | `EmberKeeperVitalsTests.Hurt_AppliesDifficultyOnceThenConsumesShield` | 护盾先扣、溢出部分才进生命 | 顺序错会让护盾形同虚设 | 已验证：见 `../实现说明.md` / EditMode XML |
+| C3 | EditMode | `EmberKeeperVitalsTests.Hurt_ShieldOnlyStillStartsInvulnerability` | 无敌帧内再次受伤返回 `Rejected` 且生命不变 | 历史缺陷：连击秒杀 | 已验证：见 `../实现说明.md` / EditMode XML |
+| C4 | EditMode | `EmberKeeperVitalsTests.OutsideCombat_RejectsDamageAndDrops` | 非 Playing 阶段伤害不生效 | 结算后仍会掉血 | 已验证：见 `../实现说明.md` / EditMode XML |
+| C5 | EditMode | `EmberKeeperVitalsTests.Heal_ClampsAndResetClearsDamage` | 治疗不超上限，溢出丢弃 | — | 已验证：见 `../实现说明.md` / EditMode XML |
+| C6 | EditMode | `EmberKeeperVitalsTests.FullHealth_DropIsConsumedButOrdinaryHealIsRejected` | 满血拾取返回 `NoChange` 但仍算拾取 | 满血时应仍播提示音并消耗掉落 | 已验证：见 `../实现说明.md` / EditMode XML |
+| C7 | EditMode | `RunFlowControllerTests.BossWave_RequiresTwoPicksBeforeReturningToCombat` | 选卡次数取自 `LevelConfig.PicksAfterWave` | — | 已验证：见 `../实现说明.md` / EditMode XML |
+| C8 | EditMode | `RunFlowControllerTests.Compensation_DoesNotConsumeScheduledPickOrChain` | 新武器补偿一次且**不连锁** | 连锁会导致无限选卡 | 已验证：见 `../实现说明.md` / EditMode XML |
+| C9 | EditMode | `RunFlowControllerTests.ForgedOrRepeatedChoice_DoesNotChangeBuild` | 候选外的卡不能被选中 | 防伪造/重复提交 | 已验证：见 `../实现说明.md` / EditMode XML |
+| C10 | EditMode | `RunFlowControllerTests.Refresh_IsLimitedAndDoesNotSpendScheduledPicks` | 免费刷新用尽后返回 false | — | 已验证：见 `../实现说明.md` / EditMode XML |
+| C11 | PlayMode（待建） | `CompositionRootTests::PhaseIsOnlyWrittenByRoot` | `Phase` 无公开 setter，外部只能经契约请求 | 防止阶段被任意改写 | 待建（本条独立用例未实现） |
+| C12 | PlayMode（待建） | `CompositionRootTests::UpdateOrder_TicksVitalsBeforeCombat` | 无敌帧在接触伤害判定前已推进 | 顺序错会让无敌帧晚一帧失效 | 待建（本条独立用例未实现） |
+| C13 | PlayMode（待建） | `CompositionRootTests::ReturnToCamp_ClearsRunState` | 回营地后 `Run.IsActive == false` 且世界对象已销毁 | 残留引用会拖住下一局 | 待建（本条独立用例未实现） |
+| C14 | 源码扫描（待建） | `BoundaryTests::CombatAndVisualsDoNotReferenceEmberGame` | `Combat/`（含 Weapons）与 `Visuals/` 下不出现 `EmberGame` 类型引用 | 防边界腐化；这是本次重构的主要成果 | 待建（本条独立用例未实现） |
 | C15 | N/A | 战斗手感、UI 观感 | — | **无法合理自动化**：属审美与手感判断 | N/A（见手动验收 H1） |
 
 ## 自动化运行记录
 
 | 日期 | Unity 版本与环境 | 命令或 Test Runner 过滤器 | 结果文件 | 结论 |
 |------|------------------|---------------------------|----------|------|
-| — | — | 尚无可执行的测试程序集 | — | **未验证** |
+| — | — | 历史计划尚未实现；当前运行记录见 `../实现说明.md` | — | **未验证** |
 
-> 注意：本项目**没有** Test Runner 套件可跑，因此上表恒为「未验证」。
+> 注意：本项目已有 Test Runner 套件；上表原计划不是执行证据，最新结果见 `../实现说明.md`。
 > 下面的编译与字形检查是**工程可导入/可编译**的证据，不是行为测试证据。
 
 ### 离线编译校验（已跑，非测试程序集）
@@ -102,8 +102,8 @@
   - 字形覆盖 `MISSING (0)`、TMP 特殊字符齐全（`Tools/atlas_glyph_check.py`）；
   - `Combat/`（含 `Weapons/`）与 `Visuals/` 下零 `EmberGame` 类型引用（源码扫描）。
 - **不适用**：C15 战斗手感与 UI 观感——属审美判断，不做自动化。
-- **待人工验收**：R1–R10。
-- **未验证**：C1–C14 全部（阻塞原因：项目无 asmdef 与测试程序集；PlayMode 测试还需可脚本化装配）。
+- **待人工验收**：R1–R10 中的完整胜利、手感与设备场景；已实际执行的冒烟路径见本轮回归。
+- **未验证**：C11/C12 与其他尚未覆盖的场景；不含已验证的 C1–C10。仍需补齐独立用例；已覆盖项见本轮回归与 `../实现说明.md`。
   注：C14 的**结论**已由源码扫描人工确认，但仍无自动化断言守住它。
 - **未通过**：无。
 
@@ -116,3 +116,13 @@
 | 日期 | 命令 | 结果 |
 |------|------|------|
 | 2026-09-23 | `python Tools/atlas_glyph_check.py Library/RefactorCheck/Emberlight.dll` | **通过**：`MISSING (0)`、TMP 特殊字符齐全、退出码 0 |
+
+## 本轮回归范围（2026-10-13）
+
+新增生命规则不创建音频对象、倍率/护盾/无敌帧、满血掉落、选卡次数、补偿不连锁、候选外与重复提交、刷新与重置测试。图形冒烟走主场景四步开局、移动与跟随、自动攻击与击杀计数、升级、暂停、失败回营地；清波入口显式触发，完整胜利路径仍待人工。详见 `../实现说明.md` 与 `Assets/Tests`。
+
+## UIRoot 装配回归（2026-10-14）
+
+主场景图形测试验证启动绑定现有 UIRoot、不替换实例、不覆盖修改过的 HUD 锚点、不新建 Emberlight UI；随后走四步开局到失败回营地。字体加载日志确认 ValidateBaked 通过后才绑定，UI 源码扫描零 EmberGame 类型引用。EditMode 137/137、PlayMode 3/3，Unity 均退出 0；命令和证据见 `../实现说明.md`。完整胜利、手感与当前编辑器观感仍待人工验收。
+
+加载页也已接入 IntroRoot：序列化引用由连接工具保存，缺失时只查找现有视图，不能回落到运行时创建界面。新增 PlayMode 用例验证场景实例保留与 Continue 守卫；本轮完整 PlayMode 4/4、EditMode 137/137，退出 0。完整验证与人工边界见 `../实现说明.md`。

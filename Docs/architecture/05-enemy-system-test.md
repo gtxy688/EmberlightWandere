@@ -2,7 +2,7 @@
 
 > 对应架构：`05-enemy-system.md`
 > 对应需求：`../requirements.md` §3.4、§3.5、§4.4
-> ⚠️ 项目当前**无测试基础设施**，见 `00-overview.md` §测试现状。
+> ⚠️ 工程已有 EditMode / PlayMode 基础设施；本表未实现的条目仍标待建，见 `00-overview.md` §测试现状。
 
 ## 自动化测试计划与证据
 
@@ -10,41 +10,41 @@
 
 | 编号 | 层级 | 拟测试路径与名称 | 行为 | 红灯原因或 N/A 理由 | 最近结果 |
 |------|------|------------------|------|---------------------|----------|
-| A1 | PlayMode（待建） | `EnemyShooterTests::KeepsDistanceBandAndOnlyFiresAfterCharge` | 射手维持 5.5–7 距离带；仅蓄力 0.4s 后才出弹 | 直接出弹会让玩家无反应窗口 | 未执行（无测试程序集） |
-| A2 | PlayMode（待建） | `EnemyShooterTests::ChargeStartsAndCompletesOnlyOnScreen` | 屏外不开始/不完成蓄力 | — | 未执行（无测试程序集） |
-| A3 | PlayMode（待建） | `EnemySplitTests::BroodSpawnsExactlyThreeChildren` | 烬胎最终死亡分裂恰好 3 只 kind 6 | — | 未执行（无测试程序集） |
-| A4 | PlayMode（待建） | `EnemySplitTests::ChildrenDoNotDropOrConsumeQuota` | 子体不产生掉落、不消耗刷怪配额、Reward 为 0 | 子体计入配额会导致清波永远差几只 | 未执行（无测试程序集） |
-| A5 | PlayMode（待建） | `EnemyShieldTests::FrontFacingReducesDamageBySeventyPercent` | 正面 ±60° 伤害约为背面的 0.3 倍 | 若用敌人朝向而非攻击来源判定，绕后无效 | 未执行（无测试程序集） |
-| A6 | PlayMode（待建） | `EnemyShieldTests::TurnSpeedIsLimited` | 转身不超过 65°/秒 | 无限转身速度会让绕后战术失效 | 未执行（无测试程序集） |
-| A7 | PlayMode（待建） | `EnemyBomberTests::ExplodesOnlyAfterFuseEnds` | 0.8s 引线结束后才结算爆炸 | — | 未执行（无测试程序集） |
-| A8 | PlayMode（待建） | `EnemyBomberTests::UntargetableAndNonContactDuringFuse` | 引线期间不被自动锁定、不造成接触伤害 | — | 未执行（无测试程序集） |
-| A9 | PlayMode（待建） | `EnemyAffixTests::NoAffixBeforeWaveThree` | 第 1–2 波不产出任何词缀 | — | 未执行（无测试程序集） |
-| A10 | PlayMode（待建） | `EnemyAffixTests::BurningDoesNotStackAcrossOverlaps` | 多圈灼热重叠仍为每秒 2 点 | 叠加会让多词缀怪瞬间秒杀 | 未执行（无测试程序集） |
-| A11 | PlayMode（待建） | `EnemyAffixTests::RebirthRevivesExactlyOnce` | 重生只生效一次（40% 生命），二次死亡不再复活 | 无限重生导致波次无法清空 | 未执行（无测试程序集） |
-| A12 | PlayMode（待建） | `EnemyAffixTests::WindBurstMultipliesSpeedByOnePointEight` | 疾风每 3s 内速度 ×1.8，持续 1s | — | 未执行（无测试程序集） |
-| A13 | PlayMode（待建） | `EnemyAffixTests::AffixedEnemiesScoreTriple` | 词缀怪记 3 分，普通 1 分，子体 0 分 | — | 未执行（无测试程序集） |
-| A14 | PlayMode（待建） | `EnemyAffixTests::EliteChallengeSquadSkipsAffixRoll` | 精英挑战强制小队按配额刷出，不受 `AffixMultiplier` 影响 | — | 未执行（无测试程序集） |
-| A15 | PlayMode（待建） | `DarkBoltTests::CapIsFortyEight` | 暗弹同屏不超过 48 | — | 未执行（无测试程序集） |
-| A16 | PlayMode（待建） | `DarkBoltTests::SweptCollisionCatchesFastCrossings` | 高速交叉不穿透漏判 | 用离散点检测会漏判 | 未执行（无测试程序集） |
-| A17 | PlayMode（待建） | `DarkBoltTests::InterceptDestroysBoltWithoutPierceCost` | 穿透箭击毁暗弹且不消耗穿透次数；火球与暗弹互相消失 | — | 未执行（无测试程序集） |
-| A18 | PlayMode（待建） | `DarkBoltTests::ClearedOnWaveEndAndNewRun` | 清波 / 新局 / 退出时暗弹全部清理 | 残留暗弹跨局伤人 | 未执行（无测试程序集） |
-| A19 | PlayMode（待建） | `HealingDropTests::DropChanceMatchesTable` | 普通最终死亡 8% / 词缀 20% / Boss 100%；子体 0% | — | 未执行（无测试程序集） |
-| A20 | PlayMode（待建） | `HealingDropTests::RebirthPendingDoesNotCountAsFinalDeath` | 重生读条前不判定为最终死亡，不重复掉落 | — | 未执行（无测试程序集） |
-| A21 | PlayMode（待建） | `HealingDropTests::RestoresTwentyAndNeverExceedsMax` | 每个回复 20 HP 且不超上限；满血不消耗 | — | 未执行（无测试程序集） |
-| A22 | PlayMode（待建） | `HealingDropTests::MagnetRadiusDependsOnNeedsHealing` | `NeedsHealing` 时磁吸半径 2.2，否则 1.5 | — | 未执行（无测试程序集） |
-| A23 | PlayMode（待建） | `HealingDropTests::LifetimeFreezesDuringPauseAndPick` | 60 秒存在时长在暂停与选卡时冻结，普通换波保留 | — | 未执行（无测试程序集） |
-| A24 | PlayMode（待建） | `HealingDropTests::CapIsTwentyFour` | 同屏治疗掉落不超过 24 | — | 未执行（无测试程序集） |
-| A25 | PlayMode（待建） | `EnemyVisualTests::ReturnToPoolRestoresBaselineShape` | 池归还后再借出恢复基准剪影、颜色与姿态 | 复用躯体会把上一次装饰带到新怪 | 未执行（无测试程序集） |
-| A26 | PlayMode（待建） | `EnemyVisualTests::MarkersAndWarningsDoNotStickToRecycledBodies` | 角色标识与预警随敌人销毁，不残留 | 历史缺陷回归点 | 未执行（无测试程序集） |
-| A27 | PlayMode（待建） | `EnemyVisualTests::AnimationMovesOnlyVisualChildren` | 动画只改外观子节点，根节点、血条、碰撞与预警范围不变 | 动到根节点会破坏碰撞与瞄准 | 未执行（无测试程序集） |
-| A28 | PlayMode（待建） | `EnemyVisualTests::PhasesDifferBetweenEnemies` | 同屏敌人动画相位不同 | — | 未执行（无测试程序集） |
-| A29 | PlayMode（待建） | `EnemyVisualTests::SpecialEnemiesDisableBaselineSilhouetteDecor` | 特殊敌人不叠加基础轮廓装饰 | — | 未执行（无测试程序集） |
+| A1 | PlayMode（待建） | `EnemyShooterTests::KeepsDistanceBandAndOnlyFiresAfterCharge` | 射手维持 5.5–7 距离带；仅蓄力 0.4s 后才出弹 | 直接出弹会让玩家无反应窗口 | 待建（本条独立用例未实现） |
+| A2 | PlayMode（待建） | `EnemyShooterTests::ChargeStartsAndCompletesOnlyOnScreen` | 屏外不开始/不完成蓄力 | — | 待建（本条独立用例未实现） |
+| A3 | PlayMode（待建） | `EnemySplitTests::BroodSpawnsExactlyThreeChildren` | 烬胎最终死亡分裂恰好 3 只 kind 6 | — | 待建（本条独立用例未实现） |
+| A4 | PlayMode（待建） | `EnemySplitTests::ChildrenDoNotDropOrConsumeQuota` | 子体不产生掉落、不消耗刷怪配额、Reward 为 0 | 子体计入配额会导致清波永远差几只 | 待建（本条独立用例未实现） |
+| A5 | PlayMode（待建） | `EnemyShieldTests::FrontFacingReducesDamageBySeventyPercent` | 正面 ±60° 伤害约为背面的 0.3 倍 | 若用敌人朝向而非攻击来源判定，绕后无效 | 待建（本条独立用例未实现） |
+| A6 | PlayMode（待建） | `EnemyShieldTests::TurnSpeedIsLimited` | 转身不超过 65°/秒 | 无限转身速度会让绕后战术失效 | 待建（本条独立用例未实现） |
+| A7 | PlayMode（待建） | `EnemyBomberTests::ExplodesOnlyAfterFuseEnds` | 0.8s 引线结束后才结算爆炸 | — | 待建（本条独立用例未实现） |
+| A8 | PlayMode（待建） | `EnemyBomberTests::UntargetableAndNonContactDuringFuse` | 引线期间不被自动锁定、不造成接触伤害 | — | 待建（本条独立用例未实现） |
+| A9 | PlayMode（待建） | `EnemyAffixTests::NoAffixBeforeWaveThree` | 第 1–2 波不产出任何词缀 | — | 待建（本条独立用例未实现） |
+| A10 | PlayMode（待建） | `EnemyAffixTests::BurningDoesNotStackAcrossOverlaps` | 多圈灼热重叠仍为每秒 2 点 | 叠加会让多词缀怪瞬间秒杀 | 待建（本条独立用例未实现） |
+| A11 | PlayMode（待建） | `EnemyAffixTests::RebirthRevivesExactlyOnce` | 重生只生效一次（40% 生命），二次死亡不再复活 | 无限重生导致波次无法清空 | 待建（本条独立用例未实现） |
+| A12 | PlayMode（待建） | `EnemyAffixTests::WindBurstMultipliesSpeedByOnePointEight` | 疾风每 3s 内速度 ×1.8，持续 1s | — | 待建（本条独立用例未实现） |
+| A13 | PlayMode（待建） | `EnemyAffixTests::AffixedEnemiesScoreTriple` | 词缀怪记 3 分，普通 1 分，子体 0 分 | — | 待建（本条独立用例未实现） |
+| A14 | PlayMode（待建） | `EnemyAffixTests::EliteChallengeSquadSkipsAffixRoll` | 精英挑战强制小队按配额刷出，不受 `AffixMultiplier` 影响 | — | 待建（本条独立用例未实现） |
+| A15 | PlayMode（待建） | `DarkBoltTests::CapIsFortyEight` | 暗弹同屏不超过 48 | — | 待建（本条独立用例未实现） |
+| A16 | PlayMode（待建） | `DarkBoltTests::SweptCollisionCatchesFastCrossings` | 高速交叉不穿透漏判 | 用离散点检测会漏判 | 待建（本条独立用例未实现） |
+| A17 | PlayMode（待建） | `DarkBoltTests::InterceptDestroysBoltWithoutPierceCost` | 穿透箭击毁暗弹且不消耗穿透次数；火球与暗弹互相消失 | — | 待建（本条独立用例未实现） |
+| A18 | PlayMode（待建） | `DarkBoltTests::ClearedOnWaveEndAndNewRun` | 清波 / 新局 / 退出时暗弹全部清理 | 残留暗弹跨局伤人 | 待建（本条独立用例未实现） |
+| A19 | PlayMode（待建） | `HealingDropTests::DropChanceMatchesTable` | 普通最终死亡 8% / 词缀 20% / Boss 100%；子体 0% | — | 待建（本条独立用例未实现） |
+| A20 | PlayMode（待建） | `HealingDropTests::RebirthPendingDoesNotCountAsFinalDeath` | 重生读条前不判定为最终死亡，不重复掉落 | — | 待建（本条独立用例未实现） |
+| A21 | PlayMode（待建） | `HealingDropTests::RestoresTwentyAndNeverExceedsMax` | 每个回复 20 HP 且不超上限；满血不消耗 | — | 待建（本条独立用例未实现） |
+| A22 | PlayMode（待建） | `HealingDropTests::MagnetRadiusDependsOnNeedsHealing` | `NeedsHealing` 时磁吸半径 2.2，否则 1.5 | — | 待建（本条独立用例未实现） |
+| A23 | PlayMode（待建） | `HealingDropTests::LifetimeFreezesDuringPauseAndPick` | 60 秒存在时长在暂停与选卡时冻结，普通换波保留 | — | 待建（本条独立用例未实现） |
+| A24 | PlayMode（待建） | `HealingDropTests::CapIsTwentyFour` | 同屏治疗掉落不超过 24 | — | 待建（本条独立用例未实现） |
+| A25 | PlayMode（待建） | `EnemyVisualTests::ReturnToPoolRestoresBaselineShape` | 池归还后再借出恢复基准剪影、颜色与姿态 | 复用躯体会把上一次装饰带到新怪 | 待建（本条独立用例未实现） |
+| A26 | PlayMode（待建） | `EnemyVisualTests::MarkersAndWarningsDoNotStickToRecycledBodies` | 角色标识与预警随敌人销毁，不残留 | 历史缺陷回归点 | 待建（本条独立用例未实现） |
+| A27 | PlayMode（待建） | `EnemyVisualTests::AnimationMovesOnlyVisualChildren` | 动画只改外观子节点，根节点、血条、碰撞与预警范围不变 | 动到根节点会破坏碰撞与瞄准 | 待建（本条独立用例未实现） |
+| A28 | PlayMode（待建） | `EnemyVisualTests::PhasesDifferBetweenEnemies` | 同屏敌人动画相位不同 | — | 待建（本条独立用例未实现） |
+| A29 | PlayMode（待建） | `EnemyVisualTests::SpecialEnemiesDisableBaselineSilhouetteDecor` | 特殊敌人不叠加基础轮廓装饰 | — | 待建（本条独立用例未实现） |
 
 ## 自动化运行记录
 
 | 日期 | Unity 版本与环境 | 命令或 Test Runner 过滤器 | 结果文件 | 结论 |
 |------|------------------|---------------------------|----------|------|
-| — | — | 尚无可执行的测试程序集 | — | **未验证** |
+| — | — | 历史计划尚未实现；当前运行记录见 `../实现说明.md` | — | **未验证** |
 
 ## 手动验收前置条件
 
@@ -62,7 +62,7 @@
 | H4 | 贴近引线虫直至引爆 | 红圈预警清晰，爆炸范围与伤害符合直觉 | Editor | — | 待人工验收 | — |
 | H5 | 遇到带词缀精英 | 灼热/疾风/重生三种在视觉上可区分；重生读条清晰 | Editor | — | 待人工验收 | — |
 | H6 | 观察敌人动画 | 各类型姿态有辨识度（浮动/急促/起伏/挤压/呼吸/倾斜/压缩回弹/鼓动/收缩），相位不整齐划一 | Editor | — | 待人工验收 | 对应 A28 |
-| H7 | 拾取回血包 | 掉落与磁吸手感自然；满血时不被消耗 | Editor | — | 待人工验收 | — |
+| H7 | 拾取回血包 | 掉落与磁吸手感自然；满血消费语义待裁定；当前实现允许拾取并消耗 | Editor | — | 待人工验收 | — |
 | H8 | 长时间战斗观察 | 不出现"躯干带着上一次标识"或动画错乱 | Editor | — | 待人工验收 | 对应 A26 |
 | H9 | Android 真机大波次 | 同屏 150 敌人 + 暗弹 + 掉落时帧率可接受 | Android APK | — | 待人工验收 | 依赖 M9 |
 
@@ -94,3 +94,5 @@
 - **待手动验收**：H1–H9（射手可读性、分裂、盾卫绕后、引线预警、词缀辨识、动画辨识度、回血手感、长时稳定性、真机大波次）。
 - **未验证**：A1–A29 全部（阻塞原因：项目无 asmdef 与测试程序集）。
 - **未通过**：无。
+
+满血掉落冲突（未裁定）：原 H7 要求“满血不消耗”；M0 当前契约与实际 PickHealingDrop 允许满血消费并丢弃溢出。本轮保持运行行为，仅记录双方差异；该条不能算已验收。

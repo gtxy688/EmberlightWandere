@@ -2,7 +2,7 @@
 
 > 相关需求：`../requirements.md` §4.2、§4.4、§4.6
 > 验收文档：本文档 §验收（无独立 `-test.md`；武器行为需 PlayMode 且与 M3 强耦合）
-> 代码：`Assets/Scripts/Combat/Weapons/`（7 个文件）
+> 代码：`Assets/Scripts/Combat/Weapons/`（武器基类、实现与注册工厂）
 
 ## 职责边界
 
@@ -21,7 +21,7 @@
 | M2 | `Progress.OwnsWeapon` / `HasMetamorph` / `WeaponMagnitude` / `WeaponAttackSpeed` / `WeaponCount` / `DamageMul` / `Orbits` / `TrailPower` / `PierceLimit` / `MeteorExtra` / `BoomExtraTrips` / `BoomExtraLegHit` / `TrailExtend` / `TrailRing` | 全部数值与形态门控 | `Progress` 为 null 时不得崩溃 |
 | M3 | `EmberWeaponContext` 的委托与方法 | 选敌、伤害、拦截、燃地、可见性 | 委托由 M3 保证全部赋值 |
 | M7 | `ctx.Effects` / `ctx.Pool` | 粒子与弹体复用 | 池空时丢弃，不报错 |
-| M8 | `EmberAudio` 的 `PlayWeapon*` | 开火/落地音效 | clip 缺失静默跳过 |
+| M8（经 M3 装配） | `ctx.PlaySound(EmberWeaponSound)` | 开火/接触/落地音效 | 回调缺失只跳过反馈，不创建音频单例 |
 
 ## 设计与数据流
 
@@ -36,7 +36,7 @@ EmberCombat.Tick(dt)
          └─ ctx.Effects / ctx.Pool 产出表现
 ```
 
-每把武器是 `EmberWeapon` 的 `sealed` 子类，由 `EmberCombat` 在 `Begin` 时注册并持有 `List<EmberWeapon>`。
+每把武器是 `EmberWeapon` 的 `sealed` 子类，由 `EmberWeaponFactory.CreateAll` 在战斗构造时注册并持有 `List<EmberWeapon>`。
 
 ### 抽象基类
 
@@ -178,3 +178,11 @@ public abstract class EmberWeapon
 | `EmberPulseWeapon` 死代码去留 | 恢复为不占槽词条 / 删除 | 当前 `WavePower` 恒 0，永不生效 | jack + xiaoPlanner |
 | 策划档位表与代码常量的一致性维护点 | 以代码为准并回写需求 / 保持双份 | 当前存在未同步风险 | xiaoCoder + xiaoPlanner |
 | 是否给武器补音效 pitch 抖动 | 加随机 pitch / 维持一致音色 | 多次连发听感偏机械 | jack |
+
+## 2026-10-13 对外契约与回归范围
+
+基础参数与升级增量集中在 `Core/EmberWeaponTuning.cs`；武器实现注册集中在 `EmberWeaponFactory`，旧调用顺序保留。
+
+共享效果 `Combat/EmberBurnGround` 持有燃地列表、生命周期与伤害；所有产生燃地的武器走 `ctx.SpawnBurnPatch`。`EmberTrailWeapon` 只负责自身产火与火海圈。战斗在 Trail 时隙后紧接推进共享效果，即使没有 Trail 所有权也要推进。收局和新局清空共享效果状态，世界对象仍由宿主回收。
+
+回归包括火球/环火质变生成燃地、未持有 Trail 时的伤害、容量与到期回池、跨局重置、六武器基础伤害/冷却/专属增量以及音效节流。`EmberBurnGroundTests` 已覆盖共享效果的关键规则；图形冒烟覆盖火球攻击路径。六武器全部行为与手感仍待补齐/人工验收。最新结果见 `../实现说明.md`。

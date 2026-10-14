@@ -2,47 +2,47 @@
 
 > 对应架构：`06-ui-flow.md`
 > 对应需求：`../requirements.md` §2、§4.1
-> ⚠️ 项目当前**无测试基础设施**，见 `00-overview.md` §测试现状。
+> ⚠️ 工程已有 EditMode / PlayMode 基础设施；本表未实现的条目仍标待建，见 `00-overview.md` §测试现状。
 
 ## 自动化测试计划与证据
 
-分层依据：UI 为运行时构建，需 Canvas 与帧推进 → **PlayMode**。**纯排版结果与观感不可自动化**，只断言结构与状态。
+分层依据：UI 使用场景 Prefab，运行时绑定数据、回调与动画，需 Canvas 与帧推进 → **PlayMode**。**纯排版结果与观感不可自动化**，只断言结构与状态。
 
 | 编号 | 层级 | 拟测试路径与名称 | 行为 | 红灯原因或 N/A 理由 | 最近结果 |
 |------|------|------------------|------|---------------------|----------|
-| A1 | PlayMode（待建） | `FlowTests::StartRunRequiresAllFourStepsInOrder` | 必须依次经过 长度 → 难度 → 槽位 → 起始武器 才能开战 | 跳步会拿到未初始化配置 | 未执行（无测试程序集） |
-| A2 | PlayMode（待建） | `FlowTests::RosterConfirmDisabledUntilSelection` | 未选中任何武器时确认按钮禁用；选中后显示该武器名 | — | 未执行（无测试程序集） |
-| A3 | PlayMode（待建） | `FlowTests::RosterSelectionSurvivesPageChange` | 跨页翻动后选择保留 | — | 未执行（无测试程序集） |
-| A4 | PlayMode（待建） | `FlowTests::RosterConfirmSubmitsExactlyOnce` | 反复点击确认只提交一次 | 重复提交会重复开战 | 未执行（无测试程序集） |
-| A5 | PlayMode（待建） | `FlowTests::NoSkipGodsSelectEntryExists` | 不存在跳过开局的入口或 API | v3 硬口径：开局不可跳过 | 未执行（无测试程序集） |
-| A6 | PlayMode（待建） | `UpgradePanelTests::ShowsThreePlusEmptySlotsCards` | 面板渲染的卡数等于传入候选数（`3 + 空位`） | — | 未执行（无测试程序集） |
-| A7 | PlayMode（待建） | `UpgradePanelTests::SwitchesToScrollAboveFourCards` | ≤4 张直排；>4 张启用滚动区域且加入 132 单位卡高 | 7 张时溢出屏幕 | 未执行（无测试程序集） |
-| A8 | PlayMode（待建） | `UpgradePanelTests::RefreshButtonDisabledWhenExhausted` | 刷新次数用尽后按钮不可用或点击无效 | — | 未执行（无测试程序集） |
-| A9 | PlayMode（待建） | `UpgradePanelTests::SelectionLockPreventsDoublePick` | 动画期间重复点击只接受一次 | 历史缺陷：动画期重复领卡 | 未执行（无测试程序集） |
-| A10 | PlayMode（待建） | `CardMotionTests::AnimationsUseUnscaledTime` | 卡动画在 `timeScale == 0` 时仍推进 | 用 `deltaTime` 会在暂停/选卡时冻结 | 未执行（无测试程序集） |
-| A11 | PlayMode（待建） | `HudTests::ShowsOwnedOverSlotsAndLuck` | HUD 显示 `已有/N` 与幸运值 | — | 未执行（无测试程序集） |
-| A12 | PlayMode（待建） | `HudTests::HidesCombatBarDuringPauseUpgradeAndResult` | 暂停/升级/结算时隐藏战斗状态栏 | — | 未执行（无测试程序集） |
-| A13 | PlayMode（待建） | `HudTests::BossBarAppearsOnlyOnBossWaves` | Boss 条仅在 Boss 波出现 | — | 未执行（无测试程序集） |
-| A14 | PlayMode（待建） | `HudTests::EncounterBannerShowsTwiceSecondsAndFreezesOnPause` | 遭遇横幅 2 秒，暂停时不推进 | — | 未执行（无测试程序集） |
-| A15 | PlayMode（待建） | `SettingsTests::ReturnToCampRequiresSecondClick` | 首次点击显示「再次点击确认放弃本局」，二次才结束单局 | 误触直接丢局 | 未执行（无测试程序集） |
-| A16 | PlayMode（待建） | `SettingsTests::VolumeSlidersApplyImmediatelyAndPersist` | 拖动即时生效；杀进程重进仍保持 | — | 未执行（无测试程序集） |
-| A17 | PlayMode（待建） | `SettingsTests::BackButtonLabelDependsOnEntry` | 主菜单进入显示「返回」；战斗暂停进入显示「继续战斗」+「返回营地」 | — | 未执行（无测试程序集） |
-| A18 | PlayMode（待建） | `IntroTests::ChineseTextHiddenUntilFontReady` | 字体就绪前不渲染中文 | 提前渲染会出现缺字方框 | 未执行（无测试程序集） |
-| A19 | PlayMode（待建） | `IntroTests::InputEnabledOnlyAfterReady` | 继续输入在准备完成后才启用 | — | 未执行（无测试程序集） |
-| A20 | PlayMode（待建） | `IntroTests::MinimumDisplayDurationRespected` | 加载页最短展示约 5 秒 | — | 未执行（无测试程序集） |
-| A21 | PlayMode（待建） | `UiBoundaryTests::UiClassesDoNotReferenceEmberGame` | 反射/源码扫描断言 7 个 UI 类不出现 `EmberGame` 类型引用 | 防边界腐化；引入后 UI 将无法脱离游戏实例测试 | 未执行（无测试程序集） |
-| A22 | PlayMode（待建） | `CardLayoutTests::NoTextUsesEllipsisTruncation` | 开场武器说明与升级面板文本不使用省略号截断，改用自适应字号 | — | 未执行（无测试程序集） |
+| A1 | PlayMode（待建） | `FlowTests::StartRunRequiresAllFourStepsInOrder` | 必须依次经过 长度 → 难度 → 槽位 → 起始武器 才能开战 | 跳步会拿到未初始化配置 | 待建（本条独立用例未实现） |
+| A2 | PlayMode（待建） | `FlowTests::RosterConfirmDisabledUntilSelection` | 未选中任何武器时确认按钮禁用；选中后显示该武器名 | — | 待建（本条独立用例未实现） |
+| A3 | PlayMode（待建） | `FlowTests::RosterSelectionSurvivesPageChange` | 跨页翻动后选择保留 | — | 待建（本条独立用例未实现） |
+| A4 | PlayMode（待建） | `FlowTests::RosterConfirmSubmitsExactlyOnce` | 反复点击确认只提交一次 | 重复提交会重复开战 | 待建（本条独立用例未实现） |
+| A5 | PlayMode（待建） | `FlowTests::NoSkipGodsSelectEntryExists` | 不存在跳过开局的入口或 API | v3 硬口径：开局不可跳过 | 待建（本条独立用例未实现） |
+| A6 | PlayMode（待建） | `UpgradePanelTests::ShowsThreePlusEmptySlotsCards` | 面板渲染的卡数等于传入候选数（`3 + 空位`） | — | 待建（本条独立用例未实现） |
+| A7 | PlayMode（待建） | `UpgradePanelTests::SwitchesToScrollAboveFourCards` | ≤4 张直排；>4 张启用滚动区域且加入 132 单位卡高 | 7 张时溢出屏幕 | 待建（本条独立用例未实现） |
+| A8 | PlayMode（待建） | `UpgradePanelTests::RefreshButtonDisabledWhenExhausted` | 刷新次数用尽后按钮不可用或点击无效 | — | 待建（本条独立用例未实现） |
+| A9 | PlayMode（待建） | `UpgradePanelTests::SelectionLockPreventsDoublePick` | 动画期间重复点击只接受一次 | 历史缺陷：动画期重复领卡 | 待建（本条独立用例未实现） |
+| A10 | PlayMode（待建） | `CardMotionTests::AnimationsUseUnscaledTime` | 卡动画在 `timeScale == 0` 时仍推进 | 用 `deltaTime` 会在暂停/选卡时冻结 | 待建（本条独立用例未实现） |
+| A11 | PlayMode（待建） | `HudTests::ShowsOwnedOverSlotsAndLuck` | HUD 显示 `已有/N` 与幸运值 | — | 待建（本条独立用例未实现） |
+| A12 | PlayMode（待建） | `HudTests::HidesCombatBarDuringPauseUpgradeAndResult` | 暂停/升级/结算时隐藏战斗状态栏 | — | 待建（本条独立用例未实现） |
+| A13 | PlayMode（待建） | `HudTests::BossBarAppearsOnlyOnBossWaves` | Boss 条仅在 Boss 波出现 | — | 待建（本条独立用例未实现） |
+| A14 | PlayMode（待建） | `HudTests::EncounterBannerShowsTwiceSecondsAndFreezesOnPause` | 遭遇横幅 2 秒，暂停时不推进 | — | 待建（本条独立用例未实现） |
+| A15 | PlayMode（待建） | `SettingsTests::ReturnToCampRequiresSecondClick` | 首次点击显示「再次点击确认放弃本局」，二次才结束单局 | 误触直接丢局 | 待建（本条独立用例未实现） |
+| A16 | PlayMode（待建） | `SettingsTests::VolumeSlidersApplyImmediatelyAndPersist` | 拖动即时生效；杀进程重进仍保持 | — | 待建（本条独立用例未实现） |
+| A17 | PlayMode（待建） | `SettingsTests::BackButtonLabelDependsOnEntry` | 主菜单进入显示「返回」；战斗暂停进入显示「继续战斗」+「返回营地」 | — | 待建（本条独立用例未实现） |
+| A18 | PlayMode（待建） | `IntroTests::ChineseTextHiddenUntilFontReady` | 字体就绪前不渲染中文 | 提前渲染会出现缺字方框 | 待建（本条独立用例未实现） |
+| A19 | PlayMode | `EmberRuntimeSmokeTests::IntroPrefab_PreservesViewAndLayoutAndWaitsForReady` | Continue 就绪守卫与一次性提交 | — | 已验证；真实键盘/触屏输入仍待人工 |
+| A20 | PlayMode | 同上 | 以加载器使用的 unscaledTime 验证约 5 秒展示 | — | 已验证（2026-10-14） |
+| A21 | PlayMode（待建） | `UiBoundaryTests::UiClassesDoNotReferenceEmberGame` | 反射/源码扫描断言 7 个 UI 类不出现 `EmberGame` 类型引用 | 防边界腐化；引入后 UI 将无法脱离游戏实例测试 | 待建（本条独立用例未实现） |
+| A22 | PlayMode（待建） | `CardLayoutTests::NoTextUsesEllipsisTruncation` | 开场武器说明与升级面板文本不使用省略号截断，改用自适应字号 | — | 待建（本条独立用例未实现） |
 | A23 | N/A | 卡面美观度、按钮间距手感、色彩搭配 | — | **无法合理自动化**：属审美判断 | N/A（列入手动验收 H2/H6） |
 
 ## 自动化运行记录
 
 | 日期 | Unity 版本与环境 | 命令或 Test Runner 过滤器 | 结果文件 | 结论 |
 |------|------------------|---------------------------|----------|------|
-| — | — | 尚无可执行的测试程序集 | — | **未验证** |
+| — | — | 历史计划尚未实现；当前运行记录见 `../实现说明.md` | — | **未验证** |
 
 ## 手动验收前置条件
 
-- 场景、Prefab 与配置：`Assets/Scenes/Emberlight.unity`（UI 为运行时构建，场景无 UI 层级）
+- 场景、Prefab 与配置：`Assets/Scenes/Emberlight.unity` → `Assets/UI/UIRoot.prefab` / `IntroRoot.prefab` → `EmberUiRoot` / `EmberIntroView` 序列化视图引用
 - 依赖模块状态：M2 选卡、M3 战斗、M7 图集、M8 音频均可运行
 - 目标设备与画质档位：Editor + Android 真机
 
@@ -82,13 +82,15 @@
 | M7 美术与表现 | 全部 UI 精灵与卡框图标 | UI 消费图集 | 待人工验收 | — |
 | M8 音频 | 交互音与滑条预览 | 触发点在 UI | 待人工验收 | — |
 | M7 字体预热 | 改动文案后的首屏字形 | 三处文案被预热 | 待人工验收 | 改文案必查 |
+| Editor / Runtime UI 边界 | 缺失引用报错、面板复用、重新配置 Prefab | 删除动态创建回退并移动工厂 | 已验证 | EditMode 缺失引用用例、图形 PlayMode 复用、Editor 配置入口 |
+| M3 → HUD | 波次不重复改写、秒/生命/击杀变化及时显示 | HUD 增加显示值缓存 | 已验证 | `EmberSubmissionOptimizationTests`；真机性能仍未测 |
 
 ## 交付结论
 
-- **已验证**：无。布局与交互规则已**逐项对照代码**确认，但尚无任何可执行检查通过。
+- **已验证**：2026-10-14 EditMode 150/150、图形 PlayMode 4/4 通过（Unity 退出 0）；包含实际主场景、Prefab 面板复用、缺失引用与 HUD 更新，具体用例与结果见 `../实现说明.md`。未把这些结果当作全部 UI 规则验收。
 - **不适用**：A23 卡面美观度与间距手感——属审美判断，不做自动化。
 - **待手动验收**：H1–H10（主闭环、武器库可读性、滚动选卡、防重复领卡、返回营地确认、HUD 可读性、音量持久化、倍速、真机触控、窄屏适配）。
-- **未验证**：A1–A22 全部（阻塞原因：项目无 asmdef 与测试程序集；PlayMode 测试还需可脚本化装配 Canvas）。
+- **未验证**：A1–A22 中尚未覆盖的独立场景；不含已经实际跑过的冒烟路径。仍需补齐独立用例；已覆盖项见本轮回归与 `../实现说明.md`。
 - **未通过**：无。
 
 ## UI 复用回归（2026-09-15）
@@ -107,3 +109,31 @@
 - 已验证：hud.png 实际渲染截图已查看，生命、护盾、波次文字及暂停按钮未重叠；截图只是布局检查，不是主场景完整试玩。
 - 未验证：主项目完整游戏闭环，本次仅在隔离副本运行面板检查，未操作当前打开的主场景。
 - 待人工验收：HUD 可读性/点击手感，真实选卡界面各文案组合，以及 Android 真机性能对比。
+
+## 本轮回归范围（2026-10-13）
+
+`EmberOfferPresentationTests` 已验证六个武器 ID 的说明、专属增量和质变预览。`EmberRuntimeSmokeTests` 走实际开局/选卡/暂停/结算，并验证升级面板反复打开不增加节点、隐藏取消旧提交、滚动重置、最新回调只触发一次。原表其他独立场景仍待建。结果见 `../实现说明.md`；布局观感与设备操控仍待人工验收。
+
+## UIRoot 图片修复补充（2026-10-13）
+
+图片引用持久化与编辑预览回归见 `07-art-presentation-test.md` 的「UIRoot 图片恢复」。运行时接入已于 2026-10-14 完成，验证边界见下节。
+
+## UIRoot 运行时接入回归（2026-10-14）
+
+`MainScene_SetupCombatUpgradePauseLossAndReturn` 验证启动保留场景 UIRoot 的实例 ID 和编辑后的 HUD 锚点、不创建 Emberlight UI，并通过实际视图按钮走开局、升级、暂停和失败回营地。`PrefabPanels_ReuseViewsAndReplaceCallbacksWithoutRebuilding` 验证槽位、武器库、设置和升级使用最新回调，确认只提交一次，反复显示不增加节点；原独立升级测试保留滚动复位和隐藏取消动画的覆盖。
+
+三个图形 PlayMode 用例通过；结果 `Library/UiRootIntegration/playmode.xml`，命令与计数见 `../实现说明.md`。主菜单的非 Play 预览、HUD 与卡面截图已检查；当前编辑器的点击手感、观感及真机触控仍待人工验收。
+
+## 加载页预制体回归（2026-10-14）
+
+新增 `IntroPrefab_PreservesViewAndLayoutAndWaitsForReady`：确认加载前场景已有 IntroRoot，绑定保留实例、锚点和控件身份，就绪前 Continue 无效，约 5 秒后显示提示与可见 TMP 网格，重复 Continue 只提交一次且实例仍存在并隐藏。节点检查排除 TMP 为回落字体自动创建的 TMP_SubMeshUI，它属于文字渲染内部对象。
+
+完整图形 PlayMode 4/4、EditMode 137/137，Unity 均退出 0。Editor API 另验证重复连接保留手动字号和锚点、图片/纹理持久引用和场景绑定；非 Play 加载中与就绪预览，以及真实 Play 就绪截图已检查。证据及命令见 `../实现说明.md`。A18 的字体破坏/失败独立路径仍待建，键盘/触屏手感和当前编辑器观感待人工验收。
+
+## UI 创建清理与 HUD 回归（2026-10-14）
+
+`UnboundPanel_ReportsConfigurationErrorInsteadOfBuildingUi` 覆盖升级/设置/开局选择三种面板，缺失绑定时抛配置错误且不新增节点。图形 PlayMode 在真实场景复用升级面板，继续验证滚动复位、隐藏取消旧提交和最新回调；共 4/4 通过。Editor 的 `EmberUiPrefabSetup.ConfigurePrefab` 退出 0，保存后 Prefab 与主工程哈希一致，说明工厂迁移没有改变现有布局。
+
+`UnchangedHudData_DoesNotDirtyWaveText` 验证重复推送不再交替改写波次文字；`Hud_UpdatesSecondsAndChangedValuesAndToleratesMissingProgress` 验证显示秒、生命、击杀和波次变化更新。完整 EditMode 150/150，failed=0，Unity 退出 0；离线编译与字形检查通过，命令和证据见 `../实现说明.md`。
+
+HUD 与卡面真实渲染截图已查看；当前编辑器观感、点击手感和窄屏/真机可读性待人工验收。CPU/GC Alloc 未测，不以文字刷新次数测试代替性能测量。字体重烘 N/A：可见文案未变且字形检查缺口为 0。

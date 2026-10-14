@@ -2,7 +2,7 @@
 
 > 对应架构：`02-run-progression.md`
 > 对应需求：`../requirements.md` §4、§5
-> ⚠️ 项目当前**无测试基础设施**，见 `00-overview.md` §测试现状。
+> ⚠️ 工程已有 EditMode / PlayMode 基础设施；本表未实现的条目仍标待建，见 `00-overview.md` §测试现状。
 > ✅ **本模块是补齐自动化收益最高的目标**：`RunProgress`、`EmberChoicePool`、`EmberWeaponCatalog`、
 > `EmberRarityUtil` 现已**全部零 `UnityEngine` 依赖**，可直接用 EditMode 测试覆盖全部规则。
 >
@@ -135,3 +135,7 @@
 | 表头把攻速并入 `G-ATK / G-AS` 同档（+10/20/30/40） | **攻速独立档位：+10/20/30/50%** |
 | `ATK/AS 加算全局`、`DamageMul = (1+DamageBonus)*(1+DamageAmp)` | **攻击力/攻速只作用于对应武器；`DamageMul = 1 + DamageAmp`** |
 | 护盾"参考数值除以 2"（125/250/375/625 语境） | **250 / 500 / 750 / 1250**（见 `../requirements.md` §4.4） |
+
+## 本轮新增回归（2026-10-13）
+
+`RunProgressChoiceEntryTests` 验证实际 Choices 入口能提交一次、拒绝重复提交，以及刷新不累加待选次数；修复前两条均失败。现有测试仍保留直接 OfferChoices 路径，但不能替代实际发牌入口。运行结果见 `../实现说明.md`。

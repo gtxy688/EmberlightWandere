@@ -65,7 +65,7 @@ Emberlight → Android 菜单
 
 > ⚠️ 因此历史文档中的 `Emberlight/Validate …`、`ValidateGodsSelect`、`ValidateBuildDepth`、`EmberChecks`、`EmberExpansionChecks`、`EmberUIRenderCheck`、试玩 Boss 菜单**全部已不存在**。这是 `00-overview.md` §测试现状 的成因。
 
-> ⚠️ `EmberFontBake.cs` **仍然存在**（与上表 `ArtBake` 不同），可做真实渲染校验；但按 M7 的口径，**字体运行时仍走动态图集**，不要把它当作字体来源。
+> ⚠️ `EmberFontBake.cs` **仍然存在**（与上表 `ArtBake` 不同），可做真实渲染校验；但按 M7 的口径，**字体优先走预烘静态图集，经 ValidateBaked 校验后加载，失败动态回落**。
 
 ### 构建期烘焙（只做美术）
 
@@ -93,8 +93,8 @@ Unity.exe -batchmode -projectPath <项目> `
 
 ### 字体策略与包体
 
-- 中文字体走 `EmberFonts.CreateChinese()` 运行时动态 SDF 图集（2048×2048），**固定不回预烘**，理由见 `07-art-presentation.md`。
-- 包体因此带完整 Noto CJK SC（约 **16.4 MB**）。改预烘静态图集可省十几 MB，属优化非阻塞。
+- 中文字体经 `EmberFonts.CreateChinese()` 优先加载校验通过的静态图集，失败回落动态 SDF；现行口径见 `07-art-presentation.md`。
+- 工程保留 Noto CJK 源字体以支持重烘与动态回落；资源裁剪须同时验证这两条路径，不能直接删除源字体。
 
 ### 签名（未完成，人工决定）
 
@@ -152,3 +152,11 @@ Unity.exe -batchmode -projectPath <项目> `
 | Unity 启动 Logo | 关闭（需 Plus/Pro）/ 维持 | `m_ShowUnitySplashScreen: 1` | jack |
 | 是否重建 UI 渲染检查 | 重建带看门狗的批处理检查 / 维持手测 | 字体与 UI 事故的防线 | xiaoCoder |
 | 上架准备 | AAB、商店文案、截图、隐私政策 | 对外发布前置 | jack |
+
+## 工程与源码交付契约（2026-10-13）
+
+`Tools/export-project.ps1` 导出 Assets（含实际资源、源码与 .meta）、Packages、ProjectSettings、Tools、Docs 和 README，拒绝 LFS 指针与缺失 .meta。生成物在 Delivery，默认不覆盖已有包，重新导出用 -Force。提交包必须重新导入验证，不依赖原 Library。
+
+`Tools/compile-check.ps1` 读取最新 Runtime.rsp，重新扫描源文件，移除 Unity out/refout，写入隔离输出并显示完整编译诊断；它仅覆盖 Runtime。`Tools/run-tests.ps1` 等待 Unity 真实退出，核验 XML 的用例数、失败数与完成状态，拒绝 0 用例。PlayMode 使用图形模式。
+
+回归范围：离线工具不污染引用程序集、Runtime/Editor/Tests 均能导入、测试实际发现并执行、字体不缺字、包内完整资源能在无 Library 工程中导入。证据和平台限制见 `../实现说明.md`。

@@ -4,6 +4,16 @@ using UnityEngine;
 
 namespace Emberlight
 {
+    public enum EmberWeaponSound
+    {
+        Fireball,
+        OrbitContact,
+        BurnGround,
+        PierceArrow,
+        Boomerang,
+        MeteorImpact
+    }
+
     /// <summary>Per-tick combat services for weapons. Weapons must not reverse-depend on EmberGame.</summary>
     public sealed class EmberWeaponContext
     {
@@ -15,35 +25,57 @@ namespace Emberlight
         public RunProgress Progress;
         public float Elapsed;
         public System.Random Random;
-
         public Func<int> EnemyCount;
         public Func<int, EmberEnemy> GetEnemy;
         public Action<int, float> Damage;
         public Action<int, float, Vector2> DamageFrom;
         public Func<Vector2, Vector2, float, bool> Intercept;
         public void DealDamage(int index, float amount, Vector2 source)
-        { if (DamageFrom != null) DamageFrom(index, amount, source); else Damage(index, amount); }
+        {
+            if (DamageFrom != null)
+                DamageFrom(index, amount, source);
+            else
+                Damage(index, amount);
+        }
+
         public Action<int, float, Vector2> ContactDamageFrom;
         public bool DealContactDamage(int index, float amount, Vector2 source)
         {
             var enemy = GetEnemy(index);
-            if (enemy == null || !enemy.Targetable || amount <= 0) return false;
+            if (enemy == null || !enemy.Targetable || amount <= 0)
+                return false;
             float before = enemy.hp;
-            if (ContactDamageFrom != null) ContactDamageFrom(index, amount, source);
-            else DealDamage(index, amount, source);
+            if (ContactDamageFrom != null)
+                ContactDamageFrom(index, amount, source);
+            else
+                DealDamage(index, amount, source);
             return enemy.hp < before;
         }
+
         public Action PlayingGate; // no-op helper reserved
         public Func<bool> StillPlaying;
-
         /// <summary>Shared burn patches (trail weapon + evo hit trails).</summary>
         public Action<Vector2, float> SpawnBurnPatch;
+        /// <summary>战斗装配音效；武器只报告反馈，不创建音频单例。</summary>
+        public Action<EmberWeaponSound> PlaySound;
+        public Vector2 PlayerPos
+        {
+            get
+            {
+                return Player != null ? (Vector2)Player.position : Vector2.zero;
+            }
+        }
 
-        public Vector2 PlayerPos { get { return Player != null ? (Vector2)Player.position : Vector2.zero; } }
         /// <summary>World units/sec this frame (set by combat).</summary>
         public float PlayerSpeed;
         /// <summary>True when nearly still (Hotfix pierce sniper gate).</summary>
-        public bool PlayerStanding { get { return PlayerSpeed < 0.15f; } }
+        public bool PlayerStanding
+        {
+            get
+            {
+                return PlayerSpeed < 0.15f;
+            }
+        }
 
         public bool Visible(Vector2 worldPos)
         {
@@ -59,16 +91,22 @@ namespace Emberlight
             for (int i = 0; i < n; i++)
             {
                 var e = GetEnemy(i);
-                if (e == null || !e.Targetable) continue;
-                if (!Visible(e.view.position)) continue;
+                if (e == null || !e.Targetable)
+                    continue;
+                if (!Visible(e.view.position))
+                    continue;
                 float d = ((Vector2)e.view.position - p).sqrMagnitude;
-                if (d < bestD) { bestD = d; best = i; }
+                if (d < bestD)
+                {
+                    bestD = d;
+                    best = i;
+                }
             }
+
             return best;
         }
 
         readonly List<int> visibleScratch = new List<int>(64);
-
         public int FindRandomVisibleEnemy()
         {
             visibleScratch.Clear();
@@ -76,10 +114,14 @@ namespace Emberlight
             for (int i = 0; i < n; i++)
             {
                 var e = GetEnemy(i);
-                if (e == null || !e.Targetable) continue;
-                if (Visible(e.view.position)) visibleScratch.Add(i);
+                if (e == null || !e.Targetable)
+                    continue;
+                if (Visible(e.view.position))
+                    visibleScratch.Add(i);
             }
-            if (visibleScratch.Count == 0) return -1;
+
+            if (visibleScratch.Count == 0)
+                return -1;
             return visibleScratch[Random.Next(visibleScratch.Count)];
         }
     }
@@ -87,6 +129,8 @@ namespace Emberlight
     public abstract class EmberWeapon
     {
         public abstract void Tick(float dt, EmberWeaponContext ctx);
-        public virtual void Reset() { }
+        public virtual void Reset()
+        {
+        }
     }
 }

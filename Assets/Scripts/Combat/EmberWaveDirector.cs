@@ -30,11 +30,11 @@ namespace Emberlight
             /// <summary>灯芯当前位置（遭遇事件以它为圆心布点）。</summary>
             Vector2 PlayerPosition { get; }
 
-            /// <summary>按波次 roll 一个杂兵（落点由名册在玩家周围随机取）。</summary>
-            void SpawnRolledTrash();
+            /// <summary>按波次 roll 一个屏外杂兵；false 表示当前没有合法落点，不消耗配额。</summary>
+            bool TrySpawnRolledTrash();
 
-            /// <summary>在指定落点刷一个杂兵（遭遇事件用；<paramref name="forceAffix"/> 为精英小队）。</summary>
-            void SpawnTrashAt(int kind, Vector2 position, bool forceAffix);
+            /// <summary>请求遭遇落点，名册仍保证屏外；false 不消耗配额。</summary>
+            bool TrySpawnTrashAt(int kind, Vector2 position, bool forceAffix);
 
             /// <summary>刷 Boss。</summary>
             void SpawnBoss();
@@ -171,8 +171,7 @@ namespace Emberlight
                 spawnTimer -= dt;
                 if (spawnTimer <= 0)
                 {
-                    host.SpawnRolledTrash();
-                    waveSpawned++;
+                    if (host.TrySpawnRolledTrash()) waveSpawned++;
                     spawnTimer = config.SpawnInterval(wave);
                 }
             }
@@ -213,8 +212,7 @@ namespace Emberlight
                 float a = offset + i * Mathf.PI * 2 / count;
                 Vector2 p = SafeEncounterPosition(host.PlayerPosition, new Vector2(Mathf.Cos(a), Mathf.Sin(a)));
                 // 精英小队强制带词缀；普通围杀圈按概率
-                host.SpawnTrashAt(elite ? 2 : 0, p, elite);
-                waveSpawned++;
+                if (host.TrySpawnTrashAt(elite ? 2 : 0, p, elite)) waveSpawned++;
             }
             encounterText = elite ? "遭遇 · 精英小队" : "遭遇 · 围杀圈";
             encounterTimer = EncounterBannerSeconds;

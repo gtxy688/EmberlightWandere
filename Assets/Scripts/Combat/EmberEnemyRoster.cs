@@ -22,14 +22,16 @@ namespace Emberlight
         readonly Transform world;
         readonly Transform player;
         readonly System.Random random;
+        readonly Camera camera;
 
-        public EmberEnemyRoster(EmberPool pool, LevelConfig config, Transform world, Transform player, System.Random random)
+        public EmberEnemyRoster(EmberPool pool, LevelConfig config, Transform world, Transform player, System.Random random, Camera camera)
         {
             this.pool = pool;
             this.config = config;
             this.world = world;
             this.player = player;
             this.random = random;
+            this.camera = camera;
         }
 
         /// <summary>当前在场敌人数量（含正在重生读条的）。</summary>
@@ -54,19 +56,18 @@ namespace Emberlight
         /// <param name="host">Boss 需要的宿主契约（非 Boss 可不传）。</param>
         /// <param name="bossVolley">Boss 暗弹齐射回调。</param>
         /// <param name="forcedKind">≥ 0 时跳过种类 roll；仅在 <paramref name="boss"/> 为 false 时生效。</param>
-        /// <param name="position">指定落点；null 时在玩家周围 10 单位环形随机取点。</param>
+        /// <param name="position">请求落点；杂兵仅在地图内且屏外时采用，否则重新选取。</param>
         /// <param name="forceAffix">true 时跳过词缀概率判定（精英挑战小队用）。</param>
         public EmberEnemy Spawn(bool boss, int wave, IEmberCombatHost host = null,
             System.Action<Vector2, int> bossVolley = null, int forcedKind = -1,
-            Vector2? position = null, bool forceAffix = false)
+            Vector2? position = null, bool forceAffix = false, bool allowInView = false)
         {
             int kind = boss ? 3 : forcedKind >= 0 ? forcedKind : config.RollKind(wave, random);
 
-            // 落点：平时在玩家周围 10 单位环形随机；Boss 固定在玩家上方 2 单位。
-            float angle = (float)random.NextDouble() * Mathf.PI * 2f;
-            Vector2 p = (Vector2)player.position + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * 10;
-            p = position ?? EmberWorld.Clamp(p, .8f);
+            Vector2 p;
             if (boss) p = EmberWorld.Clamp((Vector2)player.position + new Vector2(0, 2), 1);
+            else if (allowInView && position.HasValue) p = position.Value;
+            else if (!EmberSpawnPlacement.TryFind(camera, config, random, position, out p)) return null;
 
             Color body = BodyColor(kind);
             var view = pool.RentEnemy(boss ? "boss" : "shade", world, body);

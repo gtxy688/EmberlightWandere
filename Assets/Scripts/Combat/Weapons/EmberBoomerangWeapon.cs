@@ -19,11 +19,10 @@ namespace Emberlight
             public readonly HashSet<EmberEnemy> hitBack = new HashSet<EmberEnemy>();
         }
 
-        const float OutDist = 6f;
-        const float Speed = 10f;
+        const float OutDist = EmberWeaponTuning.Boom.Distance;
+        const float Speed = EmberWeaponTuning.Boom.Speed;
         readonly List<Butterfly> active = new List<Butterfly>();
         float cd;
-
         public override void Reset()
         {
             active.Clear();
@@ -32,23 +31,21 @@ namespace Emberlight
 
         public override void Tick(float dt, EmberWeaponContext ctx)
         {
-            if (ctx.Progress == null || !ctx.Progress.OwnsWeapon(RunProgress.WeaponBoom)) return;
-
+            if (ctx.Progress == null || !ctx.Progress.OwnsWeapon(RunProgress.WeaponBoom))
+                return;
             cd -= dt;
             if (cd <= 0 && ctx.EnemyCount() > 0)
             {
                 Fire(ctx);
-                cd = 2.0f / (1f + ctx.Progress.WeaponAttackSpeed(RunProgress.WeaponBoom)); // Weapon-Balance-v1
+                cd = EmberWeaponTuning.Boom.Cooldown / (1f + ctx.Progress.WeaponAttackSpeed(RunProgress.WeaponBoom)); // Weapon-Balance-v1
             }
 
             bool extraLeg = ctx.Progress.BoomExtraLegHit;
-
             for (int i = active.Count - 1; i >= 0; i--)
             {
                 var b = active[i];
-                b.view.transform.localScale=new Vector3(.60f*(.72f+.28f*Mathf.Abs(Mathf.Sin(ctx.Elapsed*22))),.50f,1);
-                b.view.transform.rotation=Quaternion.Euler(0,0,Mathf.Sin(ctx.Elapsed*8)*12);
-
+                b.view.transform.localScale = new Vector3(.60f * (.72f + .28f * Mathf.Abs(Mathf.Sin(ctx.Elapsed * 22))), .50f, 1);
+                b.view.transform.rotation = Quaternion.Euler(0, 0, Mathf.Sin(ctx.Elapsed * 8) * 12);
                 if (!b.returning)
                 {
                     Vector2 step = b.dir * Speed * dt;
@@ -59,6 +56,7 @@ namespace Emberlight
                         b.hitOut.Clear();
                         b.midLegCleared = true;
                     }
+
                     HitLeg(ctx, b, b.hitOut);
                     if (b.traveled >= OutDist)
                     {
@@ -75,6 +73,7 @@ namespace Emberlight
                         b.hitBack.Clear();
                         b.midLegCleared = true;
                     }
+
                     if (dist < .35f)
                     {
                         if (b.tripsLeft > 0)
@@ -92,12 +91,18 @@ namespace Emberlight
                                 var t = ctx.GetEnemy(nearest);
                                 b.dir = ((Vector2)t.view.position - ctx.PlayerPos).normalized;
                             }
+
                             continue;
                         }
-                        if (ctx.Pool != null) ctx.Pool.Release("fire", b.view); else Object.Destroy(b.view.gameObject);
+
+                        if (ctx.Pool != null)
+                            ctx.Pool.Release("fire", b.view);
+                        else
+                            Object.Destroy(b.view.gameObject);
                         active.RemoveAt(i);
                         continue;
                     }
+
                     b.view.transform.position += (Vector3)(toPlayer.normalized * Speed * dt);
                     HitLeg(ctx, b, b.hitBack);
                 }
@@ -109,8 +114,10 @@ namespace Emberlight
             for (int j = ctx.EnemyCount() - 1; j >= 0; j--)
             {
                 var e = ctx.GetEnemy(j);
-                if (e == null || !e.Targetable) continue;
-                if (hitSet.Contains(e)) continue;
+                if (e == null || !e.Targetable)
+                    continue;
+                if (hitSet.Contains(e))
+                    continue;
                 if (Vector2.Distance(b.view.transform.position, e.view.position) < e.radius + .28f)
                 {
                     hitSet.Add(e);
@@ -122,20 +129,15 @@ namespace Emberlight
         void Fire(EmberWeaponContext ctx)
         {
             int nearest = ctx.FindNearestVisibleEnemy();
-            if (nearest < 0) return;
-            EmberAudio.Ensure().PlayWeaponBoomerang();
+            if (nearest < 0)
+                return;
+            ctx.PlaySound?.Invoke(EmberWeaponSound.Boomerang);
             var target = ctx.GetEnemy(nearest);
             Vector2 dir = ((Vector2)target.view.position - ctx.PlayerPos).normalized;
-            float dmg = 18f * ctx.Progress.DamageMul * (1f + ctx.Progress.WeaponMagnitude(RunProgress.WeaponBoom));
+            float dmg = EmberWeaponTuning.Boom.Damage * ctx.Progress.DamageMul * (1f + ctx.Progress.WeaponMagnitude(RunProgress.WeaponBoom));
             var r = ctx.Pool != null ? ctx.Pool.RentFire(ctx.World, ctx.PlayerPos, .30f) : EmberArt.Fire(ctx.World, ctx.PlayerPos, .30f);
-            EmberWorldArt.Projectile(r,10,.60f,.50f);
-            active.Add(new Butterfly
-            {
-                view = r,
-                dir = dir,
-                damage = dmg,
-                tripsLeft = ctx.Progress.BoomExtraTrips
-            });
+            EmberWorldArt.Projectile(r, 10, .60f, .50f);
+            active.Add(new Butterfly { view = r, dir = dir, damage = dmg, tripsLeft = ctx.Progress.BoomExtraTrips });
         }
     }
 }

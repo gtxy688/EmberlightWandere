@@ -105,6 +105,9 @@ EmberGame: 选槽位 N + 单选 1 把起始武器
 
 ## 对外契约
 
+`EmberWeaponCatalog.Find(id)` 返回不可变武器定义；名册、专属与质变归属读同一张表。`Roster` / `RosterCopy` 返回数组副本，外部修改不影响内部数据。`EmberWeaponTuning` 的升级增量同时供构筑应用与卡牌预览读取。本次未改随机数调用顺序、品质规则或既有数值。
+
+
 | 名称 | 类型 | 输入 | 输出或事件 | 错误/生命周期保证 |
 |------|------|------|------------|-------------------|
 | `ConfigureRun(int[], int)` | 方法 | 起始武器数组、槽位上限 | 重置全部状态 | 钳制槽位到 1–5；空集兜底火球 |
@@ -132,11 +135,11 @@ EmberGame: 选槽位 N + 单选 1 把起始武器
 
 **具体数值不在此复制**，一律见 `../requirements.md` §4。
 
-### 零调用点成员（死代码，勿当作契约）
+### 历史兼容成员（勿当作新功能入口）
 
-经 2026-09-23 全仓扫描确认**零调用点**：`FullRoster()`、`HasEvolved()`（`HasMetamorph` 别名）、`CanEvolve()`、`OwnedWeaponsView()`、`AddShield()`、`HealAmount()`。
+2026-09-23 曾记录零调用点；当前测试已有部分引用，不能再按全仓无引用删除。历史兼容成员包括：`FullRoster()`、`HasEvolved()`（`HasMetamorph` 别名）、`CanEvolve()`、`OwnedWeaponsView()`、`AddShield()`、`HealAmount()`。
 
-（`OfferCountExpected()` 与 `FullRoster()` 已改为转发 `EmberChoicePool.ExpectedCount` / `EmberWeaponCatalog.RosterCopy()`，仍无调用点，但公式不再有第二个版本。`ScoreMult` 恒为 1.0，按 `../requirements.md` §4.1 保留。）
+（`OfferCountExpected()` 与 `FullRoster()` 已改为转发 `EmberChoicePool.ExpectedCount` / `EmberWeaponCatalog.RosterCopy()`，在测试中已有调用，公式没有第二个版本。`ScoreMult` 恒为 1.0，按 `../requirements.md` §4.1 保留。）
 
 > 注意：`HasEvolved(int)` 是 `HasMetamorph(int)` 的别名，**武器代码用的是 `HasMetamorph`**——只删别名不会影响行为，但别误删 `HasMetamorph`。
 
@@ -173,7 +176,7 @@ EmberGame: 选槽位 N + 单选 1 把起始武器
 - **无场景对象、无 Prefab、无 ScriptableObject**。`RunProgress` 由组合根（`EmberGame.StartRunWith`）在开局时 `new` 出来并由 `EmberRunState.Progress` 持有。
 - 回营地时 `Progress` 被置为 `null`，因此**所有消费方必须容忍 null**（`EmberCombat.Tick` 注入前先判）。
 - `EmberRarity` / `EmberRarityUtil` 为纯静态查表，无状态、无生命周期。
-- 词条名称与说明文案集中在 `EmberCopy.UpgradeNames` / `UpgradeDetails`（36 项，下标 == 词条 id），并被 `EmberFonts` 用于字形预热——**改文案必须同时确认字体预热覆盖**。
+- 武器名称与说明集中在 `EmberWeaponCatalog.Definition`，`EmberCopy.UpgradeNames` / `UpgradeDetails` 组装公共词条文案（36 项，下标 == 词条 id），并被 `EmberFonts` 用于字形预热——**改文案必须同时确认字体预热覆盖**。
 
 ## 影响与回归范围
 
@@ -185,7 +188,11 @@ EmberGame: 选槽位 N + 单选 1 把起始武器
 
 | 问题 | 候选方案 | 影响 | 需要谁裁定 |
 |------|----------|------|------------|
-| 是否清理零调用点成员 | 删除 / 保留作向后兼容 | 死代码增加误读成本，但也可能被外部工具引用 | xiaoCoder |
+| 是否清理历史兼容成员 | 删除 / 保留作向后兼容 | 死代码增加误读成本，但也可能被外部工具引用 | xiaoCoder |
 | 全局 `DamageBonus` 字段是否删除 | 删除 / 保留停用 | 与"不得再做全局攻击力"的口径一致性 | jack |
 | 质变 0.5% 门控是否保留 | 保留 / 改为纯权重竞争 | 影响钻石卡出现频率与手感 | jack + xiaoPlanner |
 | 冲击波（`WavePower`）去留 | 恢复为不占槽词条 / 删除 | 当前为死代码 | jack + xiaoPlanner |
+
+## 2026-10-13 实际发牌入口修复与回归
+
+`Choices` 生成候选后调用 `OfferChoices`，开启且仅开启一次待选状态；`EmberChoicePool.Build` 仍只生成数据，不修改构筑。刷新经同一入口替换候选，不叠加 Pending。修复前真实 UI 点击与刷新均被 Pending=0 拒绝；两条真实入口回归在修复前失败。数值、卡池与随机数调用顺序不变，结果见 `../实现说明.md`。

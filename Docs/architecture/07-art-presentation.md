@@ -29,13 +29,13 @@
 ## 设计与数据流
 
 ```text
-图集资源（导入时经 AssetPostprocessor 切片）
+图集资源（切片权威在 .meta，Sprite Editor 编辑；导入器维护 Sprite / Multiple 设置）
    doodle-icons.png        4×6  词条图标      → EmberCardIcons
    doodle-card-frames.png  2×2  稀有度卡框    → EmberCardFrames
    doodle-ui.png           2×3  UI 面板/按钮  → EmberUiArt
    wanderer-sheet.png      4×3  角色与世界    → EmberWorldArt
        ↓ 每个取图入口都是三级链
-   切好的子 Sprite（<atlas>_<index>，Sprite Editor / 导入器产出）
+   切好的子 Sprite（<atlas>_<index>，Sprite Editor 产出，导入器保留）
        ↓ 缺失或未重新导入
    Sprite.Create 运行时切图（rect 硬编码在 C# 里）
        ↓ 图集整体缺失
@@ -229,3 +229,17 @@ python Tools/atlas_glyph_check.py
 | ~~`FindObjectOfType<EmberGame>()` 是否改为注入~~ | **已裁定并落地（2026-09-23）**：改为构造时注入阶段委托 | 可测性与生命周期问题已解除；Visuals 下零 `EmberGame` 引用 | — |
 | 粒子上限 120 是否随真机实测调整 | Profiler 后调 / 维持 | 影响大波次表现与帧率 | xiaoCoder + jack |
 | 是否补完整八方角色动画 | 补图集 / 维持正背面+镜像 | 当前为简化动作，观感取舍 | jack |
+
+## 2026-10-13 字形来源契约
+
+公共卡面文案由 EmberCopy 收集，其中基础武器文案读 EmberWeaponCatalog；字体收集器不再依赖 UI 面板的名册数组。ValidateBaked 与动态回落保持原样。回归范围是编译后字符串堆覆盖、TMP 特殊字符、重新加载的字体网格以及图形 PlayMode 的菜单/HUD/选卡/结算。实际结果见 `../实现说明.md`，观感仍待人工验收。
+
+## UI Prefab 图片持久化（2026-10-13）
+
+`EmberUiPrefabRepair` 是 Editor 工具。菜单 `Emberlight/UI/Repair UIRoot Images` 修复并保存 `Assets/UI/UIRoot.prefab`；`Repair Selected Images` 修复选中对象，场景对象支持 Undo，需保存场景或 Apply 才持久化实例改动。
+
+工具沿用现有取图入口，将临时 Sprite 克隆为 `Assets/UI/Generated/Sprites/*.asset`，引用原 PNG，保留裁剪、pivot、PPU 和九宫格边框。仅修复已知 UI 节点，保留已有持久资源、布局、颜色和显隐；透明遮罩与点击区域允许空 Sprite。原纹理缺失时停止并提示先烘制程序化素材，不保存临时 Texture，也不改图集导入器或切片 `.meta`。
+
+影响范围：Editor 与 UIRoot 的图片引用。此修复工具不接管运行时数据刷新或按钮回调，也不改变字体闸门。2026-10-14 运行入口已由 M6 的 EmberMenuUi.Bind 接入同一 Prefab；连接工具创建的补充控件也经图片持久化处理。回归见 `07-art-presentation-test.md` 与 `06-ui-flow-test.md`。
+
+IntroRoot 同样使用持久图片：背景、徽标与进度条沿用原取图入口，保存到 Prefab 后停止 Play 仍可预览。EmberIntro 激活视图前仍调用 CreateChinese/ValidateBaked，再为已保存的 TMP 控件赋已校验字体；未绕过静态图集闸门。文案值保持原样，字形覆盖检查决定是否需要重烘。

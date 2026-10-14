@@ -2,7 +2,7 @@
 
 > 对应架构：`08-audio.md`
 > 对应需求：`../requirements.md` §7
-> ⚠️ 项目当前**无测试基础设施**，见 `00-overview.md` §测试现状。
+> ⚠️ 工程已有 EditMode / PlayMode 基础设施；本表未实现的条目仍标待建，见 `00-overview.md` §测试现状。
 
 ## 自动化测试计划与证据
 
@@ -10,29 +10,29 @@
 
 | 编号 | 层级 | 拟测试路径与名称 | 行为 | 红灯原因或 N/A 理由 | 最近结果 |
 |------|------|------------------|------|---------------------|----------|
-| A1 | PlayMode（待建） | `AudioLoadTests::AllClipsResolveFromResources` | 全部 SFX/BGM 名能 `Resources.Load` 成功 | 资源路径写错会静默无声 | 未执行（无测试程序集） |
-| A2 | PlayMode（待建） | `AudioLoadTests::MissingClipWarnsOnceAndDoesNotThrow` | clip 缺失时只警告一次、不抛异常、不中断游戏 | — | 未执行（无测试程序集） |
-| A3 | PlayMode（待建） | `AudioLoadTests::SourcesAreForcedTo2D` | `music` 与 `sfx` 的 `spatialBlend == 0` | ⚠️ 回归点：导入为 3D 是历史"完全没声音"的首要原因 | 未执行（无测试程序集） |
-| A4 | PlayMode（待建） | `AudioLoadTests::ListenerIsEnsuredWhenAbsent` | 场景无 `AudioListener` 时挂到 `Camera.main` | — | 未执行（无测试程序集） |
-| A5 | PlayMode（待建） | `AudioWeaponRoutingTests::EachWeaponPlaysItsOwnClip` | 把其余 clip 置空后，6 把武器各自 Tick 仍能发声 | 证明走的是自己那条 clip，而非碰巧回退到通用音 | 未执行（无测试程序集） |
-| A6 | PlayMode（待建） | `AudioWeaponRoutingTests::FallsBackToGenericClipWhenMissing` | 专属 clip 缺失时回退 `fire` / `meteor_impact` | — | 未执行（无测试程序集） |
-| A7 | PlayMode（待建） | `AudioThrottleTests::FireIsThrottledAtFiftyMillis` | 每帧调用开火音 3 秒只播有限次 | 无限频会爆音 | 未执行（无测试程序集） |
-| A8 | PlayMode（待建） | `AudioThrottleTests::BurnGroundThrottleIsShorterThanClip` | 燃地限频严格短于音效时长，不叠音成糊 | 历史问题：patch 每 ~0.45s 掉落 | 未执行（无测试程序集） |
-| A9 | PlayMode（待建） | `AudioThrottleTests::OrbitIgnitesOnlyOnOrbCountChange` | 环火不在每帧发声，仅球数变化时点燃 | 每帧播放会持续噪音 | 未执行（无测试程序集） |
-| A10 | PlayMode（待建） | `AudioThrottleTests::SplitArrowIsSilent` | `isSplit` 的分裂箭不发声 | 一次射击叠两声 | 未执行（无测试程序集） |
-| A11 | PlayMode（待建） | `AudioThrottleTests::MeteorWarnsSilentlyAndSoundsOnImpact` | 预警圈静音，仅落地瞬间发声 | — | 未执行（无测试程序集） |
-| A12 | PlayMode（待建） | `AudioContactTests::ContactSoundOnlyWhenHealthActuallyDrops` | 连续接触伤害不叠加通用命中音；生命实际下降才触发专属音 | 历史噪声源 | 未执行（无测试程序集） |
-| A13 | PlayMode（待建） | `AudioVolumeTests::VolumeAppliesImmediatelyAndPersists` | set 后 `AudioSource.volume` 立即变化；写 `PlayerPrefs`；重进保持 | — | 未执行（无测试程序集） |
-| A14 | PlayMode（待建） | `AudioVolumeTests::OneShotVolumeIsNotDoubleMultiplied` | 普通 `PlayOneShot` 音量只乘一次 | 历史缺陷：重复乘音量 | 未执行（无测试程序集） |
-| A15 | PlayMode（待建） | `AudioMusicTests::SwitchesBetweenMenuAndCombatAndLoops` | 菜单/战斗切轨正确并 loop | — | 未执行（无测试程序集） |
-| A16 | EditMode（待建） | `AudioImportSettingsTests::AllAudioImportsAre2DAndPreloaded` | 扫描 `.meta`，断言 `3D: 0` + `preloadAudioData: 1` | ⚠️ **新 WAV 默认是 `3D: 1` + `preload 0`**，是本模块最易复发的坑 | 未执行（无测试程序集） |
+| A1 | PlayMode（待建） | `AudioLoadTests::AllClipsResolveFromResources` | 全部 SFX/BGM 名能 `Resources.Load` 成功 | 资源路径写错会静默无声 | 待建（本条独立用例未实现） |
+| A2 | PlayMode（待建） | `AudioLoadTests::MissingClipWarnsOnceAndDoesNotThrow` | clip 缺失时只警告一次、不抛异常、不中断游戏 | — | 待建（本条独立用例未实现） |
+| A3 | PlayMode（待建） | `AudioLoadTests::SourcesAreForcedTo2D` | `music` 与 `sfx` 的 `spatialBlend == 0` | ⚠️ 回归点：导入为 3D 是历史"完全没声音"的首要原因 | 待建（本条独立用例未实现） |
+| A4 | PlayMode（待建） | `AudioLoadTests::ListenerIsEnsuredWhenAbsent` | 场景无 `AudioListener` 时挂到 `Camera.main` | — | 待建（本条独立用例未实现） |
+| A5 | PlayMode（待建） | `AudioWeaponRoutingTests::EachWeaponPlaysItsOwnClip` | 把其余 clip 置空后，6 把武器各自 Tick 仍能发声 | 证明走的是自己那条 clip，而非碰巧回退到通用音 | 待建（本条独立用例未实现） |
+| A6 | PlayMode（待建） | `AudioWeaponRoutingTests::FallsBackToGenericClipWhenMissing` | 专属 clip 缺失时回退 `fire` / `meteor_impact` | — | 待建（本条独立用例未实现） |
+| A7 | PlayMode（待建） | `AudioThrottleTests::FireIsThrottledAtFiftyMillis` | 每帧调用开火音 3 秒只播有限次 | 无限频会爆音 | 待建（本条独立用例未实现） |
+| A8 | PlayMode（待建） | `AudioThrottleTests::BurnGroundThrottleIsShorterThanClip` | 燃地限频严格短于音效时长，不叠音成糊 | 历史问题：patch 每 ~0.45s 掉落 | 待建（本条独立用例未实现） |
+| A9 | PlayMode（待建） | `AudioThrottleTests::OrbitIgnitesOnlyOnOrbCountChange` | 环火不在每帧发声，仅球数变化时点燃 | 每帧播放会持续噪音 | 待建（本条独立用例未实现） |
+| A10 | PlayMode（待建） | `AudioThrottleTests::SplitArrowIsSilent` | `isSplit` 的分裂箭不发声 | 一次射击叠两声 | 待建（本条独立用例未实现） |
+| A11 | PlayMode（待建） | `AudioThrottleTests::MeteorWarnsSilentlyAndSoundsOnImpact` | 预警圈静音，仅落地瞬间发声 | — | 待建（本条独立用例未实现） |
+| A12 | PlayMode（待建） | `AudioContactTests::ContactSoundOnlyWhenHealthActuallyDrops` | 连续接触伤害不叠加通用命中音；生命实际下降才触发专属音 | 历史噪声源 | 待建（本条独立用例未实现） |
+| A13 | PlayMode（待建） | `AudioVolumeTests::VolumeAppliesImmediatelyAndPersists` | set 后 `AudioSource.volume` 立即变化；写 `PlayerPrefs`；重进保持 | — | 待建（本条独立用例未实现） |
+| A14 | PlayMode（待建） | `AudioVolumeTests::OneShotVolumeIsNotDoubleMultiplied` | 普通 `PlayOneShot` 音量只乘一次 | 历史缺陷：重复乘音量 | 待建（本条独立用例未实现） |
+| A15 | PlayMode（待建） | `AudioMusicTests::SwitchesBetweenMenuAndCombatAndLoops` | 菜单/战斗切轨正确并 loop | — | 待建（本条独立用例未实现） |
+| A16 | EditMode（待建） | `AudioImportSettingsTests::AllAudioImportsAre2DAndPreloaded` | 扫描 `.meta`，断言 `3D: 0` + `preloadAudioData: 1` | ⚠️ **新 WAV 默认是 `3D: 1` + `preload 0`**，是本模块最易复发的坑 | 待建（本条独立用例未实现） |
 | A17 | N/A | 音色是否贴合奇幻火焰风、音量平衡是否舒服、武器间辨识度 | — | **无法合理自动化**：属听感判断 | N/A（列入手动验收 H1–H3） |
 
 ## 自动化运行记录
 
 | 日期 | Unity 版本与环境 | 命令或 Test Runner 过滤器 | 结果文件 | 结论 |
 |------|------------------|---------------------------|----------|------|
-| — | — | 尚无可执行的测试程序集 | — | **未验证** |
+| — | — | 历史计划尚未实现；当前运行记录见 `../实现说明.md` | — | **未验证** |
 
 > 历史记录：`Weapon-Sfx-v1` 时期曾在 Play Mode 手工实测 6 项（clip 可加载、`Play*` 使 `sfx` 进入 `isPlaying`、隔离测试、伤害产出、燃地限频只播 1 次、通用回退有效）。该实测**结论已过期**（v2 已替换素材与限频），且**未留存可重跑的自动化产物**。
 

@@ -2,7 +2,7 @@
 
 > 对应架构：`07-art-presentation.md`
 > 对应需求：`../requirements.md` §7（技术约束）
-> ⚠️ 项目当前**无测试基础设施**，见 `00-overview.md` §测试现状。
+> ⚠️ 工程已有 EditMode / PlayMode 基础设施；本表未实现的条目仍标待建，见 `00-overview.md` §测试现状。
 
 ## 自动化测试计划与证据
 
@@ -10,25 +10,25 @@
 
 | 编号 | 层级 | 拟测试路径与名称 | 行为 | 红灯原因或 N/A 理由 | 最近结果 |
 |------|------|------------------|------|---------------------|----------|
-| A1 | EditMode（待建） | `SpriteFallbackTests::CardFramesFallBackThroughThreeLevels` | `doodle-card-frames` 缺失时回退手工切分，再缺失回退 `EmberArt.Panel`，**不返回 null** | 空 Sprite 会让卡面不可见且不报错 | 未执行（无测试程序集） |
-| A2 | EditMode（待建） | `SpriteFallbackTests::CardIconsMapEveryOfferId` | 全部现行词条 id 都能映射到图集格，未知 id 回落占位而非 null | 新增词条忘配图标会静默空白 | 未执行（无测试程序集） |
-| A3 | EditMode（待建） | `SpriteFallbackTests::UiArtFallbackRectsAreNormalized` | `EmberUiArt` 6 个回退 rect 均在 [0,1] 内 | 越界 rect 会产生错误切片 | 未执行（无测试程序集） |
-| A4 | EditMode（待建） | `SpriteFallbackTests::WorldArtSpriteCountMatchesSheet` | `wanderer-sheet` 解析出 12 格，且各格非空 | — | 未执行（无测试程序集） |
-| A5 | EditMode（待建） | `BakedArtTests::BakedSpritesMatchRuntimeRasterization` | 5 个烘焙 PNG 与现场重新光栅化逐像素一致（`maxDelta == 0`） | 改了一处忘另一处会导致美术漂移 | 未执行（无测试程序集） |
-| A6 | EditMode（待建） | `BakedArtTests::MissingBakedAssetFallsBackToRasterization` | 烘焙资源缺失时回退运行时逐像素生成，不崩溃 | — | 未执行（无测试程序集） |
-| A7 | PlayMode（待建） | `EffectsTests::ParticleCapIsOneHundredTwenty` | 同屏粒子不超过 **120** | ⚠️ 历史文档写 180，实现为 120；回退会让移动端掉帧 | 未执行（无测试程序集） |
-| A8 | PlayMode（待建） | `EffectsTests::EmitsOnlyWhilePlaying` | 暂停/选卡/结算态不发射新粒子 | 暂停时仍在放特效会显得未暂停 | 未执行（无测试程序集） |
-| A9 | PlayMode（待建） | `EffectsTests::PoolExhaustionDropsSilently` | 池空时丢弃粒子且不抛异常、不无限分配 | — | 未执行（无测试程序集） |
-| A10 | PlayMode（待建） | `EffectsTests::NewRunClearsPreviousEffects` | 重新开局后旧特效世界被清理 | — | 未执行（无测试程序集） |
+| A1 | EditMode（待建） | `SpriteFallbackTests::CardFramesFallBackThroughThreeLevels` | `doodle-card-frames` 缺失时回退手工切分，再缺失回退 `EmberArt.Panel`，**不返回 null** | 空 Sprite 会让卡面不可见且不报错 | 待建（本条独立用例未实现） |
+| A2 | EditMode（待建） | `SpriteFallbackTests::CardIconsMapEveryOfferId` | 全部现行词条 id 都能映射到图集格，未知 id 回落占位而非 null | 新增词条忘配图标会静默空白 | 待建（本条独立用例未实现） |
+| A3 | EditMode（待建） | `SpriteFallbackTests::UiArtFallbackRectsAreNormalized` | `EmberUiArt` 6 个回退 rect 均在 [0,1] 内 | 越界 rect 会产生错误切片 | 待建（本条独立用例未实现） |
+| A4 | EditMode（待建） | `SpriteFallbackTests::WorldArtSpriteCountMatchesSheet` | `wanderer-sheet` 解析出 12 格，且各格非空 | — | 待建（本条独立用例未实现） |
+| A5 | EditMode（待建） | `BakedArtTests::BakedSpritesMatchRuntimeRasterization` | 5 个烘焙 PNG 与现场重新光栅化逐像素一致（`maxDelta == 0`） | 改了一处忘另一处会导致美术漂移 | 待建（本条独立用例未实现） |
+| A6 | EditMode（待建） | `BakedArtTests::MissingBakedAssetFallsBackToRasterization` | 烘焙资源缺失时回退运行时逐像素生成，不崩溃 | — | 待建（本条独立用例未实现） |
+| A7 | PlayMode（待建） | `EffectsTests::ParticleCapIsOneHundredTwenty` | 同屏粒子不超过 **120** | ⚠️ 历史文档写 180，实现为 120；回退会让移动端掉帧 | 待建（本条独立用例未实现） |
+| A8 | PlayMode（待建） | `EffectsTests::EmitsOnlyWhilePlaying` | 暂停/选卡/结算态不发射新粒子 | 暂停时仍在放特效会显得未暂停 | 待建（本条独立用例未实现） |
+| A9 | PlayMode（待建） | `EffectsTests::PoolExhaustionDropsSilently` | 池空时丢弃粒子且不抛异常、不无限分配 | — | 待建（本条独立用例未实现） |
+| A10 | PlayMode（待建） | `EffectsTests::NewRunClearsPreviousEffects` | 重新开局后旧特效世界被清理 | — | 待建（本条独立用例未实现） |
 | A11 | 已有（编辑器批处理脚本） | `Tools/atlas_glyph_check.py`（外部工具，非 Test Runner） | 读 `Assembly-CSharp.dll` 的 `#US` 堆取全部字面量 + 读 `.asset` 的 `m_Unicode`，差集必须为空；并显式断言 TMP 特殊字符 `U+005F`、`U+2026` 存在。**非空时退出码 1** | 静态图集不能追加字形，漏字直接表现为游戏内空心方框 | **通过**：`MISSING (0)` / `TMP special chars : all present` / 退出码 0 |
 | A12 | 已有（编辑器批处理方法） | `EmberFontBake.CheckRuntimeLoad` | `EmberFonts.CreateChinese()` 必须返回**预烘静态图集**（`atlasPopulationMode == Static`），且 `atlasTextures.Length == 1`、`max atlasIndex == 0` | 多图集会产生无纹理的 atlas 槽，运行时 `GetFallbackMaterial` 读它即 `NullReferenceException`（历史事故三） | **通过**：`1 atlas texture(s), 529 characters, 529 glyphs, max atlasIndex 0` |
 | A12b | 已有（同 A12） | `EmberFontBake.CheckRuntimeLoad`（输出含 FALLBACK 分支） | 预烘资产被破坏时 `ValidateBaked` 必须拒绝并回落动态图集，**不得崩溃** | 这是"资产坏了不拖挂 UI"的唯一保证 | **通过**（闸门存在且被 A12 覆盖；破坏路径未构造用例） |
 | A13 | 已有（编辑器批处理方法） | `EmberFontBake.Bake` 的 `CoversEveryCharacter` | 每个请求字符都能在烘出的图集里查到，否则换更小采样点重试，全部失败则拒绝写盘 | 关掉多图集后装不下的字**不进 `glyphTable`**，"没有字形越界"依然成立而字数已缺 | **通过**：`72 px -> 529 chars ... complete=True` |
 | A14 | 已有（编辑器批处理方法） | `EmberFontBake.VerifyReloaded` | 从磁盘**重新加载**资产后真渲染 64 字采样，必须有几何体产出；并校验每个字形的 `atlasIndex` 落在 `atlasTextures` 范围内 | 历史两次事故都是"字段校验全绿、首次绘制才炸"，只有真绘制能拦住 | **通过**：`reloaded 529 glyphs / 1 atlas texture(s) / max atlasIndex 0` |
-| A15 | PlayMode（待建） | `KeeperAnimationTests::FreezesWhileNotPlaying` | 暂停时角色动画停止，恢复后继续 | — | 未执行（无测试程序集） |
-| A16 | PlayMode（待建） | `KeeperAnimationTests::MovesOnlyVisualChildren` | 动画只影响视觉子节点，角色坐标与碰撞不变 | 动到根节点会破坏移动与碰撞 | 未执行（无测试程序集） |
-| A17 | EditMode（待建） | `ImporterTests::AtlasImportersApplySlicing` | 4 个 `AssetPostprocessor` 对目标图集应用切片并关闭 mipmap | 重新导入资源后切片丢失 | 未执行（无测试程序集） |
-| A18 | EditMode（待建） | `ImporterTests::AndroidCompressionOverrideIsUncompressed` | 三张 doodle 图集的 Android 平台覆写为 Uncompressed | 回退 ETC2 会让描边起块状伪影 | 未执行（无测试程序集） |
+| A15 | PlayMode（待建） | `KeeperAnimationTests::FreezesWhileNotPlaying` | 暂停时角色动画停止，恢复后继续 | — | 待建（本条独立用例未实现） |
+| A16 | PlayMode（待建） | `KeeperAnimationTests::MovesOnlyVisualChildren` | 动画只影响视觉子节点，角色坐标与碰撞不变 | 动到根节点会破坏移动与碰撞 | 待建（本条独立用例未实现） |
+| A17 | EditMode（待建） | `ImporterTests::AtlasImportersApplySlicing` | 4 个 `AssetPostprocessor` 对目标图集应用切片并关闭 mipmap | 重新导入资源后切片丢失 | 待建（本条独立用例未实现） |
+| A18 | EditMode（待建） | `ImporterTests::AndroidCompressionOverrideIsUncompressed` | 三张 doodle 图集的 Android 平台覆写为 Uncompressed | 回退 ETC2 会让描边起块状伪影 | 待建（本条独立用例未实现） |
 | A19 | N/A | 简笔画风格是否讨喜、色彩是否协调、动画节奏是否舒服 | — | **无法合理自动化**：属审美判断 | N/A（列入手动验收 H1–H3） |
 
 ## 自动化运行记录
@@ -102,3 +102,21 @@
 | 「玩家恢复原程序造型基础，不再播放图集走路帧」 | 现行口径，以上条为准 |
 | 「字体预烘已放弃——试过两次，都崩，不要再试」「`EmberFonts` 固定走动态图集」 | **已改为预烘静态图集**。三次失败的根因均已定位并修正（写入顺序 / 多图集 null 槽 / 缺覆盖与渲染校验），现行实现带 `ValidateBaked` 运行时闸门与动态图集回落。详见 `07-art-presentation.md` §中文字体 |
 | 「图集为 Default 类型，运行时按格 `Sprite.Create`」 | **四个图集已切成真正的 sprite sheet**（`textureType: Sprite` + `spriteMode: Multiple`），取图入口为「子 Sprite 优先 → 运行时 `Sprite.Create` 兜底」三级链 |
+
+## 本轮回归范围（2026-10-13）
+
+字体收集器移除 UI 名册数组依赖后，重新烘制并保留 ValidateBaked。检查编译后字符串字形覆盖与两个 TMP 特殊字符，字体重载时验证真实网格；图形冒烟另检查可见 TMP 网格和字形并保存 HUD/选卡截图。画面审美仍待人工。结果见 `../实现说明.md`。
+
+### UIRoot 图片恢复
+
+- EditMode：`EmberUiPrefabRepairTests` 的 4 条测试覆盖保存重载后的 Sprite/Texture 持久引用、非激活节点、重复执行、手动绑定保护、透明节点与未知图片保护，以及九宫格、填充条与布局保留。结果见 `../实现说明.md`。
+- 已在 Unity 图形编辑器副本中修复实际 UIRoot，重载后 59 个持久 Sprite 引用、14 个有意为空的节点，第二次修复 0 项；设置页与卡片截图已检查。
+- 待人工验收：在当前编辑器检查 Prefab 显示与布局。主菜单默认显示，隐藏面板须在 Prefab Mode 中按需打开预览；运行时接入验证见下节。
+
+### UIRoot 接入后的资源回归（2026-10-14）
+
+实际 Prefab 经 Unity API 补齐控件并重载：101 个 Image 中 85 个 Sprite/Texture 引用持久化，16 个遮罩或点击区有意为空，再修复为 0。图形编辑器的非 Play 主菜单和设置预览，以及 PlayMode 的 HUD/选卡截图已检查；字体仍经 ValidateBaked，当前程序集字形检查 MISSING (0)。EditMode 137/137、PlayMode 3/3 均通过，命令与证据见 `../实现说明.md`。未修改图集切片或字体资产，重新切片与字体烘制 N/A；当前编辑器观感与手感仍待人工。
+
+### 加载页 Prefab（2026-10-14）
+
+IntroRoot 的 4 个 Image 均引用可重载的 Sprite/Texture，重复修复 0；Editor API 检查重复连接保留手动字号与锚点。加载中、就绪与真实 Play 的标题/图标/提示截图已查看，字体校验日志正常，字形检查 MISSING (0)、TMP 特殊字符齐全。EditMode 137/137、PlayMode 4/4，退出 0；证据见 `../实现说明.md`。玩家文案未变、无缺字，字体重烘 N/A；字体破坏回落路径未验证，观感仍待人工。

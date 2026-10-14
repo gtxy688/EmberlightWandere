@@ -18,7 +18,6 @@ namespace Emberlight
         public const int StatLuck = 2;
         public const int StatAmp = 3;
         public const int StatShield = 4;
-
         // ── 武器（10–19，占槽）────────────────────────────────────────────────────────────
         public const int Pierce = 10;
         public const int Boom = 11;
@@ -26,7 +25,6 @@ namespace Emberlight
         public const int Basic = 13;
         public const int Orbit = 14;
         public const int Trail = 15;
-
         // ── 质变（20–29）─────────────────────────────────────────────────────────────────
         public const int MetaBasic = 20;
         public const int MetaOrbit = 21;
@@ -34,7 +32,6 @@ namespace Emberlight
         public const int MetaPierce = 23;
         public const int MetaBoom = 24;
         public const int MetaMeteor = 25;
-
         // ── 专属（30–39）─────────────────────────────────────────────────────────────────
         public const int ExclBasic = 30;
         public const int ExclOrbit = 31;
@@ -42,53 +39,98 @@ namespace Emberlight
         public const int ExclPierce = 33;
         public const int ExclBoom = 34;
         public const int ExclMeteor = 35;
+        /// <summary>一把武器的身份与文案，避免多份平行数组错位。</summary>
+        public sealed class Definition
+        {
+            public int Id { get; }
+            public int MetamorphId { get; }
+            public int ExclusiveId { get; }
+            public string Name { get; }
+            public string Description { get; }
 
-        /// <summary>武器名册顺序，同时是开局选武器界面的显示顺序。</summary>
-        public static readonly int[] Roster = { Basic, Orbit, Trail, Pierce, Boom, Meteor };
+            internal Definition(int id, int metamorphId, int exclusiveId, string name, string description)
+            {
+                Id = id;
+                MetamorphId = metamorphId;
+                ExclusiveId = exclusiveId;
+                Name = name;
+                Description = description;
+            }
+        }
 
-        static readonly int[] MetaIds = { MetaBasic, MetaOrbit, MetaTrail, MetaPierce, MetaBoom, MetaMeteor };
-        static readonly int[] ExclIds = { ExclBasic, ExclOrbit, ExclTrail, ExclPierce, ExclBoom, ExclMeteor };
-        // 下标与 MetaIds / ExclIds 一一对应，索引即武器在 Roster 中的位置。
-        static readonly int[] MetaWeaponOf = { Basic, Orbit, Trail, Pierce, Boom, Meteor };
-        static readonly int[] ExclWeaponOf = { Basic, Orbit, Trail, Pierce, Boom, Meteor };
+        // 顺序也是开局界面的显示顺序；所有身份映射均由这张表生成。
+        static readonly Definition[] definitions =
+        {
+            new Definition(Basic, MetaBasic, ExclBasic, "火球", "自动发射火球\n攻击最近的敌人"),
+            new Definition(Orbit, MetaOrbit, ExclOrbit, "环火", "火球环绕身边\n灼烧靠近的敌人"),
+            new Definition(Trail, MetaTrail, ExclTrail, "燃地", "沿途留下火焰\n持续灼烧踏入的敌人"),
+            new Definition(Pierce, MetaPierce, ExclPierce, "穿透火矢", "停下脚步发射火矢\n贯穿直线上的敌人"),
+            new Definition(Boom, MetaBoom, ExclBoom, "回旋烬蝶", "掷出回旋火蝴蝶\n往返均可命中敌人"),
+            new Definition(Meteor, MetaMeteor, ExclMeteor, "天降火雨", "标记目标区域\n召唤火雨轰击敌人")
+        };
+        /// <summary>兼容数组调用方，但不暴露可修改的内部名册。</summary>
+        public static int[] Roster
+        {
+            get
+            {
+                return RosterCopy();
+            }
+        }
 
         /// <summary>名册长度（= 武器总数）。</summary>
-        public static int RosterCount { get { return Roster.Length; } }
+        public static int RosterCount
+        {
+            get
+            {
+                return definitions.Length;
+            }
+        }
 
         /// <summary>下标取武器 id；越界返回 0（不是合法武器 id）。</summary>
         public static int RosterIdAt(int index)
         {
-            return index >= 0 && index < Roster.Length ? Roster[index] : 0;
+            return index >= 0 && index < definitions.Length ? definitions[index].Id : 0;
         }
 
         /// <summary>是否为占槽武器（10–19 名册内）。</summary>
         public static bool IsRosterWeapon(int id)
         {
-            for (int i = 0; i < Roster.Length; i++)
-                if (Roster[i] == id) return true;
-            return false;
+            return Find(id) != null;
         }
 
         /// <summary>质变 id → 对应武器 id；非质变返回 0。</summary>
         public static int WeaponForMeta(int metaId)
         {
-            for (int i = 0; i < MetaIds.Length; i++)
-                if (MetaIds[i] == metaId) return MetaWeaponOf[i];
+            for (int i = 0; i < definitions.Length; i++)
+                if (definitions[i].MetamorphId == metaId)
+                    return definitions[i].Id;
             return 0;
         }
 
         /// <summary>专属 id → 对应武器 id；非专属返回 0。</summary>
         public static int WeaponForExcl(int exclId)
         {
-            for (int i = 0; i < ExclIds.Length; i++)
-                if (ExclIds[i] == exclId) return ExclWeaponOf[i];
+            for (int i = 0; i < definitions.Length; i++)
+                if (definitions[i].ExclusiveId == exclId)
+                    return definitions[i].Id;
             return 0;
         }
 
         /// <summary>名册的一个副本（调用方可自由排序）。</summary>
         public static int[] RosterCopy()
         {
-            return (int[])Roster.Clone();
+            var copy = new int[definitions.Length];
+            for (int i = 0; i < copy.Length; i++)
+                copy[i] = definitions[i].Id;
+            return copy;
+        }
+
+        public static Definition Find(int weaponId)
+        {
+            for (int i = 0; i < definitions.Length; i++)
+                if (definitions[i].Id == weaponId)
+                    return definitions[i];
+            return null;
         }
     }
 }

@@ -2,7 +2,7 @@
 
 > 本文件是**模块边界、依赖关系和任务路由的唯一索引**。
 > 模块清单与任务索引只在本文件维护一份，其他文档不得复制。
-> 最后核对：2026-09-14
+> 最后核对：2026-10-14
 
 ## 技术与目标环境
 
@@ -14,8 +14,8 @@
 | 输入 | 旧版 Input Manager + 自绘虚拟摇杆 |
 | UI | uGUI + TextMeshProUGUI |
 | 资源与配置 | `Resources/` + 代码内静态配置类（`LevelConfig`） |
-| 程序集 | **当前无 `.asmdef`** → 全部进 `Assembly-CSharp` / `Assembly-CSharp-Editor` |
-| 自动化环境 | **无测试程序集**；当前验证手段为编辑器编译 + 手动试玩（见 §测试现状） |
+| 程序集 | Runtime / Editor / EditMode.Tests / PlayMode.Tests 四个自建程序集 |
+| 自动化环境 | 已建立 EditMode 与 PlayMode 套件；具体覆盖与最新结果见 `../实现说明.md`；其余验证手段为编辑器编译 + 手动试玩（见 §测试现状） |
 
 ## 模块清单
 
@@ -86,32 +86,37 @@ RunFlowController ──► Host 契约 ──► M0  选卡推进规则不持�
 | 游戏速度 / 1x–5x / 倍速 | M1 | `01-config-tuning.md` |
 | 选卡 / 出卡 / 卡池 / 补偿选卡 / 刷新 / 槽位 N / 侥幸权重 | M2 | `02-run-progression.md` |
 | 候选怎么拼 / 同屏唯一键 / 出卡张数 / EmberChoicePool | M2 | `02-run-progression.md` |
-| 词条 Id 分区 / 武器名册 / EmberWeaponCatalog / 专属与质变映射 | M2 | `02-run-progression.md` |
+| 词条 Id 分区 / 武器名册 / EmberWeaponCatalog / Definition / 武器文案 / 专属与质变映射 | M2 | `02-run-progression.md` |
 | 幸运 / 稀有度 / 铜银金钻 / 品质 roll | M2 | `02-run-progression.md` |
 | 专属 / 质变 / 进化 / 连发 / 燎原 / 日冕 | M2 + M4 | `02-run-progression.md` → `04-weapon-system.md` |
 | 结算 / Score / 余烬 / 击杀计分 | M2 | `02-run-progression.md` |
 | 护盾 / 回血道具 / 掉落率 | M2 + M5 | `02-run-progression.md` |
-| 波次 / 清波 / 精英挑战 / 遭遇事件 / 阶段 Boss / Profiler 标记 / 刷怪尖峰 | M3 | `03-combat-waves.md` |
+| 波次 / 清波 / 精英挑战 / 遭遇事件 / 阶段 Boss / Profiler 标记 / 刷怪尖峰 / 屏外刷怪 / EmberSpawnPlacement | M3 | `03-combat-waves.md` |
 | 暗弹 / 齐射 / 半血狂怒 / Boss 招式 | M3 | `03-combat-waves.md` |
-| 受伤 / 无敌帧 / 护盾吸收顺序 | M3 | `03-combat-waves.md` |
+| 受伤 / 无敌帧 / 护盾吸收顺序 / 生命纯逻辑 | M0 | `00-composition-root.md` |
 | 火球 / 环火 / 燃地 / 穿透火矢 / 回旋烬蝶 / 天降火雨 | M4 | `04-weapon-system.md` |
-| 武器数值 / DPS 档位 / 超模 / 平衡 | M4 | `04-weapon-system.md` |
+| 武器数值 / EmberWeaponTuning / EmberWeaponFactory / 注册 / DPS 档位 / 超模 / 平衡 | M4 | `04-weapon-system.md` |
+| 共享燃地 / EmberBurnGround | M4 | `04-weapon-system.md` |
 | 穿透静止开火 / 狙击手感 | M4 | `04-weapon-system.md` |
 | 敌人行为 / 射手 / 烬胎分裂 / 铁灯卫 / 引线虫 | M5 | `05-enemy-system.md` |
 | 灼热 / 疾风 / 重生词缀 | M5 | `05-enemy-system.md` |
 | 敌人动画 / 剪影 / 角色标记 / 预警圈 | M5 + M7 | `05-enemy-system.md` |
 | 主菜单 / 开局流程 / 选难度 / 选槽位 / 选武器 | M6 | `06-ui-flow.md` |
-| HUD / 血条 / 波次横幅 / 暂停 / 设置页 / 音量滑条 / UI 复用 | M6 | `06-ui-flow.md` |
+| HUD / 文字刷新缓存 / 血条 / 波次横幅 / 暂停 / 设置页 / 音量滑条 / UI 复用 / 旧 UI 创建清理 / UIRoot 运行时引用 / Connect UIRoot Runtime | M6 + M0 | `06-ui-flow.md` → `00-composition-root.md` |
 | HUD 推送点 / 安全区适配 / 摇杆输入 / 相机跟随 | M6 + M0 | `00-composition-root.md` → `06-ui-flow.md` |
-| 卡面排版 / 徽章 / 图标映射 / 滚动选卡 | M6 + M7 | `06-ui-flow.md` |
+| 卡面排版 / EmberOfferPresentation / EmberUiFactory / 徽章 / 图标映射 / 滚动选卡 | M6 + M7 | `06-ui-flow.md` |
 | 简笔画素材 / 图集 / 程序化精灵 / 粒子 | M7 | `07-art-presentation.md` |
-| 中文字体 / TMP 图集 / 字体预热 / 加载页 | M7 | `07-art-presentation.md` |
+| UIRoot / Prefab 图片丢失 / Editor 图片绑定 / Repair UIRoot Images | M7 + M6 | `07-art-presentation.md` → `06-ui-flow.md` |
+| 加载页 / IntroRoot / 加载页预制体 | M6 + M7 | `06-ui-flow.md` → `07-art-presentation.md` |
+| 中文字体 / TMP 图集 / 字体预热 | M7 | `07-art-presentation.md` |
 | 音效 / BGM / 音量 / 播放节流 / 音效素材 | M8 | `08-audio.md` |
 | 音效素材授权 / CC0 来源 | 参考资料 | `../reference/audio-credits.md` |
 | Android 打包 / APK / keystore / PlayerSettings / 包依赖 / 本地工具清理 | M9 | `09-build-platform.md` |
 | 性能 / 对象池 / 粒子上限 / 帧率 | M9 + M7 | `09-build-platform.md` |
 | 项目总览 / 模块依赖 / 任务归属 | 总览 | `00-overview.md` |
 | 数值口径 / 产品行为 / 不做什么 | 需求 | `../requirements.md` |
+| 工程源码交付 / 打包工程 / 导入验证 | M9 | `09-build-platform.md` → `../../README.md` |
+| 测试运行 / run-tests / PlayMode 冒烟 | 验证 | `../实现说明.md` |
 | 离线编译校验 / 不启动 Unity 验证改动 | 工具 | `../../Tools/compile-check.ps1` |
 
 映射不唯一时不要猜测：列出候选模块和影响，请用户裁定后再改。
@@ -130,6 +135,7 @@ RunFlowController ──► Host 契约 ──► M0  选卡推进规则不持�
 | M6 | M3 | 只读 `EnemyCount / Wave / WaveRemaining / Boss / BossAlive` | 无战斗实例时 HUD 隐藏战斗块 |
 | M0 | M3 | `IEmberCombatHost` | 由组合根实现；**实现方不必是 `EmberGame`** |
 | M3 | M0 | `IEmberCombatHost` 反向请求阶段、伤害入口、计分与收局 | 宿主未提供时战斗不推进 |
+| M4 | M8 | `ctx.PlaySound(EmberWeaponSound)`，由 M3 装配音频适配 | 无回调时只跳过音效 |
 | M4 | M0 | **无依赖**（经 `EmberWeaponContext`） | — |
 | M7 | M0 | 阶段委托；构造时注入，不用服务定位器 | 委托为空时动画照常播放 |
 | M8 | M7/Resources | `Resources.Load("Audio/...")` | **clip 缺失静默跳过**，只警告一次，不崩 |
@@ -140,10 +146,10 @@ RunFlowController ──► Host 契约 ──► M0  选卡推进规则不持�
 | 问题 | 位置 | 影响 |
 |------|------|------|
 | `LevelConfig.ApplyWorld()` 被重复调用 | `EmberGame` 与 `EmberCombat` 各调一次 | 幂等，暂无实际危害，但属重复副作用 |
-| 死代码 | `EmberPulseWeapon`（`WavePower` 恒 0）、`RunProgress` 中 `FullRoster` / `HasEvolved` / `CanEvolve` / `OwnedWeaponsView` / `AddShield` / `OfferCountExpected` / `ScoreMult` / `HealAmount`（2026-09-23 扫描确认零调用点） | 增加误读成本 |
+| 死代码 | `EmberPulseWeapon`（`WavePower` 恒 0）、`RunProgress` 中 `FullRoster` / `HasEvolved` / `CanEvolve` / `OwnedWeaponsView` / `AddShield` / `OfferCountExpected` / `ScoreMult` / `HealAmount`（历史兼容成员；部分已有测试调用，不能再声称全仓零引用） | 增加误读成本 |
 | `LevelConfig.Default` 每次访问新建对象 | `LevelConfig.cs` | 属性而非缓存，高频访问会有额外分配 |
 | `EmberHud` 每帧拼字符串 | `EmberHud.Set` / `Stage` | 热路径分配；且 `Stage` 写 `waveText` 与 `Set` 重复（当前行为：`Stage` 覆盖 `Set`） |
-| 无程序集边界 | `Assets` 下无 `.asmdef` | 模块边界只能靠文档与纪律维持，编译期无法阻止违规依赖 |
+| Runtime 内模块尚未按目录拆 asmdef | `Assets/Scripts/Emberlight.Runtime.asmdef` | Runtime 与 Editor/Tests 已隔离，但 Runtime 内依赖仍靠契约与审查约束 |
 
 > **2026-09-23 已修复的历史技术债**（勿再按旧描述理解代码）：
 >
@@ -157,15 +163,14 @@ RunFlowController ──► Host 契约 ──► M0  选卡推进规则不持�
 
 ## 测试现状
 
-**2026-10-03 起项目有了第一套真实自动化测试——EditMode 套件 103 个用例（M2 全覆盖）**。
-PlayMode 仍为空，这是当前验收口径的主要缺口：
+2026-10-03 建立 M2 基线；2026-10-13 增加生命、流程、卡面、共享燃地与图形冒烟测试；2026-10-14 补充 Prefab、屏外刷怪和 HUD 更新回归。结果以 `../实现说明.md` 和 XML 为准；自动化仍未覆盖全部玩法。
 
 | 项 | 状态 |
 |----|------|
-| `Assets` 下自建 `.asmdef` | **3 个**：`Emberlight.Runtime`（`Assets/Scripts`）、`Emberlight.Editor`、`Emberlight.EditMode.Tests`。项目代码已不在 `Assembly-CSharp` |
-| EditMode 测试程序集 | **有**：`Assets/Tests/EditMode`，103 个用例 |
-| PlayMode 测试程序集 | **不存在** |
-| 已覆盖模块 | **M2**（Id 空间、卡池、品质权重与数值表、构筑推进与护盾吸收）；M0 的 `EmberKeeperVitals` / `RunFlowController` **可测但未写** |
+| `Assets` 下自建 `.asmdef` | **4 个**：`Emberlight.Runtime`（`Assets/Scripts`）、`Emberlight.Editor`、`Emberlight.EditMode.Tests`、`Emberlight.PlayMode.Tests`。项目代码已不在 `Assembly-CSharp` |
+| EditMode 测试程序集 | **有**：`Assets/Tests/EditMode`，150 个用例 |
+| PlayMode 测试程序集 | **有**：`Assets/Tests/PlayMode`，四个图形集成冒烟场景（含 UIRoot/IntroRoot 绑定与面板复用） |
+| 已覆盖模块 | **M2**（Id 空间、卡池、品质权重与数值表、构筑推进与护盾吸收）；M0 的 `EmberKeeperVitals` / `RunFlowController`、卡牌说明、共享燃地、屏外落点/配额重试与 HUD 更新；另有主场景与 UI 复用冒烟 |
 | 编辑器校验入口（`EmberChecks` / `Validate*` / `EmberUIRenderCheck`） | **已被删除**（见 `09-build-platform.md` 清理记录） |
 | 离线编译校验 | **有**：`Tools/compile-check.ps1`（Unity 自带 Roslyn，不启动编辑器；**只覆盖 Runtime**） |
 | Unity 批处理编译 | **有**：`Tools/unity-batch-verify.ps1`（真 Unity 导入 + 编译；需先关编辑器，且在普通终端运行） |
@@ -179,7 +184,7 @@ Unity.exe -batchmode -nographics -projectPath <项目> -runTests -testPlatform e
 ```
 
 > 后三项是**检查工具**，它们能证明"工程能导入、代码写得对、文案都在盘上"，
-> 但不能证明"运行行为正确"——那部分由 EditMode 套件与人工验收分别承担。
+> 但不能证明"运行行为正确"——那部分由 EditMode / PlayMode 套件与人工验收分别承担。
 > **EditMode 全绿不等于模块已验收**：手感、观感与依赖帧推进的行为仍须人工验收。
 
 > ⚠️ 历史文档中大量「`Emberlight/Validate …` 已通过」「`ValidateGodsSelect` 覆盖验收点」的表述**已失效**——这些入口在 2026-09-14 发布准备清理中连同临时编辑器脚本一并删除。引用它们作为证据是不成立的。
@@ -192,10 +197,7 @@ Unity.exe -batchmode -nographics -projectPath <项目> -runTests -testPlatform e
 
 **下一步建议的测试扩展顺序**（基础设施已就位，属"照着写"而非"从零搭"）：
 
-1. **M0 的 `EmberKeeperVitals` 与 `RunFlowController`**——两者已零 `UnityEngine` 引用，属同一档纯逻辑，
-   对应 `00-composition-root-test.md` 的 C1–C10，收益最高；
-2. **M1 的 `LevelConfig`**——波次配额、刷怪间隔、Boss 血量公式全是对数表的纯函数，
+1. **M1 的 `LevelConfig`**——波次配额、刷怪间隔、Boss 血量公式全是对数表的纯函数，
    对应 `01-config-tuning-test.md`；
-3. **M3 的 `EmberWaveDirector` 规则**——需要一点桩（`Host` 是接口，可用假实现），
-   但"Boss 波不被误判为已清空"这类历史事故值得钉住；
-4. **PlayMode** 仍需可脚本化装配 Canvas，属独立课题。
+2. **M3 的波次与 Boss 边界**——配额失败重试已有桩测试，Boss 波清场、重生与分裂仍需独立用例；
+3. **PlayMode 的完整胜利与敌人/武器行为**——主场景和序列化 Canvas 已可装配，继续复用现有冒烟基础。

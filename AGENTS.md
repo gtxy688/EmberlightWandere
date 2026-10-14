@@ -11,9 +11,9 @@
 | 命名空间 | `Emberlight`；编辑器为 `Emberlight.Editor` |
 | 脚本根 | `Assets/Scripts/{Core,Combat,UI,Visuals,Audio}` + `Assets/Editor` |
 | 文档根 | `Docs/` |
-| 程序集 | **有自建 asmdef**（2026-10-03 起）：`Emberlight.Runtime`（`Assets/Scripts`）→ `Emberlight.Editor`（`Assets/Editor`）+ `Emberlight.EditMode.Tests`（`Assets/Tests/EditMode`）。本项目代码已不在 `Assembly-CSharp` |
-| 自动化测试 | **有 EditMode 套件**（2026-10-03 起）：103 个用例全绿，覆盖 M2（Id 空间 / 卡池 / 品质数值 / 构筑推进）。**PlayMode 仍无** |
-| 跑测试 | `Unity.exe -batchmode -nographics -projectPath <项目> -runTests -testPlatform editmode -testResults Library/TestRun/editmode.xml -logFile Library/TestRun/tests.log` |
+| 程序集 | **有自建 asmdef**（2026-10-03 起）：`Emberlight.Runtime`（`Assets/Scripts`）→ `Emberlight.Editor`（`Assets/Editor`）+ `Emberlight.EditMode.Tests`（`Assets/Tests/EditMode`）+ `Emberlight.PlayMode.Tests`（`Assets/Tests/PlayMode`）。本项目代码已不在 `Assembly-CSharp` |
+| 自动化测试 | **有 EditMode 套件**（2026-10-03 起）：150 个 EditMode 用例（结果见 `Docs/实现说明.md`），覆盖 M2、生命结算、选卡流程、卡面说明、共享燃地、Editor 图片持久化、屏外刷怪与 HUD 更新。**另有 4 个图形 PlayMode 冒烟场景** |
+| 跑测试 | `powershell -ExecutionPolicy Bypass -File Tools/run-tests.ps1 -Platform EditMode`；PlayMode 换平台参数，带图形执行；脚本校验真实退出码与 XML 用例数 |
 | 离线编译校验 | `powershell -ExecutionPolicy Bypass -File Tools/compile-check.ps1`（Unity 开着也能跑；**只覆盖 Runtime，不含测试程序集**） |
 | Unity 批处理编译 | `powershell -ExecutionPolicy Bypass -File Tools/unity-batch-verify.ps1`（需先关编辑器，且在普通终端运行） |
 | GitHub | `https://github.com/gtxy688/EmberlightWandere.git` |
@@ -108,7 +108,7 @@
 | **待人工验收** | 手感、审美、可读性、真机表现等必须由人在设备上判断 |
 | **未验证** | 因环境、资源或权限无法执行的检查 |
 
-- **本项目有 EditMode 测试套件（2026-10-03 起，103 个用例），但没有 PlayMode 测试**。因此：
+- **本项目有 EditMode 测试套件（2026-10-03 起，当前 150 个用例），并有 4 个图形 PlayMode 冒烟场景；全面行为覆盖仍未完成**。因此：
   - **禁止**再写「`Emberlight/Validate …` 已通过」「`ValidateGodsSelect` 覆盖验收点」这类表述——这些入口**已被删除**。
   - 已实现的 EditMode 用例按实际结果记录（附命令与 `total/passed/failed`）；**不要把 EditMode 全绿说成"模块已验收"**，手感与PlayMode 行为仍须人工验收。
   - 需要 PlayMode 或尚无基础设施的检查，在验收文档中标为**待建**并写明拟测层级。

@@ -2,7 +2,7 @@
 
 > 对应架构：`03-combat-waves.md`
 > 对应需求：`../requirements.md` §2、§3、§5
-> ⚠️ 项目当前**无测试基础设施**，见 `00-overview.md` §测试现状。
+> ⚠️ 工程已有 EditMode / PlayMode 基础设施；本表未实现的条目仍标待建，见 `00-overview.md` §测试现状。
 
 ## 自动化测试计划与证据
 
@@ -11,37 +11,37 @@
 
 | 编号 | 层级 | 拟测试路径与名称 | 行为 | 红灯原因或 N/A 理由 | 最近结果 |
 |------|------|------------------|------|---------------------|----------|
-| A1 | PlayMode（待建） | `CombatWaveTests::WaveAdvance_RequiresQuotaSpawnedAndFieldCleared` | 仅当配额刷完**且**场上为 0 才清波 | 少任一条件即提前进选卡 | 未执行（无测试程序集） |
-| A2 | PlayMode（待建） | `CombatWaveTests::BossWave_ReplacesEliteChallenge` | 第 10/20 波不生成精英挑战小队，只出 Boss | — | 未执行（无测试程序集） |
-| A3 | PlayMode（待建） | `CombatWaveTests::EliteWave_SpawnsCappedAffixedSquad` | 每 5 波（非 Boss 波）过半配额时强制最多 6 只带词缀精英 | — | 未执行（无测试程序集） |
-| A4 | PlayMode（待建） | `CombatWaveTests::Encounter_TriggersAtMostOncePerWave` | 遭遇事件每波至多 1 次，且事件怪计入配额 | 事件不计配额会导致清波判定卡死 | 未执行（无测试程序集） |
-| A5 | PlayMode（待建） | `CombatWaveTests::EnemyCount_NeverExceedsLimit` | 同屏敌人不超过 150 | — | 未执行（无测试程序集） |
-| A6 | PlayMode（待建） | `CombatWaveTests::FinalWave_NoCardOffer` | 25 波局第 25 波清完直接结算，不发牌 | 多一次发牌会卡在 Upgrade 态 | 未执行（无测试程序集） |
-| A7 | PlayMode（待建） | `CombatWaveTests::BossWaveAfterPick_ExtraPickOffered` | 阶段 Boss 波清完后连续发牌 2 次 | — | 未执行（无测试程序集） |
-| A8 | PlayMode（待建） | `CombatWaveTests::NewWeaponPick_OffersCompensationWithoutAdvancingWave` | 选中新武器后补发一次牌，且波次不变 | 补偿选卡推进波次会丢波 | 未执行（无测试程序集） |
-| A9 | EditMode（待建） | `DamageTests::HurtPlayer_AppliesDifficultyMultiplierOnce` | 困难难度受伤为原始值 ×1.3，只应用一次 | 双重乘算会让高难度暴毙 | 未执行（无测试程序集） |
-| A10 | EditMode（待建） | `DamageTests::HurtPlayer_ShieldAbsorbsBeforeHealth` | 护盾充足时不掉血；溢出部分扣生命 | 顺序反了护盾形同虚设 | 未执行（无测试程序集） |
-| A11 | EditMode（待建） | `DamageTests::HurtReady_BlocksDamageDuringInvulnerability` | 无敌帧内（0.65s）再次受伤无效 | — | 未执行（无测试程序集） |
-| A12 | PlayMode（待建） | `DeathTests::BroodSplitsThreeChildrenOnlyOnFinalDeath` | 烬胎分裂恰好 3 只；重生读条中不分裂；子体不消耗配额 | — | 未执行（无测试程序集） |
-| A13 | PlayMode（待建） | `DeathTests::RebirthRevivesOnceAtFortyPercent` | 重生词缀只复活一次，且以 40% 生命复活 | 无限重生会导致该波无法清空 | 未执行（无测试程序集） |
-| A14 | PlayMode（待建） | `DeathTests::BomberExplodesOnlyAfterFuse` | 引线结束才结算爆炸；引线期间不接触伤害、不被锁定 | — | 未执行（无测试程序集） |
-| A15 | PlayMode（待建） | `DeathTests::NoPickOfferWhileRebirthOrFusePending` | 重生/引线未结束时不允许进入选卡 | — | 未执行（无测试程序集） |
-| A16 | PlayMode（待建） | `DamageTests::OffscreenEnemiesTakeNoDamageAndAreNotTargeted` | 屏外敌人不被自动选敌、不结算伤害；火球离开视口后销毁 | 屏外击杀会让玩家"看不见地过关" | 未执行（无测试程序集） |
-| A17 | PlayMode（待建） | `DamageTests::DamageFrom_UsesSourcePositionForShieldFacing` | 从背后击中盾卫造成全额伤害，正面减伤 70% | — | 未执行（无测试程序集） |
-| A18 | PlayMode（待建） | `BossTests::BossAdvancesOnlyWhilePlaying` | 升级与暂停时冻结 Boss 预警与招式推进 | 暂停仍推进会让预警失效 | 未执行（无测试程序集） |
-| A19 | PlayMode（待建） | `BossTests::DarkBoltVolleyStartsAtWaveTwenty` | 第 20 波起 Boss 释放带 1 秒预警的暗弹齐射 | — | 未执行（无测试程序集） |
-| A20 | PlayMode（待建） | `BossTests::DarkBoltsCanBeIntercepted` | 玩家火球/穿透箭可击毁暗弹；穿透箭不消耗穿透次数 | — | 未执行（无测试程序集） |
-| A21 | PlayMode（待建） | `BossTests::FrenzyTriggersBelowHalfHealth` | 半血后节奏加快且爆发区域增加 | — | 未执行（无测试程序集） |
-| A22 | PlayMode（待建） | `BossTests::KillingFinalBossEndsRunAsWin` | 最终 Boss 死亡 → `Mode.Won` | — | 未执行（无测试程序集） |
-| A23 | PlayMode（待建） | `PoolTests::RentedEnemiesRestoreBaselineAppearance` | 池归还后再借出还原基准姿态与颜色，标识不残留 | 复用躯体会把上一次的标识带到新怪 | 未执行（无测试程序集） |
-| A24 | PlayMode（待建） | `LifecycleTests::TearDownClearsBoltsAndPool` | 清波/新局/退出时清理暗弹（上限 48）与池 | 残留暗弹会跨局伤人 | 未执行（无测试程序集） |
-| A25 | PlayMode（待建） | `LifecycleTests::CombatTick_DoesNotThrowWhenProgressIsNull` | 回营地后 `Progress == null` 时战斗 Tick 不抛空引用 | — | 未执行（无测试程序集） |
+| A1 | PlayMode（待建） | `CombatWaveTests::WaveAdvance_RequiresQuotaSpawnedAndFieldCleared` | 仅当配额刷完**且**场上为 0 才清波 | 少任一条件即提前进选卡 | 待建（本条独立用例未实现） |
+| A2 | PlayMode（待建） | `CombatWaveTests::BossWave_ReplacesEliteChallenge` | 第 10/20 波不生成精英挑战小队，只出 Boss | — | 待建（本条独立用例未实现） |
+| A3 | PlayMode（待建） | `CombatWaveTests::EliteWave_SpawnsCappedAffixedSquad` | 每 5 波（非 Boss 波）过半配额时强制最多 6 只带词缀精英 | — | 待建（本条独立用例未实现） |
+| A4 | PlayMode（待建） | `CombatWaveTests::Encounter_TriggersAtMostOncePerWave` | 遭遇事件每波至多 1 次，且事件怪计入配额 | 事件不计配额会导致清波判定卡死 | 待建（本条独立用例未实现） |
+| A5 | PlayMode（待建） | `CombatWaveTests::EnemyCount_NeverExceedsLimit` | 同屏敌人不超过 150 | — | 待建（本条独立用例未实现） |
+| A6 | PlayMode（待建） | `CombatWaveTests::FinalWave_NoCardOffer` | 25 波局第 25 波清完直接结算，不发牌 | 多一次发牌会卡在 Upgrade 态 | 待建（本条独立用例未实现） |
+| A7 | PlayMode（待建） | `CombatWaveTests::BossWaveAfterPick_ExtraPickOffered` | 阶段 Boss 波清完后连续发牌 2 次 | — | 待建（本条独立用例未实现） |
+| A8 | PlayMode（待建） | `CombatWaveTests::NewWeaponPick_OffersCompensationWithoutAdvancingWave` | 选中新武器后补发一次牌，且波次不变 | 补偿选卡推进波次会丢波 | 待建（本条独立用例未实现） |
+| A9 | EditMode（待建） | `DamageTests::HurtPlayer_AppliesDifficultyMultiplierOnce` | 困难难度受伤为原始值 ×1.3，只应用一次 | 双重乘算会让高难度暴毙 | 待建（本条独立用例未实现） |
+| A10 | EditMode（待建） | `DamageTests::HurtPlayer_ShieldAbsorbsBeforeHealth` | 护盾充足时不掉血；溢出部分扣生命 | 顺序反了护盾形同虚设 | 待建（本条独立用例未实现） |
+| A11 | EditMode（待建） | `DamageTests::HurtReady_BlocksDamageDuringInvulnerability` | 无敌帧内（0.65s）再次受伤无效 | — | 待建（本条独立用例未实现） |
+| A12 | PlayMode（待建） | `DeathTests::BroodSplitsThreeChildrenOnlyOnFinalDeath` | 烬胎分裂恰好 3 只；重生读条中不分裂；子体不消耗配额 | — | 待建（本条独立用例未实现） |
+| A13 | PlayMode（待建） | `DeathTests::RebirthRevivesOnceAtFortyPercent` | 重生词缀只复活一次，且以 40% 生命复活 | 无限重生会导致该波无法清空 | 待建（本条独立用例未实现） |
+| A14 | PlayMode（待建） | `DeathTests::BomberExplodesOnlyAfterFuse` | 引线结束才结算爆炸；引线期间不接触伤害、不被锁定 | — | 待建（本条独立用例未实现） |
+| A15 | PlayMode（待建） | `DeathTests::NoPickOfferWhileRebirthOrFusePending` | 重生/引线未结束时不允许进入选卡 | — | 待建（本条独立用例未实现） |
+| A16 | PlayMode（待建） | `DamageTests::OffscreenEnemiesTakeNoDamageAndAreNotTargeted` | 屏外敌人不被自动选敌、不结算伤害；火球离开视口后销毁 | 屏外击杀会让玩家"看不见地过关" | 待建（本条独立用例未实现） |
+| A17 | PlayMode（待建） | `DamageTests::DamageFrom_UsesSourcePositionForShieldFacing` | 从背后击中盾卫造成全额伤害，正面减伤 70% | — | 待建（本条独立用例未实现） |
+| A18 | PlayMode（待建） | `BossTests::BossAdvancesOnlyWhilePlaying` | 升级与暂停时冻结 Boss 预警与招式推进 | 暂停仍推进会让预警失效 | 待建（本条独立用例未实现） |
+| A19 | PlayMode（待建） | `BossTests::DarkBoltVolleyStartsAtWaveTwenty` | 第 20 波起 Boss 释放带 1 秒预警的暗弹齐射 | — | 待建（本条独立用例未实现） |
+| A20 | PlayMode（待建） | `BossTests::DarkBoltsCanBeIntercepted` | 玩家火球/穿透箭可击毁暗弹；穿透箭不消耗穿透次数 | — | 待建（本条独立用例未实现） |
+| A21 | PlayMode（待建） | `BossTests::FrenzyTriggersBelowHalfHealth` | 半血后节奏加快且爆发区域增加 | — | 待建（本条独立用例未实现） |
+| A22 | PlayMode（待建） | `BossTests::KillingFinalBossEndsRunAsWin` | 最终 Boss 死亡 → `Mode.Won` | — | 待建（本条独立用例未实现） |
+| A23 | PlayMode（待建） | `PoolTests::RentedEnemiesRestoreBaselineAppearance` | 池归还后再借出还原基准姿态与颜色，标识不残留 | 复用躯体会把上一次的标识带到新怪 | 待建（本条独立用例未实现） |
+| A24 | PlayMode（待建） | `LifecycleTests::TearDownClearsBoltsAndPool` | 清波/新局/退出时清理暗弹（上限 48）与池 | 残留暗弹会跨局伤人 | 待建（本条独立用例未实现） |
+| A25 | PlayMode（待建） | `LifecycleTests::CombatTick_DoesNotThrowWhenProgressIsNull` | 回营地后 `Progress == null` 时战斗 Tick 不抛空引用 | — | 待建（本条独立用例未实现） |
 
 ## 自动化运行记录
 
 | 日期 | Unity 版本与环境 | 命令或 Test Runner 过滤器 | 结果文件 | 结论 |
 |------|------------------|---------------------------|----------|------|
-| — | — | 尚无可执行的测试程序集 | — | **未验证** |
+| — | — | 历史计划尚未实现；当前运行记录见 `../实现说明.md` | — | **未验证** |
 
 ## 手动验收前置条件
 
@@ -82,13 +82,14 @@
 | M6 界面 | HUD 数值、结算屏、暂停 | 只读本模块状态 | 待人工验收 | — |
 | M7 表现 | 粒子、池姿态还原 | 服务由本模块持有 | 待人工验收 | 对应 A23 |
 | M8 音频 | 开火/命中/受击触发 | 触发点在武器与 `HurtPlayer` | 待人工验收 | — |
+| M1 落点配置 / M3 波次配额 | 屏外生成、地图边界、无落点不耗配额并可重试 | 刷怪入口改为成功标记，配额依赖实际生成 | 已验证 | `EmberSubmissionOptimizationTests`；Boss/分裂完整路径仍待独立用例 |
 
 ## 交付结论
 
-- **已验证**：无。流程与顺序已**逐项对照代码**确认，但尚无任何可执行检查通过。
+- **已验证**：屏外落点、遭遇点迁移及失败配额重试经 EditMode 执行；实际主场景自动攻击/击杀、选卡/暂停/失败回营地经图形 PlayMode 执行。最新完整结果为 150/150 与 4/4，Unity 退出 0；命令与证据见 `../实现说明.md`，不代表本表全部独立用例已覆盖。
 - **不适用**：无（本模块几乎全部行为都需运行）。
 - **待手动验收**：H1–H9（主闭环、精英波、边界可读性、暗弹拦截、暂停、失败结算、选卡切换、跨局清理、真机）。
-- **未验证**：A1–A25 全部（阻塞原因：项目无 asmdef 与测试程序集；PlayMode 测试还需可脚本化装配场景）。
+- **未验证**：A1–A25 中尚未覆盖的独立路径，特别是 Boss、重生、分裂和完整胜利；现有测试程序集与主场景装配可用于补测。
 - **未通过**：无。
 
 ## 历史记录（已归档内容摘要）
@@ -106,3 +107,13 @@
 - N/A：玩法数值与 UI 布局验收，本次只添加采样作用域，无数值、文案或布局修改。
 - 待人工验收：安装新 Development APK，在首次/后续选卡和刷怪时采集，确认 Ember. 标记出现在 CPU Hierarchy，并保存有尖峰的一帧。
 - 未验证：本次未构建 APK，未实测真机标记与性能；不把添加标记视为性能修复完成。
+
+## 本轮回归范围（2026-10-13）
+
+主场景冒烟的 `Run.Kills > 0` 在修复前稳定失败：已清波但整局击杀为零。修复接入已有宿主 `RegisterKill` 后重跑，结果见 `../实现说明.md`。Boss、重生与分裂全链路仍未由此测试覆盖，需独立行为用例和人工完整局验收。
+
+## 屏外生成回归（2026-10-14）
+
+`OrdinarySpawn_IsOutsideFullViewportAndInsideArena` 在中心、边缘、角落与宽屏检查落点；`ViewCoveringArena_DoesNotSpawnAnInvisibleQuotaEntry` 验证无合法区域不借出敌人；`EncounterRequestedInsideViewport_IsMovedOutside` 验证事件点重定位并保留词缀；`FailedSpawn_DoesNotConsumeWaveQuotaAndCanRetry` 验证失败后正常重试、成功才计数。覆盖的是落点与波次契约，不是全部敌人追击/死亡生命周期。
+
+检查命令及 150/150 EditMode、4/4 图形 PlayMode 结果见 `../实现说明.md`。待人工验收：沿地图四边/角落移动，在竖屏及宽屏观察普通怪和事件怪从屏外进入、追击等待是否合适；确认 Boss 和分裂特殊落点的原表现。
