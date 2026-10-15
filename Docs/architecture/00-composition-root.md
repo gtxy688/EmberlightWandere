@@ -1,14 +1,12 @@
 # M0 组合根（Composition Root）
 
 > 相关需求：`../requirements.md` §2（单局主循环）、§7（技术约束）
-> 验收文档：`00-composition-root-test.md`
 > 代码：`Assets/Scripts/Core/EmberGame.cs`（唯一入口）+ `Assets/Scripts/Core/` 下的职责单元
-> 本模块为 2026-09-23 重构引入；重构前这些职责全部挤在 `EmberGame`（361 行，见 `progress.md`）。
 
 ## 职责边界
 
 - **本模块负责**：
-  - 持有**局长阶段**（`EmberRunPhase`）与**本局状态**（`EmberRunState`）；
+  - 持有**单局阶段**（`EmberRunPhase`）与**本局状态**（`EmberRunState`）；
   - 在 `Start` / `Awake` 中**装配**各单元，在 `Update` 中确定**每帧调用顺序**；
   - 把各单元的回调接到一起（`IEmberMenuHost` / `RunFlowController.Host` / `IEmberCombatHost` / `EmberInput.Presenter`）；
   - 场景级副作用：帧率设置、相机创建与配置、世界节点与灯芯的创建/销毁；
@@ -35,18 +33,18 @@
 | M1 `LevelConfig` | `Create` / `ApplyWorld` / `DifficultyName` / `BossWave` / `PicksAfterWave` | 建一局的关卡配置 | 未开局时 HUD 与结算不绘制 |
 | M2 `RunProgress` | `ConfigureRun` / `Choices` / `Choose` / `TryRefresh` / `AddScore` | 本局构筑 | 为 null 时选卡入口直接返回 |
 | M3 `EmberCombat` | `Begin` / `Tick` / `TearDown` / `AdvanceAfterUpgrade` / `Boss` / `PlayBossBurst` | 战斗推进 | 未 `Begin` 时 `Tick` 无效果 |
-| M4 `EmberEffects` | `Initialize(阶段委托)` / `Nova` / `Impact` | 世界特效宿主 | 委托为空时特效不推进 |
+| M7 `EmberEffects` | `Initialize(阶段委托)` / `Nova` / `Impact` | 世界特效宿主 | 委托为空时特效不推进 |
 | M6 `EmberUiRoot` / `EmberMenuUi` / `EmberMenuFlow` / `EmberHudPresenter` | `Bind` / `Show` / `Set` / `Stage` / `Boss` | 绑定场景界面并推送数据 | 缺少 UIRoot 或必需引用时报配置错误；绑定前不推送 |
 | M7 `EmberKeeperAnimation` | `Initialize(阶段委托)` | 灯芯动画 | 委托为空时动画照常播放 |
 | M8 `EmberAudio` | `Ensure().Play*` | 音乐与音效 | clip 缺失静默跳过 |
 
 ## 设计与数据流
 
-`Start` 取得序列化的 `uiRoot` 与 `introRoot`（旧场景未赋值时只查找已有实例），先隐藏主 UI。`EmberIntro.Begin(introRoot, prepared, enter)` 在字体闸门校验后显示已有加载页，准备回调调用 `EmberMenuUi.Bind`，随后创建 HUD presenter、接菜单流程与安全区监听；就绪后的继续输入隐藏加载页并进入菜单。组合根不创建主 UI 或加载页视图；缺少视图时不静默回落到代码构建。
+`Awake` 创建本局状态容器、选卡流程与输入单元；`Start` 装配战斗、菜单与场景视图。`RunProgress`、关卡配置与世界对象在 `StartRunWith` 开局时创建。视图绑定顺序与场景引用见下文「Unity 装配」。
 
 ```text
 EmberGame (MonoBehaviour, 组合根)
-├─ EmberRunPhase            enum：11 个局长阶段
+├─ EmberRunPhase            enum：11 个单局阶段
 ├─ EmberRunState            本局数据 + 世界/灯芯/相机/特效句柄
 │    └─ EmberKeeperVitals   生命 / 护盾吸收 / 无敌帧 / 回血 / 掉落拾取
 ├─ RunFlowController        波次选卡次数、新武器补偿、刷新
@@ -57,6 +55,8 @@ EmberGame (MonoBehaviour, 组合根)
 ├─ EmberMenuFlow            开局四步（M6）
 └─ EmberCombat              战斗与波次（M3）
 ```
+
+## 关键机制
 
 ### 每帧顺序（`Update`，仅 Playing 阶段）
 
@@ -89,6 +89,28 @@ Elapsed += dt  →  Vitals.Tick(dt)  →  input.Tick()
 | 生命结算调用方 | `HurtPlayer` → `CommitHealthChange` → `End` | Lost |
 | `EmberCombat` | `IEmberCombatHost.EndRun` | Won / Lost |
 
+### 结果转译
+
+生命结算返回 `EmberVitalOutcome`，组合根再把结果接到音效、HUD 与收局入口；选卡流程通过宿主回调请求展示候选或恢复战斗。组合根负责写入阶段和调用呈现，数值结算与选卡推进仍归各自单元。结果页返回营地与暂停放弃共用内部 `ReturnToCamp`：回收战斗、销毁世界并清空本局状态，再显示主菜单。
+
+## Unity 装配
+
+主场景 `Assets/Scenes/Emberlight.unity` 的 `Emberlight Game` 对象挂载 `EmberGame`。两个序列化字段应绑定**场景中的 Prefab 实例组件**：
+
+| 字段 | 组件与资产 | 用途 |
+|------|------------|------|
+| `uiRoot` | `EmberUiRoot`，`Assets/UI/UIRoot.prefab` | 主菜单、开局选择、HUD、升级与设置面板的引用入口 |
+| `introRoot` | `EmberIntroView`，`Assets/UI/IntroRoot.prefab` | 加载页文字、进度条与继续提示的引用入口 |
+
+启动与清理顺序：
+
+1. `Start` 配置相机与音频，进入 Loading；字段未赋值时，查找场景已有实例（含未激活对象）。找不到任一根视图则抛出配置错误，不在运行时生成替代 UI。
+2. 隐藏 `uiRoot`，在 `Emberlight Game` 上添加 `EmberIntro` 控制器，并调用 `Begin(introRoot, prepared, enter)`。`Begin` 校验加载页引用；字体经 `EmberFonts.CreateChinese` 内的闸门校验或回落后，才显示加载页。
+3. 准备回调调用 `EmberMenuUi.Bind`，校验主 UI 引用、绑定字体和暂停回调，开始安全区监听，再创建 `EmberHudPresenter`。加载就绪后，继续输入隐藏加载页并由 `EmberMenuFlow` 显示主菜单。
+4. 返回营地只清理本局世界与战斗，保留场景 UI 实例供复用；`OnDestroy` 解除安全区监听并恢复 `Time.timeScale`。
+
+布局、静态图片与控件引用由 Prefab 维护；组合根负责绑定与生命周期协调，面板负责展示和交互。缺少必需控件引用时，`EmberUiRoot.ValidateReferences` / `EmberIntroView.ValidateReferences` 报错并提示 Editor 的 `Emberlight/UI/Connect UIRoot Runtime` 接线入口。
+
 ## 对外契约
 
 `EmberKeeperVitals` 构造时只注入构筑、伤害倍率与阶段提供者；不持有 `EmberRunState`，不引用 UnityEngine 或音频。受伤结果由组合根转换为音效、HUD 与收局动作。`RunFlowController.Host` 只暴露 `Progress`、`FinalWave`、`PicksAfterWave`、阶段、候选与呈现回调；不暴露场景状态，不包含死亡回调。
@@ -116,13 +138,3 @@ Elapsed += dt  →  Vitals.Tick(dt)  →  input.Tick()
   - 选卡：`3 + 空位` 候选数、同屏唯一、新武器补偿不连锁、免费刷新 2 次；
   - 阶段流转：加载页 → 主菜单 → 四步开局 → 战斗 → 升级 → 暂停 → 结算；
   - 输入：摇杆底盘定位、下半屏触发区、Esc 暂停。
-- **对应验收项**：`00-composition-root-test.md`。
-
-## 待裁定事项
-
-| 问题 | 候选方案 | 影响 | 需要谁裁定 |
-|------|----------|------|------------|
-| `EmberInput` / `EmberHudPresenter` 目前仍在 `Core/`、`UI/` 而非独立 asmdef | 建 `Runtime` asmdef 分目录 / 维持单程序集 | 当前已有 Runtime / Editor / Tests asmdef，Runtime 内模块依赖仍靠契约约束 | jack + xiaoCoder |
-| `EmberRunState` 引用 `Transform` / `Camera`，不能脱离 Unity 单测 | 拆成"纯数据 + 场景句柄"两层 / 维持现状 | 拆开后可单测的面更大，但引入一层间接 | jack + xiaoCoder |
-
-2026-10-13：结果页返回营地与暂停放弃共用 `ReturnToCamp`，执行战斗回收、世界销毁与 Run.Clear 后显示主菜单；不再只隐藏结束局的世界。回归包含阶段 Menu、Run.IsActive=false、世界/玩家/特效引用清空。

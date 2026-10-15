@@ -1,7 +1,6 @@
 # M8 音频
 
 > 相关需求：`../requirements.md` §7
-> 验收文档：`08-audio-test.md`
 > 代码：`Assets/Scripts/Audio/EmberAudio.cs`
 > 素材致谢：`../reference/audio-credits.md`、素材备选 `../reference/audio-sources.md`
 
@@ -29,8 +28,8 @@ EmberAudio（MonoBehaviour 单例，DontDestroyOnLoad）
    ├─ music  AudioSource（loop，spatialBlend = 0 强制 2D）
    └─ sfx    AudioSource（PlayOneShot，spatialBlend = 0）
         ├─ 惰性加载：Resources.Load("Audio/...")；首帧导入未完成时再次尝试
-        ├─ 节流：fire/hit 0.05s、meteor 0.02s、orbit 0.25s、burn 0.7~1.5s
-        └─ PlayerPrefs：ember_vol_music / ember_vol_sfx（默认 0.7 / 1.0）
+        ├─ 节流：各发射/命中音、火雨落地、环火接触与燃地伤害分开计时
+        └─ PlayerPrefs：ember_vol_music / ember_vol_sfx（已保存设置优先）
 ```
 
 `Ensure()` 时若场景无 `AudioListener` 则挂到 `Camera.main`。
@@ -72,23 +71,25 @@ Assets/Resources/Audio/
 
 ### 触发点与节流
 
-| 触发点 | 调用 | 节流 |
+间隔与初始音量统一见 [需求 §7「UI 与音频默认参数」](../requirements.md#ui-与音频默认参数)。下表只描述调用关系与计时器归属，计时均使用 `Time.unscaledTime`。
+
+| 触发点 | 调用 | 节流参数项 |
 |--------|------|------|
 | 主菜单显示 | `PlayMusic(menu)` | — |
 | 进入战斗 / 加载页 | `PlayMusic(combat)` / 营地 BGM | — |
 | UI 按钮 / 选卡确认 / 卡面打开 | `PlayUiClick` / `PlayUiConfirm` / `PlayCardOpen` / `PlayCardPick` | — |
-| 火球发射 | `PlayWeaponFireball()` | 0.05s |
-| 穿透火矢发射（**仅主箭**，分裂箭静音） | `PlayWeaponPierceArrow()` | 0.05s |
-| 回旋烬蝶发射 | `PlayWeaponBoomerang()` | 0.05s |
-| 环火（**球数变化时**，不是每帧） | `PlayWeaponOrbitIgnite()` | 0.25s |
-| 燃地铺火（**仅实际伤害后**） | `PlayWeaponBurnGround()` | 0.7s（v2）/ 1.5s（v1） |
-| 火雨**落地瞬间**（预警圈静音） | `PlayMeteorImpact()` | 0.02s |
-| 命中 / 受击 / 拾取血包 | `PlayHit` / `PlayHurt` / `PlayPickupHeal` | 0.05s |
+| 火球发射 | `PlayWeaponFireball()` | 常规发射与命中音；独立计时器 |
+| 穿透火矢发射（**仅主箭**，分裂箭静音） | `PlayWeaponPierceArrow()` | 常规发射与命中音；独立计时器 |
+| 回旋烬蝶发射 | `PlayWeaponBoomerang()` | 常规发射与命中音；独立计时器 |
+| 环火接触（**仅实际伤害后**） | `PlayWeaponOrbitContact()` | 环火接触音；共用环火计时器 |
+| 燃地（**仅实际伤害后**） | `PlayWeaponBurnGround()` | 燃地伤害音；重叠火区共用计时器 |
+| 火雨**落地瞬间**（预警圈静音） | `PlayMeteorImpact()` | 火雨落地音；多个落点共用计时器 |
+| 通用发射 / 命中 | `PlayFire` / `PlayHit` | 常规发射与命中音；各自独立计时器 |
+| 受击 / 拾取血包 | `PlayHurt` / `PlayPickupHeal` | 无独立音频节流 |
 
 **设计要点**（改动时保持）：
 
-- **环火只在球数变化时发声**，否则持续噪音。
-- **燃地限频必须短于音效时长**：patch 每约 0.45s 掉落一次，按 patch 播放会严重叠音成糊。
+- **环火与燃地只在实际造成伤害后发声**，各自共用计时器，避免多个接触目标或重叠火区同时叠音。
 - **穿透分裂箭静音**：`isSplit` 的分裂箭不发声，避免一次射击叠两声。
 - **连续接触伤害不叠加通用命中音**：由 `DamageFrom` 的同一伤害实现完成可见性与伤害检查，**生命实际下降才触发**专属声音（`DealContactDamage` 返回是否真扣血）。
 - 普通 `PlayOneShot` 音量由 `AudioSource` **一次性设置**，不要重复乘音量。
@@ -96,8 +97,8 @@ Assets/Resources/Audio/
 ### 音量
 
 - `MusicVolume` / `SfxVolume`（0–1）set 时立刻写 `AudioSource` 并写 `PlayerPrefs`。
-- 默认 0.7 / 1.0；杀进程重进保持。
-- 音效滑条拖动时 `PlayUiClick` 预览（限频）。
+- 未保存设置时使用需求文档中的初始音量；已有设置在重启后恢复。
+- 音效滑条拖动时调用 `PlayUiClick` 预览，预览节流由 M6 的 `EmberSettingsPanel` 负责；`PlayUiClick` 本身没有独立计时器。
 - **不做**混音器与独立静音开关（音量拖到 0 即可）。
 
 ## 对外契约
@@ -107,7 +108,7 @@ Assets/Resources/Audio/
 | `EmberAudio` 单例 | `MonoBehaviour` | — | — | `DontDestroyOnLoad`；`Ensure()` 幂等 |
 | `MusicVolume` / `SfxVolume` | 属性（0–1） | 值 | — | set 立即生效并持久化 |
 | `PlayMusic(Music)` | 方法 | 曲目 | — | clip 缺失静默 |
-| `PlaySfx(...)` / `PlayWeapon*` / `PlayHit` / `PlayHurt` / `PlayPickupHeal` | 方法 | — | — | 内置节流；缺失回退通用 clip |
+| `PlaySfx(...)` / `PlayWeapon*` / `PlayHit` / `PlayHurt` / `PlayPickupHeal` | 方法 | — | — | 节流按上表执行；武器专属 clip 缺失时尝试通用回退，最终缺失则跳过 |
 | `PlayUiClick` / `PlayUiConfirm` / `PlayCardOpen` / `PlayCardPick` | 方法 | — | — | — |
 | Prefs 键 | 常量 | — | — | `ember_vol_music` / `ember_vol_sfx` |
 
@@ -123,16 +124,7 @@ Assets/Resources/Audio/
 
 - **直接影响模块**：M3/M4/M5/M6 的触发点、M6 的设置滑条。
 - **必须复验的契约**：导入设置（2D）、缺失回退、节流间隔、`DamageFrom` 驱动的伤害后发声、音量持久化。
-- **对应验收项**：`08-audio-test.md`。
-
-## 待裁定事项
-
-| 问题 | 候选方案 | 影响 | 需要谁裁定 |
-|------|----------|------|------------|
-| v1 长素材是否清理 | 删除 / 保留作回退 | 当前作为缺失回退保留，占用包体 | jack |
-| 是否加 pitch 随机化 | 加轻微随机 / 维持一致 | 多次连发音色偏机械 | jack |
-| 是否补 3D 空间音 | 做 / 不做 | 明确列为不做；改动面较大 | jack |
 
 ## 反馈装配契约（2026-10-13）
 
-生命结算不创建音频单例，接受伤害后的音效由组合根根据结算结果播放。武器与共享燃地只调用 `ctx.PlaySound(EmberWeaponSound)`，由战斗根适配到现有 Audio 方法；既有节流、音量与曲目规则保持原样。回归是护盾吸收仍有受伤反馈、被阶段/无敌帧拒绝时不播、各武器反馈路径与 UI 交互；声音手感仍待人工验收。
+生命结算不创建音频单例，接受伤害后的音效由组合根根据结算结果播放。武器与共享燃地只调用 `ctx.PlaySound(EmberWeaponSound)`，由战斗根适配到现有 Audio 方法；既有节流、音量与曲目规则保持原样。回归是护盾吸收仍有受伤反馈、被阶段/无敌帧拒绝时不播、各武器反馈路径与 UI 交互；

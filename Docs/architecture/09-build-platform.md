@@ -1,7 +1,6 @@
 # M9 构建与平台
 
 > 相关需求：`../requirements.md` §7（技术约束）
-> 验收文档：`09-build-platform-test.md`
 > 代码：`Assets/Editor/EmberAndroidBuild.cs`、`Assets/Editor/EmberFontBake.cs`、4 个资源导入器
 > 主场景：`Assets/Scenes/Emberlight.unity`（唯一启用场景）
 
@@ -54,18 +53,7 @@ Emberlight → Android 菜单
 图集覆写写在各自 `.meta` 的 Android 平台块（`overridden: 1` + `textureCompression: 0`）：
 `Assets/Resources/Art/UI/doodle-ui.png`、`doodle-card-frames.png`、`Assets/Resources/Art/Cards/doodle-icons.png`。
 
-### 媒体资源清理记录（2026-09-14）
-
-发布准备时删除了下列**临时调试设施**——它们的删除使大量历史文档的"验收依据"失效：
-
-- 波次调用栈日志、F8/F9 调试热键、状态转储、Boss 跳波与预览入口
-- **9 个临时编辑器脚本及其 `.meta`**：`ArtBake`、`BakeVerify`、`BossProbe`、`Checks`、`EnemyChecks`、`ExpansionChecks`、`ExpeditionChecks`、`SurvivalChecks`、`UIRenderCheck`（均为 Ember 前缀）
-
-**保留**：已烘焙图片、4 个贴图导入器（保证重新导入资源时设置正确）、字体与音频缺失的故障日志、第三方开发插件。
-
-> ⚠️ 因此历史文档中的 `Emberlight/Validate …`、`ValidateGodsSelect`、`ValidateBuildDepth`、`EmberChecks`、`EmberExpansionChecks`、`EmberUIRenderCheck`、试玩 Boss 菜单**全部已不存在**。这是 `00-overview.md` §测试现状 的成因。
-
-> ⚠️ `EmberFontBake.cs` **仍然存在**（与上表 `ArtBake` 不同），可做真实渲染校验；但按 M7 的口径，**字体优先走预烘静态图集，经 ValidateBaked 校验后加载，失败动态回落**。
+字体烘制和资源导入工具随工程保留。字体优先加载经 ValidateBaked 校验的静态图集，失败时动态回落；具体机制见 M7。
 
 ### 构建期烘焙（只做美术）
 
@@ -76,29 +64,16 @@ Emberlight → Android 菜单
 
 烘焙结束会解码 PNG 与现场重新光栅化的结果逐像素比对（`maxDelta` 必须为 0），防止两处像素数学漂移。
 
-**实测收益很小**（个位数毫秒，一局一次）；保留理由是形状可当 PNG 改、消掉首次使用卡顿，**不是启动时间**。
-
-### UI 渲染检查（已删除，需要时自建）
-
-`Emberlight.Editor.EmberUIRenderCheck` 曾能真的进 Play 模式跑 `Emberlight.unity`，头 12 秒内有任何 error / exception / assert 即判 FAIL：
-
-```powershell
-Unity.exe -batchmode -projectPath <项目> `
-  -executeMethod Emberlight.Editor.EmberUIRenderCheck.Run -logFile <日志>
-```
-
-⚠️ **已知限制**（重建时仍适用）：**`-nographics` 下进不了 Play 模式**（`RuntimeInitializeOnLoadMethod` 不触发），必须带图形跑；批处理退出不可靠，脚本里需要 120 秒看门狗。
-
-**任何改动 UI 或字体的提交，都应该先在编辑器里手动进一局确认能进游戏。** 字体两次崩溃都是"字段校验全绿但游戏进不去"——**校验替代不了真跑一遍**。
+预生成图片用于支持直接编辑形状，并减少首次使用时的光栅化工作。
 
 ### 字体策略与包体
 
 - 中文字体经 `EmberFonts.CreateChinese()` 优先加载校验通过的静态图集，失败回落动态 SDF；现行口径见 `07-art-presentation.md`。
 - 工程保留 Noto CJK 源字体以支持重烘与动态回落；资源裁剪须同时验证这两条路径，不能直接删除源字体。
 
-### 签名（未完成，人工决定）
+### 签名配置
 
-本次**未创建签名身份**。发布前需在 Unity 父进程环境中设置：
+正式发布使用由开发者提供的签名身份。构建前需在启动 Unity 的父进程环境中设置：
 
 | 环境变量 | 含义 |
 |----------|------|
@@ -115,7 +90,6 @@ Unity.exe -batchmode -projectPath <项目> `
 
 - **粒子 GC**：`EmberEffects` 池空时仍 `new Particle`，长跑需盯 GC（上限 120）。
 - **开发工具包**：项目包清单不依赖机器本地的 AI 工具安装目录；克隆后无需额外安装该类 CLI。
-- `Assets/Audio/Sfx/Candidates/` 已删除（零引用）；`TJGenerators/History/` 保留为音效源头。
 - `Assets/Audio/_download/` 原始素材包保留，**上架前可删除以减小包体**。
 
 ## 对外契约
@@ -141,17 +115,6 @@ Unity.exe -batchmode -projectPath <项目> `
 
 - **直接影响模块**：全部（构建配置影响运行时）。
 - **必须复验的契约**：竖屏锁定、IL2CPP + ARM64、API 24/35、`targetFrameRate`、图集 Uncompressed 覆写、字体包体。
-- **对应验收项**：`09-build-platform-test.md`。
-
-## 待裁定事项
-
-| 问题 | 候选方案 | 影响 | 需要谁裁定 |
-|------|----------|------|------------|
-| Keystore 签名身份 | 生成正式 keystore / 继续用 debug | **阻塞正式发布** | jack |
-| 应用图标与启动图 | 设计并配置 / 维持未配置 | 当前 `androidSplashScreen: {fileID: 0}`；游戏图标在图集中，**不能直接整张图集当图标** | jack + xiaoUI |
-| Unity 启动 Logo | 关闭（需 Plus/Pro）/ 维持 | `m_ShowUnitySplashScreen: 1` | jack |
-| 是否重建 UI 渲染检查 | 重建带看门狗的批处理检查 / 维持手测 | 字体与 UI 事故的防线 | xiaoCoder |
-| 上架准备 | AAB、商店文案、截图、隐私政策 | 对外发布前置 | jack |
 
 ## 工程与源码交付契约（2026-10-13）
 
@@ -159,4 +122,4 @@ Unity.exe -batchmode -projectPath <项目> `
 
 `Tools/compile-check.ps1` 读取最新 Runtime.rsp，重新扫描源文件，移除 Unity out/refout，写入隔离输出并显示完整编译诊断；它仅覆盖 Runtime。`Tools/run-tests.ps1` 等待 Unity 真实退出，核验 XML 的用例数、失败数与完成状态，拒绝 0 用例。PlayMode 使用图形模式。
 
-回归范围：离线工具不污染引用程序集、Runtime/Editor/Tests 均能导入、测试实际发现并执行、字体不缺字、包内完整资源能在无 Library 工程中导入。证据和平台限制见 `../实现说明.md`。
+回归范围：离线工具不污染引用程序集、Runtime/Editor/Tests 均能导入、测试实际发现并执行、字体不缺字、包内完整资源能在无 Library 工程中导入。运行方式见根目录 README。

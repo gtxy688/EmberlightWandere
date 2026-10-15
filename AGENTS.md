@@ -12,7 +12,7 @@
 | 脚本根 | `Assets/Scripts/{Core,Combat,UI,Visuals,Audio}` + `Assets/Editor` |
 | 文档根 | `Docs/` |
 | 程序集 | **有自建 asmdef**（2026-10-03 起）：`Emberlight.Runtime`（`Assets/Scripts`）→ `Emberlight.Editor`（`Assets/Editor`）+ `Emberlight.EditMode.Tests`（`Assets/Tests/EditMode`）+ `Emberlight.PlayMode.Tests`（`Assets/Tests/PlayMode`）。本项目代码已不在 `Assembly-CSharp` |
-| 自动化测试 | **有 EditMode 套件**（2026-10-03 起）：150 个 EditMode 用例（结果见 `Docs/实现说明.md`），覆盖 M2、生命结算、选卡流程、卡面说明、共享燃地、Editor 图片持久化、屏外刷怪与 HUD 更新。**另有 4 个图形 PlayMode 冒烟场景** |
+| 自动化测试 | `Assets/Tests/EditMode` 与 `Assets/Tests/PlayMode`；保留测试源码和运行工具 |
 | 跑测试 | `powershell -ExecutionPolicy Bypass -File Tools/run-tests.ps1 -Platform EditMode`；PlayMode 换平台参数，带图形执行；脚本校验真实退出码与 XML 用例数 |
 | 离线编译校验 | `powershell -ExecutionPolicy Bypass -File Tools/compile-check.ps1`（Unity 开着也能跑；**只覆盖 Runtime，不含测试程序集**） |
 | 文档行号引用校验 | `powershell -ExecutionPolicy Bypass -File Tools/doc-line-check.ps1`（校验 `Docs/` 里 `` `File.cs:NN`（`标识符`） `` 一类引用是否仍指对地方；`-Fix` 可自动改写漂移的行号） |
@@ -23,14 +23,13 @@
 
 ## 文档路由
 
-文档分四层，各有明确权威范围：
+文档按职责分层，各有明确权威范围：
 
 | 文档 | 回答 | 权威范围 |
 |------|------|----------|
-| `Docs/requirements.md` | 做什么、为什么、约束与数值 | **产品行为与验收目标** |
+| `Docs/requirements.md` | 做什么、为什么、约束与数值 | **产品行为与约束** |
 | `Docs/architecture/00-overview.md` | 有哪些模块、依赖与任务路由 | **模块边界与唯一任务索引** |
 | `Docs/architecture/0X-*.md` | 如何实现、公开契约和影响范围 | **当前模块设计** |
-| `Docs/architecture/0X-*-test.md` | 如何自动验证、如何手动验收 | **测试与验收证据** |
 | `Docs/progress.md` | 当前进度与阻塞 | **状态记录，不定义需求或架构** |
 | `Docs/reference/*` | 素材来源与授权 | 参考资料 |
 | `Docs/archive/*` | 历史决策与踩坑记录 | **只读历史，不要从归档实现功能** |
@@ -40,15 +39,14 @@
 | 文档 | 用途 |
 |------|------|
 | `Docs/技术分析.md` | 面向阅卷人的设计取舍与边界说明 |
-| `Docs/实现说明.md` | 实现要点、调用链、验证记录汇总 |
-| `Docs/笔试题2符合性核查.md` | 对照笔试题 2 的核查结论与证据索引；**不定义产品行为** |
+| `Docs/实现说明.md` | 实现要点、调用链和编辑器工具用法 |
 
 ### 新任务怎么开始
 
 1. 打开 `Docs/architecture/00-overview.md` 的**任务索引**，用关键词定位主要模块。
 2. 声明准备读取的最小文档集并继续；只有映射不唯一、缺少权威信息或影响范围不清楚时才等 jack 裁定。
-3. 最小文档集通常包括：当前模块架构、它引用的 `requirements.md` 章节、对应验收文档。
-4. 存在显式依赖或回归影响时，只补读相关模块的「对外契约」或验收文档的「回归范围」。
+3. 最小文档集通常包括：当前模块架构和它引用的 `requirements.md` 章节。
+4. 存在显式依赖或回归影响时，只补读相关模块的「对外契约/影响范围」及相关测试源码。
 
 > 不要因为"可能有用"而通读整个 `Docs/`，也不要因为"禁止跨模块"而拒绝读取已声明依赖的契约。
 
@@ -67,7 +65,7 @@
 
 1. **`requirements.md` 是数值唯一权威**。架构文档不复制数值；发现不一致以 `requirements.md` 为准。
 2. 归档文档**只作历史**。引用归档里的数值当作现行口径是错误做法。
-3. 发现不一致时：**暂停受影响的改动** → 列出双方位置与差异 → 说明裁定影响 → 拿到裁定后再改 → 同步更新权威文档与验收证据。**不要静默选边。**
+3. 发现不一致时：**暂停受影响的改动** → 列出双方位置与差异 → 说明裁定影响 → 拿到裁定后再改 → 同步更新权威文档。**不要静默选边。**
 4. 代码与测试是**当前实现证据**，不会自动覆盖文档中的意图；反之文档也不等于代码现状。二者不符时同样走上面的流程。
 
 ### 已知冲突（已裁定，勿再翻案）
@@ -110,33 +108,21 @@
 1. **先读再改**：动战斗节奏前读 `EmberCombat` / `EmberBoss` / `LevelConfig`；动选卡前读 `RunProgress` / `EmberRarity`；动 UI 前读 `EmberMenuUi` / `EmberHud` / `EmberUpgradePanel`。
 2. **数值集中在配置类**：新增可调数值应进 `LevelConfig`（或对应模块的配置归属），不要在战斗逻辑里写魔法数。
 3. **小步可回退**：一次只改一个闭环问题。
-4. **同步文档**：改了公开行为或数值，必须同一批改动内更新 `requirements.md` 对应章节 + 该模块架构的「对外契约/影响范围」+ 验收文档的「回归范围」。
+4. **同步文档**：改了公开行为或数值，必须同一批改动内更新 `requirements.md` 对应章节和该模块架构的「对外契约/影响范围」。现行文档只描述当前可用实现，及时清理未实现提案、已删除 API 和已完成的待办。
 5. **数值与规则**以 `requirements.md` 与 xiaoPlanner 规格为准。
 6. **安卓真机排最后**：未完成游戏闭环前不主动扩 APK / 真机专项。
 7. **不要派工风暴**：除 jack 明确要求，Agent 之间不互相催办、不群发任务；需要协作时回 jack 点名。
 
-## 验收与交付口径
+## 开发检查与交付
 
-交付时必须区分四类，不允许含糊：
-
-| 类别 | 定义 |
-|------|------|
-| **已验证** | 实际运行且通过的检查（附命令与结果） |
-| **不适用** | 经说明理由后无需执行的检查（记 `N/A` + 理由，**不算未验证**） |
-| **待人工验收** | 手感、审美、可读性、真机表现等必须由人在设备上判断 |
-| **未验证** | 因环境、资源或权限无法执行的检查 |
-
-- **本项目有 EditMode 测试套件（2026-10-03 起，当前 150 个用例），并有 4 个图形 PlayMode 冒烟场景；全面行为覆盖仍未完成**。因此：
-  - **禁止**再写「`Emberlight/Validate …` 已通过」「`ValidateGodsSelect` 覆盖验收点」这类表述——这些入口**已被删除**。
-  - 已实现的 EditMode 用例按实际结果记录（附命令与 `total/passed/failed`）；**不要把 EditMode 全绿说成"模块已验收"**，手感与PlayMode 行为仍须人工验收。
-  - 需要 PlayMode 或尚无基础设施的检查，在验收文档中标为**待建**并写明拟测层级。
-  - 只有所有适用自动化检查通过**且**适用的人工验收完成后，模块才可标记为**已验收**。
-- AI 可以报告"代码实现完成"与"自动化验证完成"，但**不能代替 jack 做手感与审美验收**。
-- 任何改动 UI 或字体的提交，都需要在编辑器里手动进一局确认。
+- 按 jack 的要求，不生成独立验收文档、符合性核查报告或维护验收记录。
+- 保留自动化测试源码和检查工具；修改代码时仍运行相关检查，回复中如实说明实际执行的结果。
+- 修改 UI 或字体后，在编辑器里进一局检查实际显示与交互；手感和审美由 jack 判断。
+- 最终交付完整 Unity 工程及源码，包含资源、`.meta`、Packages、ProjectSettings 和必要说明。
 
 ## 自检（改完至少做）
 
-- [ ] **先跑离线编译**：`powershell -ExecutionPolicy Bypass -File Tools/compile-check.ps1`（退出码 0）
+- [ ] **若改了源码，先跑离线编译**：`powershell -ExecutionPolicy Bypass -File Tools/compile-check.ps1`（退出码 0）
 - [ ] **跑 EditMode 测试**（改了 M2 / 纯逻辑时必做）：见上表命令，要求 `failed=0` 且 Unity 退出码 0
 - [ ] 若改了文案：`python Tools/atlas_glyph_check.py`（退出码 0，见硬约束 1）
 - [ ] Unity 编译无报错；Console 进主菜单无错误
@@ -152,9 +138,9 @@
 
 | 角色 | 负责 | 不负责 |
 |------|------|--------|
-| jack | 拍板、试玩反馈、优先级、手感与审美验收 | — |
+| jack | 拍板、试玩反馈、优先级、手感与审美判断 | — |
 | xiaoProducer | 拆计划、标依赖/风险、指该找谁 | 不大段写 C#；不定数值终稿；不主动派工 |
-| xiaoPlanner | 玩法/数值/波次/验收规格 | 不写大段引擎代码 |
+| xiaoPlanner | 玩法/数值/波次规格 | 不写大段引擎代码 |
 | xiaoCoder | C#、系统、性能、可运行改动 | 不定玩法终稿 |
 | xiaoLevel | 关卡节奏、遭遇、场景 checklist | 不大改核心玩法代码 |
 | xiaoUI | HUD/菜单/交互说明 | 不定数值 |
@@ -165,7 +151,7 @@
 
 - [ ] 模块文档引用的 `requirements.md` 章节仍然存在
 - [ ] 「对外契约」与实现一致
-- [ ] 验收文档覆盖本次行为变化及回归影响
+- [ ] 影响范围反映本次行为变化及相关模块
 - [ ] 新任务关键词已加入 `00-overview.md` 的**唯一**任务索引
 - [ ] 数值没有复制到多个权威位置（只在 `requirements.md` 有完整表）
 - [ ] `progress.md` 没有被当成需求来源

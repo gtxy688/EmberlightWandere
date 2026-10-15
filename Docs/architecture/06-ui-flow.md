@@ -1,11 +1,7 @@
 # M6 界面与流程
 
 > 相关需求：`../requirements.md` §2（主循环）、§4.1（开局四步）、§7（UI 编辑与复用）
-> 验收文档：`06-ui-flow-test.md`
-> 代码：`Assets/Scripts/UI/`（面板、流程、展示模型与共享节点工厂）+ `Assets/Scripts/Core/EmberGame.cs`（组合根，持有阶段）
->
-> 2026-09-23 变更：11 态状态机从 `EmberGame` 提为顶层 `EmberRunPhase`；HUD 推送点从 `EmberGame.UpdateHud()` 搬到 `EmberHudPresenter`；
-> 安全区轮询改为 `EmberSafeAreaWatcher` 事件。**UI 侧仍然零 `EmberGame` 引用**（硬约束 6），新增的 `EmberHudPresenter` 也只接收入参。
+> 代码：`Assets/Scripts/UI/`（面板、流程与展示模型）+ `Assets/Editor/`（控件工厂与 Prefab 工具）+ `Assets/Scripts/Core/EmberGame.cs`（组合根，持有阶段）
 
 ## 职责边界
 
@@ -45,11 +41,9 @@ EmberUiRoot（场景 Prefab 引用，Canvas 540×960 / 安全区 / 摇杆 / 遮�
    └─ EmberSettingsPanel  设置浮层（音乐/音效滑条 + 1x–5x 速度 + 继续/返回营地）
 ```
 
-`EmberHudPresenter.Push()` 是 UI 的**唯一推送点**：每帧把只读数值喂给 `EmberHud`，UI 不主动拉取。
+`EmberHudPresenter.Push()` 是战斗 HUD 的**每帧推送入口**：每帧把只读数值喂给 `EmberHud`，UI 不主动拉取。
 它由组合根在 `EmberMenuUi.Bind` 之后创建，只接收入参（`EmberHud` / `EmberRunState` / `EmberCombat` / 阶段委托），**不持有 `EmberGame`**。
 
-> 重构前这段逻辑是 `EmberGame.UpdateHud()`，且**每帧都会被调用**（含暂停与结算态）。现在只在 `Playing` 阶段推送。
-> 显示结果等价：暂停与结算时战斗栏本就处于隐藏态，且这些阶段的进入点各自会重绘界面。
 
 ### 开局四步（Gods-Select-v3）
 
@@ -76,7 +70,7 @@ EmberUiRoot（场景 Prefab 引用，Canvas 540×960 / 安全区 / 摇杆 / 遮�
 ### 升级选卡面板
 
 - 候选张数 = `3 + 空位数`。
-- **≤4 张直接排布；>4 张使用纵向滚动区域 + 固定 132 单位卡高**，保留底部刷新按钮（最多 7 张不溢出屏幕）。
+- **≤4 张直接排布；>4 张使用纵向滚动区域与固定卡高**，卡高与行步长见 [需求 §7「UI 与音频默认参数」](../requirements.md#ui-与音频默认参数)。保留底部刷新按钮（最多 7 张不溢出屏幕）。
 - 卡面分区：标题 / 说明 / 数值预览。说明预留两行并自适应字号（12–15）；**移除省略号截断**。
 - 护盾说明按语义固定两行，保留叠加、受伤优先消耗、仅本局有效的信息。
 - 徽章：通用显示稀有度名；专属「专属」；质变「质变」；新武器「新武器」。
@@ -105,7 +99,7 @@ EmberUiRoot（场景 Prefab 引用，Canvas 540×960 / 安全区 / 摇杆 / 遮�
 - `Assets/UI/IntroRoot.prefab` 保存标题、图标、提示、进度条、百分比和就绪标语；`EmberIntroView` 持有序列化引用，EmberIntro 只负责加载与继续输入。
 - 进度条分段推进（约 0.15 → 0.55 → 1.0），最短展示约 5 秒。
 - **中文字体就绪前隐藏中文文案**（避免渲染缺字方框）。
-- 就绪后显示「烬灯行者 / EmberlightWandere / 提灯入夜，以火破晓。」并启用继续输入。
+- 就绪后显示「烬灯行者 / EmberlightWanderer / 提灯入夜，以火破晓。」并启用继续输入。
 - 加载页按原排序覆盖主 UI；继续时隐藏实例，不销毁视图。布局、字号与静态图片不由运行时代码重新创建或覆盖。
 
 ## 对外契约
@@ -116,29 +110,26 @@ EmberUiRoot（场景 Prefab 引用，Canvas 540×960 / 安全区 / 摇杆 / 遮�
 | `EmberMenuUi.Bind` | 方法 | EmberUiRoot、已校验字体、暂停回调 | UI 根与面板 | 使用现有控件、注册交互；不重建布局；必要时补 EventSystem |
 | `EmberHud.Set(...)` | 方法 | 生命、护盾、波次、`RunProgress` 等 | — | `RunProgress` 为空时不绘制该块 |
 | `EmberUiFactory`（Editor） | 静态工厂 | 尺寸与父节点 | Prefab 控件 | 只在编辑器准备资产；Runtime 不引用 |
-| `EmberUpgradePanel.Show` / `Preview` | 方法 | 候选数组、`RunProgress` | — | 候选为空不显示；>4 张自动滚动 |
+| `EmberUpgradePanel.Show` | 方法 | 候选数组、`RunProgress` | — | 候选为空不显示；>4 张自动滚动 |
 | `EmberGodsSelectPanel.ShowSlots` / `ShowRosterSelect` | 方法 | 默认值/回调 | — | 单选 1 把；未选择时确认禁用 |
-| `EmberGodsSelectPanel.RosterNames` / `RosterDescs` | 静态字段 | — | 名称与白话说明 | **被 `EmberFonts` 用于字形预热** |
 | `EmberSettingsPanel` | 类 | 音量/速度回调 | — | 滑条实时生效并持久化 |
 | `EmberIntroView` | MonoBehaviour | 序列化加载页控件 | 加载页视图 | 必需引用校验；不持有游戏宿主 |
 | `EmberIntro.Begin` / `Continue` | 方法 | IntroRoot 视图、字体准备与进入回调 | 就绪状态 | 校验字体后激活；就绪前不能继续；继续仅提交一次并隐藏视图 |
 | `EmberCardMotion` | `MonoBehaviour` | — | 卡动画 | 使用 `unscaledDeltaTime` |
 
-### 文案的字体预热耦合
+### 文案与字形来源
 
-以下三处文案会被 `EmberFonts` 预取字形，**改文案必须同步确认预热范围**，否则首次显示会触发运行时字形烘焙卡顿：
+武器名称和基础说明读取 `EmberWeaponCatalog`；卡面、菜单与开局说明读取 `EmberCopy`。`EmberFonts.CardGlyphSet()` 收集升级文案、品质名称和卡面补充字符，`MenuGlyphSet()` 收集菜单、开局选择与结算常量。
 
-- `EmberCopy.UpgradeNames` / `UpgradeDetails`（36 项）
-- `EmberGodsSelectPanel.RosterNames` / `RosterDescs`
-- `EmberRarityUtil.AllNames`（青铜/白银/黄金/钻石）
+修改文案后按 M7 的流程检查编译后字形覆盖并重新烘制静态图集。
 
 ## Unity 装配
 
 - 主场景持有 `Assets/UI/UIRoot.prefab` 实例，`EmberGame.uiRoot` 引用其 `EmberUiRoot`。主菜单默认可见，HUD/设置/选卡按需在 Prefab Mode 临时开启预览；运行时由面板统一切换状态。
 - 主场景另持有 `Assets/UI/IntroRoot.prefab`，`EmberGame.introRoot` 引用 EmberIntroView。场景编辑时默认隐藏加载页，打开其 Prefab Mode 可预览；Play 时校验字体后显示。
 - `Emberlight/UI/Connect UIRoot Runtime` 使用 Editor API 配置两套 Prefab 的引用与持久图片，首次生成加载页，关联当前主场景并标记待保存。已有 IntroRoot 不重新创建控件、覆盖锚点或字号；日常改布局无需重跑菜单。
-- 布局与静态图片归 Prefab；运行时更新文字、交互状态、按候选数量排卡与安全区。旧 EmberMenuUi.Build、HUD 构建构造函数及面板创建回退已移除。EmberUiFactory 与开局选择页补建归 Editor，Runtime 只绑定序列化控件；缺失引用明确报错。
-- 当前布局以竖屏为目标，PlayerSettings 锁定 Portrait（见 M9）；横屏适配未实现。
+- 布局与静态图片归 Prefab；运行时更新文字、交互状态、按候选数量排卡与安全区。EmberUiFactory 与开局选择页补建归 Editor，Runtime 只绑定序列化控件；缺失引用明确报错。
+- 当前布局以竖屏为目标，PlayerSettings 锁定 Portrait（见 M9）。
 - 面板的生命周期由 `EmberMenuUi` 统一持有；暂停与设置是浮层而非独立场景。
 - `EmberUiRoot`、`EmberGodsSelectPanel`、`EmberSettingsPanel` 与 `EmberUpgradePanel` 为 `MonoBehaviour`；EmberMenuUi 与 EmberHud 为普通类。
 - **安全区变化**由 `EmberSafeAreaWatcher` 观察（`RuntimeInitializeOnLoadMethod` 安装常驻监听对象，`LateUpdate` 采样）。
@@ -150,17 +141,6 @@ EmberUiRoot（场景 Prefab 引用，Canvas 540×960 / 安全区 / 摇杆 / 遮�
 - **直接影响模块**：M2（卡面读取构筑数据）、M3（HUD 读取战斗状态）、M7（精灵供给）、M8（交互音）。
 - **必须复验的契约**：开局四步的顺序与单选约束、候选卡数量与滚动阈值、`unscaledDeltaTime` 使用、返回营地的二次确认、字体预热覆盖。
 - UI 创建边界需复验缺失引用报错、Editor 配置工具与场景 Prefab 复用；HUD 缓存需复验秒/数值变化及时显示及波次文案不重复写入。
-- **对应验收项**：`06-ui-flow-test.md`。
-
-## 待裁定事项
-
-| 问题 | 候选方案 | 影响 | 需要谁裁定 |
-|------|----------|------|------------|
-| UI 迁移到 Prefab | 已按 jack 授权接入 UIRoot；主流程使用序列化视图 | 主场景须保留一个有效的 EmberUiRoot 实例 | 已实施（2026-10-14） |
-| 是否补小屏适配（<540×960） | 引入 CanvasScaler 匹配 / 维持硬编码锚点 | 现有锚点按 540×960 硬编码，窄屏可能越界 | xiaoUI |
-| 返回营地二次确认是否有超时复位 | 加 2s 超时 / 维持需再次点击 | 误触后可能长期停留在确认态 | xiaoUI |
-
-性能定位标记见 `03-combat-waves.md` 的「性能定位标记」；本次仅新增采样作用域，公开行为不变。
 
 ## 2026-10-13 对外契约与回归范围
 
@@ -171,5 +151,3 @@ EmberUiRoot（场景 Prefab 引用，Canvas 540×960 / 安全区 / 摇杆 / 遮�
 ### HUD 更新契约（2026-10-14）
 
 EmberHud 缓存上次显示的生命、护盾、秒数、击杀、武器数/槽位/幸运、波次与 Boss 阶段。条形值跟随状态，文字只在对应数据变化时格式化并赋值；Stage 是波次文字唯一写入点。EmberHudPresenter 只在波次、局长或关卡配置变化时查询波名。暂停/选卡后恢复仍反映最新状态；不以源码缓存推断已达到某个 FPS/GC 指标。
-
-回归包含起始武器与升级卡说明一致、单武器攻击/攻速标题、卡片不同数量重排、隐藏取消动画、最新回调只提交一次、字体覆盖与真实网格渲染。对应 `EmberOfferPresentationTests`、`EmberRuntimeSmokeTests`，运行结果见 `../实现说明.md`；审美与手感仍待 jack 验收。

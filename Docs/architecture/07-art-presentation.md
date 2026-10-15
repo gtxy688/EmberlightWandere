@@ -1,7 +1,6 @@
 # M7 美术与表现
 
 > 相关需求：`../requirements.md` §7（技术约束：中文字体雷区）
-> 验收文档：`07-art-presentation-test.md`
 > 代码：`Assets/Scripts/Visuals/`（9 个文件）+ `Assets/Scripts/Core/EmberFonts.cs` + `Assets/Editor/EmberFontBake.cs` + 4 个资源导入器
 
 ## 职责边界
@@ -23,8 +22,8 @@
 | Resources | `Resources/Art/**`、`Resources/Fonts/**`、`Resources/Art/Baked/**` | 图集与字体 | 逐级回退，最终用程序化占位 |
 
 **边界（2026-09-23 起）**：`EmberKeeperAnimation` 与 `EmberEffects` 的阶段门控**改为构造时注入委托**，
-不再使用 `Object.FindObjectOfType<EmberGame>()` 反查，也不再读 `EmberGame.State`。
-因此 `Assets/Scripts/Visuals/` 下**零 `EmberGame` 类型引用**；这条边界现在由源码扫描可验证（见 `00-composition-root-test.md` C14）。
+表现通过注入的阶段委托工作，不主动查找游戏入口或读取游戏实例。
+因此 `Assets/Scripts/Visuals/` 下**零 `EmberGame` 类型引用**；这条边界现在由源码扫描可验证。
 
 ## 设计与数据流
 
@@ -55,10 +54,10 @@
 
 粒子
    EmberEffects（MonoBehaviour，池上限 120）
-      Trail / Impact / Nova；仅在 Mode.Playing 发射
+      Trail / Impact / Nova；粒子模拟由 Playing 阶段门控
 ```
 
-**烘焙收益说明**：5 个程序化图元（火焰/圆环/面板/辉光/圆盘）已改为构建期预生成，实测收益很小（合计个位数毫秒，一局一次）。保留它的理由是**形状可以当 PNG 改**、以及消掉首次使用的卡顿，**不是启动时间**。烘焙结束会解码 PNG 与现场光栅化逐像素比对（`maxDelta` 必须为 0），防止改了一处忘了另一处导致美术漂移。
+5 个程序化图元（火焰/圆环/面板/辉光/圆盘）在构建期预生成，运行时加载 PNG，减少首次使用时的光栅化工作，并支持直接编辑图片。烘焙结束会解码 PNG 与现场光栅化逐像素比对（`maxDelta` 必须为 0），防止两处实现产生美术漂移。
 
 ## 关键机制
 
@@ -78,43 +77,15 @@
 | 二 | 资产有 1 个图集槽，但字形指向 atlas index 1 → `IndexOutOfRangeException` | 全程只数 `characterTable.Count`，**从未真正绘制过任何字形**。修正：`VerifyReloaded` 从磁盘重新加载后**真渲染一遍** |
 | 三 | `m_AtlasTextures: [{fileID: …}, {fileID: 0}]` + `m_AtlasTextureIndex: 1` → `NullReferenceException`（`GetFallbackMaterial` 读 `atlasTextures[1].name`） | **TMP 开了第二张图集**：2048² 装不下全部 90px/9padding 的 CJK 字形，`enableMultiAtlasSupport` 默认 `true`，于是数组里多了一个无纹理的槽，而字体指向它。修正：烘制传 `enableMultiAtlasSupport: false`，并**自动降采样点**直到全部装进一张；`ApplySingleAtlas` 在写盘前强制数组只含一张，有字形指向更高索引就**拒绝写盘** |
 
-**采样点必须是 72px，不是 90px。** 单图集容量实测（下面是 2026-09-15 那一次烘制的数据，当时图集收 491 字；后来字形收集器又补入了卡面与菜单文案，缓存资产现为 **529 字**，见本节末尾）：
-
-| 采样点 | 烘入字形 | 丢失 |
-|--------|----------|------|
-| 90 px | 384 / 491 | **丢 107 个** |
-| 80 px | 472 / 491 | 丢 19 个 |
-| **72 px** | **491 / 491** | **无** |
+烘制会逐步降低采样点，直到完整字符集装入单张图集。
 
 `FitsOneAtlas` 单独用是不够的：关掉多图集后，装不下的字**根本不会进 `glyphTable`**，所以"没有字形指向 atlas 0 以外"依然成立而字数已经缺了。因此烘制还要求 `CoversEveryCharacter` 通过（逐字符 `HasCharacter`），两者**都**满足才接受该采样点。
 
-当初那次烘制的实测结果：
-
-```text
-[EmberFontBake] 90 px -> 384 chars, ... fits=True,  complete=False, dropped 107
-[EmberFontBake] 80 px -> 472 chars, ... fits=True,  complete=False, dropped 19
-[EmberFontBake] 72 px -> 491 chars, 491 glyphs, 1 atlas texture(s), 0 past atlas 0, fits=True, complete=True
-[EmberFontBake] baked 491 glyphs of 665 requested (493 distinct) at 72 px into ONE 2048x2048 atlas
-[EmberFontBake] VERIFY OK: reloaded 491 glyphs / 1 atlas texture(s) / max atlasIndex 0; drew 63/64 sampled characters
-[EmberFonts] pre-baked atlas validated: 1 atlas texture(s), 491 characters, 491 glyphs, max atlasIndex 0
-[EmberFontCheck] PASS: the pre-baked atlas is in use (no runtime bake, drawable on frame 0)
-```
-
-> `493 distinct` − 2（`\r`、`\n` 控制字符，TMP 不为其生成字形）= **491**，与烘入数完全一致，无遗漏。
-
-**缓存资产的当前状态**（2026-10-14 由 `EmberFontBake.CheckRuntimeLoad` 复核）：
-
-```text
-[EmberFonts] pre-baked atlas validated: 1 atlas texture(s), 529 characters, 529 glyphs, max atlasIndex 0
-```
-
-即字形收集器扩充后仍**装得进同一张 2048×2048 图集**，`max atlasIndex` 仍为 0，无需回退到更小采样点；`07-art-presentation-test.md` 的 A12/A13/A14 记录的 `529` 就是这个口径。
-
-结果与取舍：
+实现取舍：
 
 - **首屏中文字第 0 帧即可绘制**，加载页不必再 `SetActive(false)` 藏文字。
 - 运行时不再 `CreateFontAsset`、不再 `TryAddCharacters`，`PrewarmInBackground` 对静态图集直接 `yield break`。
-- **SDF 采样点由 90px 降到 72px**，字形轮廓精度略有下降；显示字号为 11–40px，余量仍充足，但**观感需人工验收**。
+- **SDF 采样点由 90px 降到 72px**，字形轮廓精度略有下降；显示字号为 11–40px，余量仍充足，实际显示效果以游戏内画面为准。
 - **包体仍带完整 Noto CJK SC（约 16.4 MB）**：静态图集的 `m_SourceFontFile` 仍引用该 otf，裁剪需把字体移出 Resources 并确认引用关系，属未做的优化。
 - 新增/修改文案若引入图集里没有的字，**该字会缺失**（静态图集不能追加字形）。改文案后必须按下面的批处理命令重跑烘制。
 - 重跑命令（批处理）：
@@ -128,42 +99,27 @@
 
 回落路径（动态图集）仍保留两段式预热：
 
-- `FirstScreenGlyphSet` 同步加入 —— 加载页文案+主菜单标题的约 98 个不同字形；已验证与 `EmberIntro` 会绘制的字符集完全一致。
-- `GlyphSet + CardGlyphSet()` 的余量按 48 字/帧用协程分片加入。
+- `FirstScreenGlyphSet` 同步加入，覆盖首屏标题与提示所需字形。
+- `AllGlyphs` 中尚未加入的字符通过协程分批补充。
 
-`CardGlyphSet()` 从 `EmberCopy.UpgradeNames` / `UpgradeDetails`、`EmberGodsSelectPanel.RosterNames` / `RosterDescs`、`EmberRarityUtil.AllNames` 及 `ExtraCardText` **推导**得出，不手写，避免改文案后失同步。
+`CardGlyphSet()` 收集 `EmberCopy.UpgradeNames`、`UpgradeDetails`、`EmberRarityUtil.AllNames` 与 `ExtraCardText`。`MenuGlyphSet()` 收集 `EmberCopy` 的菜单、难度、槽位、武器库与结算常量。
 
-> 文案原有的 `EmberGame.UpgradeNames` / `UpgradeDetails` 已迁到 `EmberCopy`（提交 `a216de7` 之前的工作区改动），本文件此前引用的是旧位置。
-
-**改这三处文案必须同步确认预热覆盖**，否则回落路径下首次显示会触发运行时字形烘焙卡顿。
+修改文案后同步检查字形覆盖；使用静态图集时重新烘制，使用动态回落时确保预热字符集完整。
 
 ### 字形覆盖（静态图集的真正约束）
 
 静态图集**不能追加字形**，所以"图集里有没有这个字"完全取决于烘制时请求了哪些字符。请求集是 `EmberFonts.AllGlyphs = GlyphSet + CardGlyphSet() + MenuGlyphSet()`。
 
-**这曾经两次漏字，都表现为游戏里的空心方框：**
-
-| 漏的是什么 | 为什么漏 | 现状 |
-|------------|----------|------|
-| `休闲适合轻松构筑标准体验完整挑战困难面对更多精英` | 难度页文案是 `EmberGame.ChooseLength` **方法体内的内联字面量**，反射与数组遍历都够不到 | 提为 `EmberGame.DifficultyTitle` / `DifficultyBody()` / `DifficultyChoices`，由 `MenuGlyphSet` 收集 |
-| `—乐交声弃引律景涌渐潮烛确背虫请遇遭铁队阵静音` | 设置页、敌人图鉴、选卡与结算的文案同样残留在方法体内 | `EmberFonts.ExtraVisibleGlyphs` 显式列出，附来源注释 |
-| `_`（U+005F） | **TMP 的内部要求，不是游戏文案**：`TMP_Text.GetSpecialCharacters` 每次赋字体都去字体里找 U+005F（下划线）与 U+2026（省略号），缺一个就每个 `TextMeshProUGUI` 报一条 `The character used for Underline is not available`。U+005F 是 ASCII，看着"显然存在"，而**没有任何文案含它**，所以手写白名单与字面量扫描都抓不到 | `ExtraVisibleGlyphs` 首两项 `\u005f\u2026` |
-
-> 这三类**都不会崩、也不会缺功能**（游戏完全没用 `<u>` `<s>` `<sup>` `<sub>` 富文本标记），但方框是可见缺陷、警告是 Console 噪声，都按缺陷处理。
+字符来源分为三类：`EmberCopy` / Catalog 的共享文案、方法体内的字面量，以及 TMP 内部需要的特殊字符。`ExtraVisibleGlyphs` 与 `ExtraCardText` 补齐内联来源；下划线和省略号需要显式收集，不能只扫描游戏文案。
 
 **判断"是否还有漏字"的唯一可靠手段是 `Tools/atlas_glyph_check.py`**，它不读 C# 常量，而是：
 
-1. 解析 `Library/ScriptAssemblies/Assembly-CSharp.dll` 的 `#US`（user strings）元数据堆，取出**每一个字符串字面量**——包括方法体内的；
+1. 解析 `Library/ScriptAssemblies/Emberlight.Runtime.dll` 的 `#US`（user strings）元数据堆，取出**每一个字符串字面量**——包括方法体内的；
 2. 解析 `.asset` 里的 `m_Unicode` 条目，得到图集实际持有的字符；
 3. 求差集，非空则退出码 1 并打印**可直接粘贴的 C# 转义字面量**。
 
 ```bash
 python Tools/atlas_glyph_check.py
-# assembly literals : 420
-# distinct visible  : 489
-# atlas holds       : 528
-# MISSING (0):
-# coverage complete        <- 退出码 0
 ```
 
 **改任何文案后的流程**：先跑这个脚本 → 有缺口就把它打印的字面量补进 `EmberFonts` 相应的 glyph set → 关掉 Unity → 重跑烘制 → 再跑一次脚本确认 `MISSING (0)`。
@@ -176,12 +132,12 @@ python Tools/atlas_glyph_check.py
 - 运行时按格创建并缓存 `Sprite`，**不读取像素**；关闭 mipmap、保留原比例、双线性过滤。
 - 边缘修复：已离线移除四档卡框与 UI 面板外的深色底色，保留内部底色与手绘描边；导入启用 `alphaIsTransparency` 防止边缘采样色晕，**无运行时裁剪或纹理处理**。
 - Android 平台覆写为 **Uncompressed**（默认 ETC2 会让描边起块状伪影），写在各自 `.meta` 的 Android 平台块。
-- 4 个 `AssetPostprocessor` 导入器负责切片，保证重新导入资源时仍有正确设置。
+- 4 个 `AssetPostprocessor` 导入器维护 Sprite / Multiple 导入设置；切片定义保存在图集 `.meta` 中，通过 Sprite Editor 编辑。
 
 ### 粒子
 
 - `EmberEffects` 池化，**上限 120**（移动端预算）；池空时直接丢弃，不报错。
-- 仅在 `Mode.Playing` 发射 → 暂停时战斗特效冻结。
+- 粒子模拟仅在 `EmberRunPhase.Playing` 推进，暂停时冻结。
 - 新局会清理旧特效世界。
 
 > ⚠️ 历史文档曾写"粒子上限 180"，**实际常量为 120**（`EmberEffects.cs:16`（`active.Count>=120`））。
@@ -218,7 +174,7 @@ python Tools/atlas_glyph_check.py
 ## Unity 装配
 
 - 资源根：`Assets/Resources/Art/{UI,Cards,World,Baked}`、`Assets/Resources/Fonts`。
-- 4 个 `AssetPostprocessor`（`EmberCardFrameImporter` / `EmberCardIconImporter` / `EmberUiArtImporter` / `EmberWorldArtImporter`）在导入时设置切片；**不要手改 `.meta` 的切片，改导入器**。
+- 4 个 `AssetPostprocessor`（`EmberCardFrameImporter` / `EmberCardIconImporter` / `EmberUiArtImporter` / `EmberWorldArtImporter`）在导入时维持 Sprite / Multiple 设置。**切片通过 Sprite Editor 编辑并保存在 `.meta`；导入器不负责重建切片。**
 - Android 压缩覆写位于 `.meta` 平台块（`overridden: 1` + `textureCompression: 0`），涉及三张 doodle 图集。
 - `EmberEffects` 与 `EmberKeeperAnimation` 是场景 `MonoBehaviour`；其余为静态类。
 - `EmberKeeperAnimation` 与 `EmberEffects` 都是场景 `MonoBehaviour`；其余为静态类。阶段门控由组合根**构造时注入委托**，没有任何 `FindObjectOfType` 反查。
@@ -227,20 +183,10 @@ python Tools/atlas_glyph_check.py
 
 - **直接影响模块**：M6（UI 精灵）、M5（共享剪影服务）、M4（弹体外观）、M3（粒子反馈）。
 - **必须复验的契约**：预烘字体的 `ValidateBaked` 闸门（删掉它 = 资产坏了整个 UI 挂掉）、`EmberFonts.ApplyFont`、粒子上限、图集三级回退链、`AssetPostprocessor` 切片设置、字形预热覆盖（回落路径）。
-- **对应验收项**：`07-art-presentation-test.md`。
-
-## 待裁定事项
-
-| 问题 | 候选方案 | 影响 | 需要谁裁定 |
-|------|----------|------|------------|
-| 包体 16.4 MB 的 Noto CJK 是否裁剪 | 子集化字体 / 维持完整 | 可省十几 MB，但需保证全部文案字形覆盖 | jack + xiaoCoder |
-| ~~`FindObjectOfType<EmberGame>()` 是否改为注入~~ | **已裁定并落地（2026-09-23）**：改为构造时注入阶段委托 | 可测性与生命周期问题已解除；Visuals 下零 `EmberGame` 引用 | — |
-| 粒子上限 120 是否随真机实测调整 | Profiler 后调 / 维持 | 影响大波次表现与帧率 | xiaoCoder + jack |
-| 是否补完整八方角色动画 | 补图集 / 维持正背面+镜像 | 当前为简化动作，观感取舍 | jack |
 
 ## 2026-10-13 字形来源契约
 
-公共卡面文案由 EmberCopy 收集，其中基础武器文案读 EmberWeaponCatalog；字体收集器不再依赖 UI 面板的名册数组。ValidateBaked 与动态回落保持原样。回归范围是编译后字符串堆覆盖、TMP 特殊字符、重新加载的字体网格以及图形 PlayMode 的菜单/HUD/选卡/结算。实际结果见 `../实现说明.md`，观感仍待人工验收。
+公共卡面文案由 EmberCopy 收集，其中基础武器文案读 EmberWeaponCatalog；字体收集器不再依赖 UI 面板的名册数组。ValidateBaked 与动态回落保持原样。回归范围是编译后字符串堆覆盖、TMP 特殊字符、重新加载的字体网格以及图形 PlayMode 的菜单/HUD/选卡/结算。
 
 ## UI Prefab 图片持久化（2026-10-13）
 
@@ -248,6 +194,6 @@ python Tools/atlas_glyph_check.py
 
 工具沿用现有取图入口，将临时 Sprite 克隆为 `Assets/UI/Generated/Sprites/*.asset`，引用原 PNG，保留裁剪、pivot、PPU 和九宫格边框。仅修复已知 UI 节点，保留已有持久资源、布局、颜色和显隐；透明遮罩与点击区域允许空 Sprite。原纹理缺失时停止并提示先烘制程序化素材，不保存临时 Texture，也不改图集导入器或切片 `.meta`。
 
-影响范围：Editor 与 UIRoot 的图片引用。此修复工具不接管运行时数据刷新或按钮回调，也不改变字体闸门。2026-10-14 运行入口已由 M6 的 EmberMenuUi.Bind 接入同一 Prefab；连接工具创建的补充控件也经图片持久化处理。回归见 `07-art-presentation-test.md` 与 `06-ui-flow-test.md`。
+影响范围：Editor 与 UIRoot 的图片引用。此修复工具不接管运行时数据刷新或按钮回调，也不改变字体闸门。2026-10-14 运行入口已由 M6 的 EmberMenuUi.Bind 接入同一 Prefab；连接工具创建的补充控件也经图片持久化处理。
 
 IntroRoot 同样使用持久图片：背景、徽标与进度条沿用原取图入口，保存到 Prefab 后停止 Play 仍可预览。EmberIntro 激活视图前仍调用 CreateChinese/ValidateBaked，再为已保存的 TMP 控件赋已校验字体；未绕过静态图集闸门。文案值保持原样，字形覆盖检查决定是否需要重烘。

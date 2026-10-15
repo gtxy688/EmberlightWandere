@@ -1,7 +1,6 @@
 # M2 单局进度与构筑
 
 > 相关需求：`../requirements.md` §4（构筑与卡池）、§5（结算与计分）
-> 验收文档：`02-run-progression-test.md`
 > 代码：`Assets/Scripts/Core/RunProgress.cs`、`Assets/Scripts/Core/EmberRarity.cs`
 
 ## 职责边界
@@ -12,7 +11,7 @@
   - 发牌 UI、卡面排版、刷新按钮 → M6
   - 波次推进与发牌**时机** → M3 / `EmberGame`（本模块不知道波次节奏，只接收 `waveCleared`）
 
-**关键定位**：`RunProgress` 是**纯 C# 类**，`using` 只有 `System` 与 `System.Collections.Generic`，**零 `UnityEngine` 引用**（数值钳制用 `System.Math`）。这是全项目唯一可以脱离 Unity 直接单元测试的对象，也是 M4 与 M6 的共同只读数据源。
+**关键定位**：`RunProgress` 是**纯 C# 类**，`using` 只有 `System` 与 `System.Collections.Generic`，**零 `UnityEngine` 引用**（数值钳制用 `System.Math`）。它与 Catalog、ChoicePool、品质和流程等纯逻辑单元一起支持独立测试，也是 M4 与 M6 的共同只读数据源。
 
 ## 依赖
 
@@ -32,19 +31,18 @@ EmberGame: 选槽位 N + 单选 1 把起始武器
          ├─ 首个被授予者 → CoreWeaponId
          └─ 空集兜底 WeaponBasic(13)
 
-清波 → EmberGame.OnWaveCleared(wave)
-   └─ PicksAfterWave(wave) 次：
-         Progress.Choices(rng, waveCleared) → EmberOffer[3 + EmptySlots]
-         → EmberGame.OfferUpgrade → M6 面板显示
-         → 玩家点选 → EmberGame.SelectUpgrade(offer)
-               ├─ 防伪校验：比对 Id + Rarity + WeaponId 三者
-               └─ Progress.Choose(offer, out grantedNewWeapon)
-                     ├─ 生效加成（ApplyExclusive / ApplyMetamorph / 通用累加）
-                     ├─ Pending--
-                     └─ grantedNewWeapon == true → 立刻再 OfferChoices 一次（补偿，不推进波次）
+清波 → RunFlowController.OnWaveCleared(wave)
+   └─ 记录本波选卡次数 → OfferUpgrade()
+         ├─ Host.RequestChoices → RunProgress.Choices
+         └─ Host.OnUpgradeOffered → 面板展示候选
+               └─ 玩家点选 → RunFlowController.Choose(offer)
+                     ├─ 校验 Id + Rarity + WeaponId
+                     ├─ RunProgress.Choose → 应用加成并消费 Pending
+                     ├─ 新武器 → 补偿一次，不连锁、不推进波次
+                     └─ 选卡结束 → Host.OnUpgradeSequenceFinished
 ```
 
-**所有写入仅由 `EmberGame` 发起**。武器与 UI 只调用只读查询，这使构筑状态的变化点收敛在一处。
+选卡状态由 `RunFlowController` 推进，构筑变更由 `RunProgress` 应用；武器和 UI 读取构筑数据，界面通过回调提交选择意图。
 
 ## 关键机制
 
@@ -119,14 +117,14 @@ EmberGame: 选槽位 N + 单选 1 把起始武器
 | `WeaponMagnitude` / `WeaponAttackSpeed` | 查询 | 武器 id | `float` | 该武器的攻击力/攻速加成 |
 | `WeaponCount(int)` | 查询 | 武器 id | `int` | 当前仅穿透火矢使用（扇形箭数） |
 | `DamageMul` | 属性 | — | `float` | `1 + DamageAmp`，6 把武器全部相乘 |
-| `Luck` / `Shield` / `ShieldCapacity` / `Orbits` / `TrailPower` / `BonusMaxHealth` / `WavePower` | 属性 | — | 各类型 | 全局属性；`WavePower` 恒 0 |
+| `Luck` / `Shield` / `ShieldCapacity` / `Orbits` / `TrailPower` | 属性 | — | 各类型 | 当前生效的构筑属性 |
 | `WeaponSlots` / `CoreWeaponId` / `OwnedWeaponCount` / `EmptySlots` / `RefreshesRemaining` | 属性 | — | `int` | HUD 与选卡 UI 的数据源 |
 | `Choices(Random, int)` | 方法 | 随机源、刚清完的波次 | `EmberOffer[]` | 长度 `3 + EmptySlots`；保证非空 |
 | `Choose(EmberOffer, out bool)` | 方法 | 候选牌 | `bool` + 是否授予新武器 | 成功才 `Pending--`；失败不改状态 |
 | `TryRefresh(Random, int, out EmberOffer[])` | 方法 | 随机源、波次 | `bool` + 新候选 | 次数耗尽或非选卡态返回 false |
 | `OfferChoices()` / `AddScore(int)` / `FinalScore()` | 方法 | — | — | `AddScore` 负数抛异常 |
 | `AbsorbDamage(float)` | 方法 | 已乘难度倍率的伤害 | 穿透到生命的伤害 | 先扣护盾，溢出扣血 |
-| `EmberOffer` | struct | `id, rarity, weaponId = -1` | — | `WeaponId`：-1 = 全局；0/1 时为目标武器 id |
+| `EmberOffer` | struct | `id, rarity, weaponId = -1` | — | `WeaponId`：Id 为攻击力/攻速词条时指定已有武器，其余默认 -1 |
 | `EmberRarityUtil.RollByLuck` / `WeightsForLuck` | 静态 | `Random`, `float luck` | 稀有度 / 权重数组 | 幸运钳制到 0–120 |
 | `EmberRarityUtil.GenericAtkAs` / `GenericAttackSpeed` / `GenericLuck` / `GenericAmp` / `ShieldAmount` | 静态 | `EmberRarity` | 数值 | 见 `../requirements.md` §4.4 |
 | `EmberRarityUtil.AllNames` | 静态字段 | — | 四个稀有度中文名 | **唯一文案源**，被 `EmberFonts` 预热 glyph |
@@ -135,13 +133,9 @@ EmberGame: 选槽位 N + 单选 1 把起始武器
 
 **具体数值不在此复制**，一律见 `../requirements.md` §4。
 
-### 历史兼容成员（勿当作新功能入口）
+### 查询入口
 
-2026-09-23 曾记录零调用点；当前测试已有部分引用，不能再按全仓无引用删除。历史兼容成员包括：`FullRoster()`、`HasEvolved()`（`HasMetamorph` 别名）、`CanEvolve()`、`OwnedWeaponsView()`、`AddShield()`、`HealAmount()`。
-
-（`OfferCountExpected()` 与 `FullRoster()` 已改为转发 `EmberChoicePool.ExpectedCount` / `EmberWeaponCatalog.RosterCopy()`，在测试中已有调用，公式没有第二个版本。`ScoreMult` 恒为 1.0，按 `../requirements.md` §4.1 保留。）
-
-> 注意：`HasEvolved(int)` 是 `HasMetamorph(int)` 的别名，**武器代码用的是 `HasMetamorph`**——只删别名不会影响行为，但别误删 `HasMetamorph`。
+`FullRoster()` 返回名册副本，`OfferCountExpected()` 转发卡池候选数计算；武器归属和形态分别查询 `OwnsWeapon`、`HasMetamorph`、`HasExclusive`。
 
 ## 模块内的职责划分（2026-09-23）
 
@@ -154,7 +148,7 @@ EmberGame: 选槽位 N + 单选 1 把起始武器
 | `RunProgress` | `Core/RunProgress.cs` | **只负责构筑状态怎么变**：槽位与归属、通用属性、品质 roll 落地、`Choose` / `TryRefresh` / `AbsorbDamage` / 计分 | ✅ |
 | `EmberRarityUtil` | `Core/EmberRarity.cs` | 品质权重与通用词条数值表 | ✅（见下） |
 
-**为什么拆**：`02-run-progression-test.md` 把本模块列为自动化收益最高的目标，但"候选怎么拼"与"状态怎么变"混在一起时，
+**为什么拆**："候选怎么拼"与"状态怎么变"混在一起时，
 想验证"满槽不出新武器""同屏唯一键是 `(Id, WeaponId)`"必须先摆好整套构筑状态。拆开后 `EmberChoicePool.Build(progress, random)`
 只读 `RunProgress` 的公开只读事实，可直接单测。
 
@@ -166,10 +160,7 @@ EmberGame: 选槽位 N + 单选 1 把起始武器
 `EmberRarityUtil.Tint(rarity)` 返回 `float[3]`（RGB 0–1），UI 侧用 `EmberRarityTint.ToColor()`
 （`UI/EmberRarityTint.cs`）转成 `UnityEngine.Color`。
 
-这是为了**让整个 M2 保持零 `UnityEngine` 引用**：拆分前 `EmberRarityUtil.Color` 返回 `Color`、
-`WeightsForLuck` 用 `Mathf.Lerp/RoundToInt`，因此本文档与 `-test` 里
-"`EmberRarityUtil` 零 `UnityEngine` 依赖"这一条**当时并不成立**（文档断言与实现不符，已订正）。
-现改为 `System.Math` + `float[3]`，该断言才真正可测。
+配色数据保持为 RGB 数组，Unity 的颜色类型转换由 UI 层负责，从而维持 M2 对 UnityEngine 的隔离。
 
 ## Unity 装配
 
@@ -182,17 +173,7 @@ EmberGame: 选槽位 N + 单选 1 把起始武器
 
 - **直接影响模块**：M4（读全部属性与查询）、M6（读 `Luck` / `CoreWeaponId` / `RefreshesRemaining` / `EmptySlots` 并渲染候选）、M3（经 `EmberGame` 触发发牌）、M7（`EmberCardIcons` 只读 id 常量）。
 - **必须复验的契约**：`Choices` 的长度与唯一性、`Choose` 的防伪与补偿选卡、品质权重表、伤害乘区、护盾吸收顺序。
-- **对应验收项**：`02-run-progression-test.md`。
-
-## 待裁定事项
-
-| 问题 | 候选方案 | 影响 | 需要谁裁定 |
-|------|----------|------|------------|
-| 是否清理历史兼容成员 | 删除 / 保留作向后兼容 | 死代码增加误读成本，但也可能被外部工具引用 | xiaoCoder |
-| 全局 `DamageBonus` 字段是否删除 | 删除 / 保留停用 | 与"不得再做全局攻击力"的口径一致性 | jack |
-| 质变 0.5% 门控是否保留 | 保留 / 改为纯权重竞争 | 影响钻石卡出现频率与手感 | jack + xiaoPlanner |
-| 冲击波（`WavePower`）去留 | 恢复为不占槽词条 / 删除 | 当前为死代码 | jack + xiaoPlanner |
 
 ## 2026-10-13 实际发牌入口修复与回归
 
-`Choices` 生成候选后调用 `OfferChoices`，开启且仅开启一次待选状态；`EmberChoicePool.Build` 仍只生成数据，不修改构筑。刷新经同一入口替换候选，不叠加 Pending。修复前真实 UI 点击与刷新均被 Pending=0 拒绝；两条真实入口回归在修复前失败。数值、卡池与随机数调用顺序不变，结果见 `../实现说明.md`。
+`Choices` 生成候选后调用 `OfferChoices`，开启且仅开启一次待选状态；`EmberChoicePool.Build` 只生成数据，不修改构筑。刷新经同一入口替换候选，不叠加 Pending；数值、卡池与随机数调用顺序保持不变。

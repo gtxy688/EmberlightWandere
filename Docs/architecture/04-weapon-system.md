@@ -1,7 +1,6 @@
 # M4 武器系统
 
 > 相关需求：`../requirements.md` §4.2、§4.4、§4.6
-> 验收文档：`04-weapon-system-test.md`
 > 代码：`Assets/Scripts/Combat/Weapons/`（武器基类、实现与注册工厂）
 
 ## 职责边界
@@ -12,7 +11,7 @@
   - 敌人生成与死亡结算 → M3（本模块只投递伤害）
   - 卡面文案与图标 → M6 / M7
 
-**最重要的边界约束**：`EmberWeapon.cs` 的文件头明文规定 *"武器不得反向依赖 `EmberGame`"*，且**经全仓验证成立**——6 把武器（含未接线的 Pulse）零处 `EmberGame` 引用，只通过 `EmberWeaponContext` 与 `RunProgress` 工作。**这是本仓库最干净的模块边界，改武器时不要引入 `EmberGame`。**
+**最重要的边界约束**：武器通过 `EmberWeaponContext` 与 `RunProgress` 工作，六把可获取武器均不持有 `EmberGame`。改武器时保持这条依赖边界。
 
 ## 依赖
 
@@ -62,7 +61,6 @@ public abstract class EmberWeapon
 | 10 | `EmberPierceWeapon` | 穿透火矢 | ✅ |
 | 11 | `EmberBoomerangWeapon` | 回旋烬蝶 | ✅ |
 | 12 | `EmberMeteorWeapon` | 天降火雨 | ✅ |
-| — | `EmberPulseWeapon` | 冲击波 | ❌ 未接线：`RunProgress.WavePower` 恒为 0，本版没有出卡入口 |
 
 ### 逐武器数值接线
 
@@ -95,12 +93,12 @@ public abstract class EmberWeapon
 
 **燃地（15）**
 - 沿玩家路径留火，踩踏掉血；`TrailPower` 决定强度（开局基线 0.20）。
-- **兼任全局共享烧地服务**：`SpawnPatch` 被火球（燎原）与 `ctx.SpawnBurnPatch` 调用。
+- 只负责自身产火与火海圈；轨迹、火球和环火质变都经 `ctx.SpawnBurnPatch` 投递到共享 `EmberBurnGround`，由后者管理燃地生命周期与伤害。
 - **延烧**（专属 32）：拖尾更长更烫；**火海**（质变 22）：身周持续火圈。
 - 同屏燃地上限 40（性能约束，见 M9）。
 
 **穿透火矢（10）**
-- **仅当玩家基本静止时才开火**（`ctx.PlayerStanding`，速度阈值 0.15）；移动中不进入射击，已飞出的箭继续飞。冷却照常推进。
+- **仅当玩家基本静止时才开火**（`ctx.PlayerStanding`，判定参数见 [需求 §4.8](../requirements.md#48-静止判定)）；移动中不进入射击，已飞出的箭继续飞。冷却照常推进。
 - 朝最近可见敌直线穿透，逐层消耗穿透次数。
 - **贯穿**（专属 33）：穿透上限 +1（已从 +2 收档）。
 - **穿杨**（质变 23）：命中分裂一小支，分裂箭**伤害 ×0.45** 且**静音**（避免一次射击叠两声）。
@@ -145,7 +143,7 @@ public abstract class EmberWeapon
 
 ## Unity 装配
 
-- **无 Prefab、无 ScriptableObject**：武器是普通 C# 类，由 `EmberCombat.Begin` 构造。
+- **无 Prefab、无 ScriptableObject**：武器是普通 C# 类，`EmberCombat` 初始化时通过 `EmberWeaponFactory.CreateAll` 创建，开局由 `Begin` 重置。
 - 弹体与轨迹 GameObject 经 `EmberPool` 按 key 复用（`fire` / `burn` / `warn`）。
 - 武器不持有场景引用，场景引用全部经 `ctx`（`Player` / `World` / `Cam`）传入。
 - **创建/销毁所有权**：`EmberCombat` 拥有武器实例；新局调用 `Reset()`，回营地随 `TearDown` 一并丢弃。
@@ -156,22 +154,10 @@ public abstract class EmberWeapon
 - **必须复验的契约**：伤害乘区公式、`OwnsWeapon` 门控、专属/质变形态替换、穿透静止门控、同怪环火满伤规则。
 - **回归触发条件**：任何 `EmberWeaponContext` 字段变更、`RunProgress` 加成接口变更、`EmberPool` key 变更。
 
-## 验收
-
-本模块的验收项已独立成 `04-weapon-system-test.md`（W1–W10 自动化计划、H1–H5 手动验收、E1–E5 边界、回归范围与交付结论）。
-
-## 待裁定事项
-
-| 问题 | 候选方案 | 影响 | 需要谁裁定 |
-|------|----------|------|------------|
-| `EmberPulseWeapon` 去留 | 恢复为不占槽词条 / 删除 | 当前 `WavePower` 恒 0，永不生效；`EmberPulseWeapon` 类本身零调用点 | jack + xiaoPlanner |
-| 策划档位表与代码常量的一致性维护点 | 以代码为准并回写需求 / 保持双份 | 当前存在未同步风险 | xiaoCoder + xiaoPlanner |
-| 是否给武器补音效 pitch 抖动 | 加随机 pitch / 维持一致音色 | 多次连发听感偏机械 | jack |
-
 ## 2026-10-13 对外契约与回归范围
 
 基础参数与升级增量集中在 `Core/EmberWeaponTuning.cs`；武器实现注册集中在 `EmberWeaponFactory`，旧调用顺序保留。
 
 共享效果 `Combat/EmberBurnGround` 持有燃地列表、生命周期与伤害；所有产生燃地的武器走 `ctx.SpawnBurnPatch`。`EmberTrailWeapon` 只负责自身产火与火海圈。战斗在 Trail 时隙后紧接推进共享效果，即使没有 Trail 所有权也要推进。收局和新局清空共享效果状态，世界对象仍由宿主回收。
 
-回归包括火球/环火质变生成燃地、未持有 Trail 时的伤害、容量与到期回池、跨局重置、六武器基础伤害/冷却/专属增量以及音效节流。`EmberBurnGroundTests` 已覆盖共享效果的关键规则；图形冒烟覆盖火球攻击路径。六武器全部行为与手感仍待补齐/人工验收。最新结果见 `../实现说明.md`。
+相关影响包括火球/环火质变生成燃地、未持有 Trail 时的伤害、容量与到期回池、跨局重置、六武器基础伤害/冷却/专属增量以及音效节流。

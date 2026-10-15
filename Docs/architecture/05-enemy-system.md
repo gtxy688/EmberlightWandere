@@ -1,7 +1,6 @@
 # M5 敌人系统
 
 > 相关需求：`../requirements.md` §3.1、§3.4、§3.5、§4.4（回血掉落）
-> 验收文档：`05-enemy-system-test.md`
 > 代码：`Assets/Scripts/Combat/Enemies/`（4 个文件）+ `Assets/Scripts/Combat/EmberHealingDrops.cs`
 
 ## 职责边界
@@ -29,7 +28,7 @@
 EmberCombat 刷怪：RollKind(wave, rng) → kind
    └─ 从 EmberPool 借出敌人 GameObject
         ├─ EmberEnemySilhouette.Apply(kind)   恢复基准姿态 → 应用类型装饰
-        ├─ EmberEnemyVisual.Attach(...)       挂角色标记 / 预警 / 词缀光环
+        ├─ new EmberEnemyVisual(enemy, world)       挂角色标记 / 预警 / 词缀光环
         └─ 按 kind 选择 IEnemyBehavior：
              0 普通 → ChaseBehavior
              1 快速 → ChaseBehavior（更高速度）
@@ -133,14 +132,3 @@ EmberCombat 刷怪：RollKind(wave, rng) → kind
 
 - **直接影响模块**：M3（行为与弹幕宿主）、M1（数值来源）、M7（共享精灵与粒子）、M2（掉落计入 Score 与回血）。
 - **必须复验的契约**：池复用的形态还原、分裂数量与配额关系、盾卫正背面倍率、引线爆炸时机、暗弹拦截、词缀概率门控。
-- **对应验收项**：`05-enemy-system-test.md`。
-
-## 待裁定事项
-
-| 问题 | 候选方案 | 影响 | 需要谁裁定 |
-|------|----------|------|------------|
-| 敌人行为是否需要更多种类 | 扩到 6+ 种 / 维持现 5 种 | 现配置已覆盖拉距离/控制击杀位/绕后/躲避四种应对 | jack + xiaoPlanner |
-| `EmberEnemyVisual` 是否从数据驱动改配置化 | 抽 ScriptableObject / 维持代码常量 | 动画参数目前散在代码里 | xiaoCoder |
-| 治疗掉落上限 24 与粒子上限 120 的真机预算 | 真机 Profiler 后调 / 维持 | 影响长局性能 | xiaoCoder + jack |
-
-性能定位标记见 `03-combat-waves.md` 的「性能定位标记」；本次仅新增采样作用域，公开行为不变。
