@@ -184,7 +184,7 @@ python Tools/atlas_glyph_check.py
 - 仅在 `Mode.Playing` 发射 → 暂停时战斗特效冻结。
 - 新局会清理旧特效世界。
 
-> ⚠️ 历史文档曾写"粒子上限 180"，**实际常量为 120**（`EmberEffects.cs:15`）。
+> ⚠️ 历史文档曾写"粒子上限 180"，**实际常量为 120**（`EmberEffects.cs:16`（`active.Count>=120`））。
 
 ### 玩家角色
 

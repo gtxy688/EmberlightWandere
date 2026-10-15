@@ -15,6 +15,7 @@
 | 自动化测试 | **有 EditMode 套件**（2026-10-03 起）：150 个 EditMode 用例（结果见 `Docs/实现说明.md`），覆盖 M2、生命结算、选卡流程、卡面说明、共享燃地、Editor 图片持久化、屏外刷怪与 HUD 更新。**另有 4 个图形 PlayMode 冒烟场景** |
 | 跑测试 | `powershell -ExecutionPolicy Bypass -File Tools/run-tests.ps1 -Platform EditMode`；PlayMode 换平台参数，带图形执行；脚本校验真实退出码与 XML 用例数 |
 | 离线编译校验 | `powershell -ExecutionPolicy Bypass -File Tools/compile-check.ps1`（Unity 开着也能跑；**只覆盖 Runtime，不含测试程序集**） |
+| 文档行号引用校验 | `powershell -ExecutionPolicy Bypass -File Tools/doc-line-check.ps1`（校验 `Docs/` 里 `` `File.cs:NN`（`标识符`） `` 一类引用是否仍指对地方；`-Fix` 可自动改写漂移的行号） |
 | Unity 批处理编译 | `powershell -ExecutionPolicy Bypass -File Tools/unity-batch-verify.ps1`（需先关编辑器，且在普通终端运行） |
 | GitHub | `https://github.com/gtxy688/EmberlightWandere.git` |
 
@@ -50,6 +51,15 @@
 4. 存在显式依赖或回归影响时，只补读相关模块的「对外契约」或验收文档的「回归范围」。
 
 > 不要因为"可能有用"而通读整个 `Docs/`，也不要因为"禁止跨模块"而拒绝读取已声明依赖的契约。
+
+### 行号引用怎么写
+
+文档里引用源码位置时，**必须带标识符**，否则行号漂了没人发现：
+
+- ✅ `` `Assets/Scripts/Core/EmberGame.cs:101`（`cam.orthographic`） ``
+- ❌ `` `Assets/Scripts/Core/EmberGame.cs:101` ``（动了代码就没人知道它还指不指对）
+
+校验：`powershell -ExecutionPolicy Bypass -File Tools/doc-line-check.ps1`；漂移就加 `-Fix` 自动改写行号。**改完代码先跑这个脚本，再提交文档。**
 
 ## 冲突处理（重要）
 
@@ -89,7 +99,7 @@
 4. **开局不可跳过**：必须选 N 并单选 1 把武器；**禁止开局一次填满 N 槽**。
 5. **不要在 `Assets/Scripts/Combat/Weapons/` 里引用 `EmberGame`**。武器只能通过 `EmberWeaponContext` 与 `RunProgress` 工作——这是本仓库最干净的边界。
 6. **不要在 `Assets/Scripts/UI/` 里引用 `EmberGame`**。UI 通过方法参数接收只读数据。
-7. **`Assets/Scripts/Combat/`（含 Boss/掉落）与 `Assets/Scripts/Visuals/` 也不得引用 `EmberGame`**（2026-09-23 起）。战斗走 `IEmberCombatHost`，表现走构造时注入的阶段委托。`EmberGame` 是**组合根**：只做装配、阶段所有权与每帧顺序，**不要再往里加业务规则**。详见 `Docs/architecture/00-composition-root.md`。
+7. **`Assets/Scripts/Combat/`（含 Boss/掉落）与 `Assets/Scripts/Visuals/` 也不得引用 `EmberGame`**（2026-09-23 起）。战斗走 `IEmberCombatHost`，表现走构造时注入的阶段委托。`EmberGame` 是**组合根**：只做装配、阶段所有权、每帧顺序与**结果转译**（把别人算好的结果变成一次 UI 调用 / 音效 / 阶段切换请求），**不要在这里放数值规则或状态推进规则**。详见 `Docs/architecture/00-composition-root.md` 的「职责边界」。
 8. **四个图集 `.meta` 现在是真正的 sprite sheet，切片权威在那里**。四个 `AssetPostprocessor` 导入器（`Ember*ArtImporter`）负责把 `textureType` 设为 `Sprite`、`spriteImportMode` 设为 `Multiple`，**不要让它们改回 `Default`**——历史上它们强制 `Default`，导致每次重新导入都把切片清掉、UI 退回运行时切图。切图本身用 Sprite Editor 做，格子与命名保持「整格均分 + `<atlas>_<index>`（行主序，左上起）」。
 9. **新增音频后必须检查导入设置**为 `3D: 0` + `preloadAudioData: 1`（新 WAV 默认是 3D + 不预载，表现为"资源在但听不到"）。
 10. **UI 与字体改动必须在编辑器里真进一局确认**。资产校验替代不了真跑一遍。
@@ -135,6 +145,7 @@
 - [ ] 若动选卡：候选数量、同屏唯一、补偿选卡、刷新次数符合 `requirements.md` §4
 - [ ] 若动 UI / 字体：在编辑器里真进一局，中文无方框、Console 干净
 - [ ] 若动 `Scripts/Combat` 或 `Scripts/Visuals`：确认其中零 `EmberGame` 引用（硬约束 7）
+- [ ] **若动了被文档引用行号的源码**：跑 `Tools/doc-line-check.ps1`（退出码 0）；漂移就用 `-Fix` 改写
 - [ ] 已回写受影响的文档章节
 
 ## 角色

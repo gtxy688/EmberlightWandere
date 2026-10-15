@@ -17,6 +17,7 @@
 | `DemoExpansion.md` | `03-combat-waves.md`、`03-combat-waves-test.md` | `03-combat-waves-test.md`「已修正的历史记录」 |
 | `VisualUpgrade.md`、`World-Doodle-Art.md`、`UI-Doodle-Art.md`、`Card-Doodle-Art.md`、`Card-Frames-Art.md`、`Floating-Actors.md` | `07-art-presentation.md`、`07-art-presentation-test.md` | `07-art-presentation-test.md`「已修正的历史记录」 |
 | `Agent.md` | 根目录 `AGENTS.md` | — |
+| `EMBERWORLD_LIMIT_PATCH.md`（原在仓库根目录） | 改动已落地，无需合入任何文档 | — |
 
 ## 已裁定的历史冲突
 
