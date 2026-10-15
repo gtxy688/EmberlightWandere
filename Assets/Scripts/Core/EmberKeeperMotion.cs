@@ -13,14 +13,13 @@ namespace Emberlight
         /// <summary>相机在 Z 轴的固定偏移（2D 正交，必须为负才能看到 +Z 方向的精灵）。</summary>
         public const float CameraDepth = -10f;
 
-        /// <summary>推进一帧移动：键盘与摇杆相加后钳到单位长度、乘构筑加成与帧时间位移，并夹在战场边界内。</summary>
+        /// <summary>推进一帧移动：键盘与摇杆相加后钳到单位长度、乘移动速度与帧时间位移，并夹在战场边界内。</summary>
         public static void Step(EmberRunState run, Vector2 stick, float dt)
         {
             if (run == null || run.Keeper == null) return;
 
             Vector2 move = Vector2.ClampMagnitude(EmberInput.KeyboardAxis() + stick, 1);
-            float bonus = run.Progress != null ? run.Progress.MoveSpeedBonus : 0f;
-            run.Keeper.position += (Vector3)(move * (PlayerSpeed * (1 + bonus) * dt));
+            run.Keeper.position += (Vector3)(move * (PlayerSpeed * dt));
             run.Keeper.position = EmberWorld.Clamp(run.Keeper.position);
             Follow(run);
         }

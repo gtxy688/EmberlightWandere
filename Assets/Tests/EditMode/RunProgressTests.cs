@@ -14,9 +14,7 @@ namespace Emberlight.Tests
     {
         static RunProgress NewRun(int slots = 2, int weapon = EmberWeaponCatalog.Basic)
         {
-            var p = new RunProgress();
-            p.ConfigureRun(new[] { weapon }, slots);
-            return p;
+            return new RunProgress(new[] { weapon }, slots);
         }
 
         // ── 开局（A1–A4）─────────────────────────────────────────────────────────────────
@@ -174,12 +172,15 @@ namespace Emberlight.Tests
         }
 
         [Test]
-        public void DamageMul_IgnoresTheRetiredDamageBonusField()
+        public void DamageMul_UsesOnlyGlobalAmpAlongsideWeaponAttack()
         {
-            // DamageBonus 是已停用的字段，DamageMul 只能由扩幅决定
             var p = NewRun();
-            Assert.That(p.DamageBonus, Is.EqualTo(0f));
-            Assert.That(p.DamageMul, Is.EqualTo(1f + p.DamageAmp).Within(1e-6f));
+            p.OfferChoices();
+            Assert.That(p.Choose(new EmberOffer(EmberWeaponCatalog.StatAtk, EmberRarity.Diamond, EmberWeaponCatalog.Basic)), Is.True);
+            p.OfferChoices();
+            Assert.That(p.Choose(new EmberOffer(EmberWeaponCatalog.StatAmp, EmberRarity.Gold)), Is.True);
+            Assert.That(p.WeaponMagnitude(EmberWeaponCatalog.Basic), Is.EqualTo(.4f).Within(1e-6f));
+            Assert.That(p.DamageMul, Is.EqualTo(1.15f).Within(1e-6f));
         }
 
         [Test]
@@ -333,13 +334,13 @@ namespace Emberlight.Tests
             {
                 p.OfferChoices();
                 EmberOffer[] offers;
-                Assert.That(p.TryRefresh(rng, 1, out offers), Is.True, $"第 {i + 1} 次刷新应成功");
+                Assert.That(p.TryRefresh(rng, out offers), Is.True, $"第 {i + 1} 次刷新应成功");
                 Assert.That(offers, Is.Not.Null);
             }
 
             p.OfferChoices();
             EmberOffer[] extra;
-            Assert.That(p.TryRefresh(rng, 1, out extra), Is.False, "第 3 次刷新必须失败");
+            Assert.That(p.TryRefresh(rng, out extra), Is.False, "第 3 次刷新必须失败");
         }
 
         [Test]
@@ -348,7 +349,7 @@ namespace Emberlight.Tests
             var p = NewRun();
             var rng = new Random(11);
             EmberOffer[] offers;
-            Assert.That(p.TryRefresh(rng, 1, out offers), Is.False, "没有待选状态时不该能刷新");
+            Assert.That(p.TryRefresh(rng, out offers), Is.False, "没有待选状态时不该能刷新");
             Assert.That(p.RefreshesRemaining, Is.EqualTo(RunProgress.FreeRefreshes), "失败的刷新不得扣次数");
         }
 

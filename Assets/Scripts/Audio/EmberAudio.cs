@@ -220,12 +220,6 @@ namespace Emberlight
             PlayMusic(combatLoop);
         }
 
-        public void StopMusic()
-        {
-            if (music != null) music.Stop();
-            currentMusic = null;
-        }
-
         public void PlaySfx(AudioClip clip, float startTime = 0f, float gain = 1f)
         {
             if (sfx == null) Bootstrap();

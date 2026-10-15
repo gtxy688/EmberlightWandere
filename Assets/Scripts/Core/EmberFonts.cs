@@ -49,20 +49,6 @@ namespace Emberlight
         }
 
         /// <summary>
-        /// 把 <paramref name = "font"/> 赋给 <paramref name = "root"/> 下所有 TextMeshProUGUI。
-        /// TMP 3.0.7 的 `TMP_Settings.defaultFontAsset` 是只读属性，运行时改不了项目默认字体，
-        /// 因此显式传入是唯一机制；运行时创建的字体也无法被场景或 Prefab 引用。
-        /// </summary>
-        public static void ApplyFont(Transform root, TMP_FontAsset font)
-        {
-            if (root == null || font == null)
-                return;
-            var texts = root.GetComponentsInChildren<TextMeshProUGUI>(true);
-            for (int i = 0; i < texts.Length; i++)
-                texts[i].font = font;
-        }
-
-        /// <summary>
         /// 预烘图集只有在 TMP 绘制时真正解引用的部分齐全且自洽时才可用。
         /// 这里逐项校验：图集纹理、字符表、材质，以及每个字符都有对应 glyph、
         /// 每个 glyph 的 atlasIndex 都落在图集数组范围内——缺任何一项都回落动态图集。

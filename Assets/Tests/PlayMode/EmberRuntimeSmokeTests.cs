@@ -74,6 +74,25 @@ namespace Emberlight.Tests
             return canvas.transform;
         }
 
+        static IEnumerator EnterRun(EmberGame game, Transform uiHost)
+        {
+            ClickLabel(game, EmberCopy.MenuChoices[0]);
+            Assert.That(game.Phase, Is.EqualTo(EmberRunPhase.SelectLength));
+            ClickLabel(game, EmberCopy.MenuChoicesWithBack[0]);
+            Assert.That(game.Phase, Is.EqualTo(EmberRunPhase.SelectDifficulty));
+            ClickLabel(game, EmberCopy.DifficultyChoices[1]);
+            Assert.That(game.Phase, Is.EqualTo(EmberRunPhase.SelectSlots));
+            ClickLabel(game, "确认");
+            Assert.That(game.Phase, Is.EqualTo(EmberRunPhase.SelectRoster));
+            ButtonNamed(uiHost, "Roster 13").onClick.Invoke();
+            yield return null;
+            ButtonNamed(uiHost, "Confirm starter").onClick.Invoke();
+            Assert.That(game.Phase, Is.EqualTo(EmberRunPhase.Playing));
+            Assert.That(game.Progress.OwnedWeaponCount, Is.EqualTo(1));
+            Assert.That(game.Progress.WeaponSlots, Is.EqualTo(2));
+            Assert.That(game.Run.Health, Is.EqualTo(100));
+        }
+
         static void CheckTextMeshes(Transform host)
         {
             Canvas.ForceUpdateCanvases();
@@ -149,21 +168,7 @@ namespace Emberlight.Tests
             Assert.That(hudRect.anchorMin, Is.EqualTo(editedAnchor), "Binding overwrote a layout edit.");
             Assert.That(Object.FindObjectsOfType<Canvas>(true).Count(c => c.name == "Emberlight UI"), Is.Zero,
                 "Startup must bind the scene UIRoot instead of creating a second game UI.");
-            ClickLabel(game, EmberCopy.MenuChoices[0]);
-            Assert.That(game.Phase, Is.EqualTo(EmberRunPhase.SelectLength));
-            ClickLabel(game, EmberCopy.MenuChoicesWithBack[0]);
-            Assert.That(game.Phase, Is.EqualTo(EmberRunPhase.SelectDifficulty));
-            ClickLabel(game, EmberCopy.DifficultyChoices[1]);
-            Assert.That(game.Phase, Is.EqualTo(EmberRunPhase.SelectSlots));
-            ClickLabel(game, "确认");
-            Assert.That(game.Phase, Is.EqualTo(EmberRunPhase.SelectRoster));
-            ButtonNamed(uiHost, "Roster 13").onClick.Invoke();
-            yield return null;
-            ButtonNamed(uiHost, "Confirm starter").onClick.Invoke();
-            Assert.That(game.Phase, Is.EqualTo(EmberRunPhase.Playing));
-            Assert.That(game.Progress.OwnedWeaponCount, Is.EqualTo(1));
-            Assert.That(game.Progress.WeaponSlots, Is.EqualTo(2));
-            Assert.That(game.Run.Health, Is.EqualTo(100));
+            yield return EnterRun(game, uiHost);
             CheckTextMeshes(uiHost);
             Capture(uiHost.GetComponent<Canvas>(), "maintainability-hud");
 
@@ -195,6 +200,9 @@ namespace Emberlight.Tests
             Assert.That(game.Elapsed, Is.EqualTo(elapsed));
             ClickLabel(game, "继续战斗");
             Assert.That(game.Phase, Is.EqualTo(EmberRunPhase.Playing));
+            var firstProgress = game.Progress;
+            var firstWorld = game.Run.World;
+            int firstWorldId = firstWorld.GetInstanceID();
             game.Run.Vitals.Tick(EmberKeeperVitals.HurtCooldown);
             game.HurtPlayer(100000);
             Assert.That(game.Phase, Is.EqualTo(EmberRunPhase.Lost));
@@ -202,6 +210,16 @@ namespace Emberlight.Tests
             ClickLabel(game, EmberCopy.ReturnChoice);
             Assert.That(game.Phase, Is.EqualTo(EmberRunPhase.Menu));
             Assert.That(game.Run.IsActive, Is.False);
+
+            yield return EnterRun(game, uiHost);
+            Assert.That(game.Progress, Is.Not.SameAs(firstProgress));
+            Assert.That(game.Run.World.GetInstanceID(), Is.Not.EqualTo(firstWorldId));
+            Assert.That(firstWorld == null, Is.True, "The previous run world was not destroyed.");
+            Assert.That(game.Run.Kills, Is.Zero);
+            Assert.That(game.Run.Elapsed, Is.LessThan(1f));
+            Assert.That(game.Run.Vitals.HurtReady, Is.True);
+            CheckTextMeshes(uiHost);
+            Capture(uiHost.GetComponent<Canvas>(), "redundancy-restarted-hud");
         }
 
         [UnityTest]
@@ -311,7 +329,28 @@ namespace Emberlight.Tests
             int picked = 0;
             for (int i = 0; i < 20; i++)
             {
-                panel.Show(i % 2 == 0 ? offers : offers.Take(3).ToArray(), progress, EmberCopy.UpgradeNames, EmberCopy.UpgradeDetails, o => picked++);
+                int count = i % 3 == 0 ? 7 : (i % 3 == 1 ? 3 : 4);
+                panel.Show(offers.Take(count).ToArray(), progress, EmberCopy.UpgradeNames, EmberCopy.UpgradeDetails, o => picked++);
+                Canvas.ForceUpdateCanvases();
+                for (int card = 0; card < count; card++)
+                {
+                    var rect = (RectTransform)CardAt(panelHost.transform, card).transform;
+                    Assert.That(rect.rect.height, Is.GreaterThan(0));
+                    if (count > 4)
+                    {
+                        Assert.That(rect.rect.height, Is.EqualTo(132f).Within(.1f));
+                        if (card > 0)
+                        {
+                            var previous = (RectTransform)CardAt(panelHost.transform, card - 1).transform;
+                            Assert.That(previous.anchoredPosition.y - rect.anchoredPosition.y, Is.EqualTo(144f).Within(.1f));
+                        }
+                    }
+                    else if (card > 0)
+                    {
+                        var previous = (RectTransform)CardAt(panelHost.transform, card - 1).transform;
+                        Assert.That(previous.anchorMin.y, Is.GreaterThan(rect.anchorMax.y), "Direct-layout cards overlap.");
+                    }
+                }
                 panel.Hide();
             }
             Assert.That(panelHost.GetComponentsInChildren<Transform>(true).Select(t => t.GetInstanceID()).OrderBy(id => id), Is.EqualTo(ids));

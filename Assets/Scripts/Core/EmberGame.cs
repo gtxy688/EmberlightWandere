@@ -27,12 +27,6 @@ namespace Emberlight
         /// <summary>本局构筑进度；未开局时为 null。</summary>
         public RunProgress Progress { get { return Run.Progress; } }
 
-        /// <summary>UI API：本局剩余刷新次数。</summary>
-        public int RefreshRemaining { get { return Run.Progress != null ? Run.Progress.RefreshesRemaining : 0; } }
-
-        /// <summary>UI API：当前幸运值。</summary>
-        public float LuckValue { get { return Run.Progress != null ? Run.Progress.Luck : 0f; } }
-
         /// <summary>UI API：最近一次发到桌面上的候选。</summary>
         public EmberOffer[] CurrentOffers { get { return offered; } }
 
@@ -48,8 +42,6 @@ namespace Emberlight
 
         RunProgress RunFlowController.Host.Progress { get { return Run.Progress; } }
 
-        int RunFlowController.Host.FinalWave { get { return Run.Level != null ? Run.Level.BossWave : 0; } }
-
         int RunFlowController.Host.PicksAfterWave(int clearedWave)
         {
             return Run.Level != null ? Run.Level.PicksAfterWave(clearedWave) : 0;
@@ -61,7 +53,7 @@ namespace Emberlight
 
         void RunFlowController.Host.RequestChoices()
         {
-            offered = Run.Progress.Choices(random, Run.Level != null ? Run.Level.BossWave : 0);
+            offered = Run.Progress.Choices(random);
         }
 
         void RunFlowController.Host.OnUpgradeOffered(EmberOffer[] offers)
@@ -161,12 +153,10 @@ namespace Emberlight
                 Destroy(Run.World.gameObject);
             }
 
-            combat.TearDown();
             Run.World = new GameObject("Run world").transform;
             Run.Effects = Run.World.gameObject.AddComponent<EmberEffects>();
             Run.Effects.Initialize(() => Phase);
-            Run.Progress = new RunProgress();
-            Run.Progress.ConfigureRun(weapons, slots);
+            Run.Progress = new RunProgress(weapons, slots);
             Run.Kills = 0;
             Run.Vitals.Reset();
             // 灯芯的外形由 EmberKeeperAnimation 负责（兜帽轮廓、细眼、提灯摆动）。
@@ -355,16 +345,6 @@ namespace Emberlight
             hud.Push();
             if (Run.Vitals.CommitHealthChange())
                 End(false);
-        }
-
-        /// <summary>治疗入口（护盾词条之外的唯一回血来源）。</summary>
-        public bool HealPlayer(float amount)
-        {
-            var outcome = Run.Vitals.Heal(amount);
-            if (outcome == EmberVitalOutcome.Rejected)
-                return false;
-            hud.Push();
-            return true;
         }
 
         /// <summary>怪物治疗掉落：任意血量可拾取，溢出丢弃。</summary>

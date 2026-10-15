@@ -10,7 +10,7 @@ namespace Emberlight.Tests
         public void Choices_OpensExactlyOnePendingPickThatCanBeCommitted()
         {
             var progress = new RunProgress();
-            var offers = progress.Choices(new Random(42), 1);
+            var offers = progress.Choices(new Random(42));
             Assert.That(progress.Pending, Is.EqualTo(1));
             var choice = offers.First(o => o.Kind == EmberOfferKind.Generic);
             Assert.That(progress.Choose(choice), Is.True);
@@ -23,9 +23,9 @@ namespace Emberlight.Tests
         {
             var progress = new RunProgress();
             var random = new Random(42);
-            progress.Choices(random, 1);
+            progress.Choices(random);
             EmberOffer[] next;
-            Assert.That(progress.TryRefresh(random, 1, out next), Is.True);
+            Assert.That(progress.TryRefresh(random, out next), Is.True);
             Assert.That(progress.Pending, Is.EqualTo(1));
             Assert.That(progress.Choose(next.First(o => o.Kind == EmberOfferKind.Generic)), Is.True);
             Assert.That(progress.Pending, Is.Zero);

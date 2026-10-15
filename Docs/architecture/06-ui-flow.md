@@ -114,7 +114,7 @@ HUD 缓存上次显示的生命、护盾、秒数、击杀、武器/槽位/幸�
 | `EmberHud.Set(...)` | 方法 | 生命、护盾、波次、`RunProgress` 等 | — | `RunProgress` 为空时不绘制该块 |
 | `EmberUiFactory`（Editor） | 静态工厂 | 尺寸与父节点 | Prefab 控件 | 只在编辑器准备资产；Runtime 不引用 |
 | `EmberUpgradePanel.Show` | 方法 | 候选数组、`RunProgress` | — | 候选为空不显示；>4 张自动滚动 |
-| `EmberGodsSelectPanel.ShowSlots` / `ShowRosterSelect` | 方法 | 默认值/回调 | — | 单选 1 把；未选择时确认禁用 |
+| `EmberGodsSelectPanel.ShowSlots` / `ShowRoster` | 方法 | 默认值/回调 | — | 单选 1 把；未选择时确认禁用 |
 | `EmberSettingsPanel` | 类 | 音量/速度回调 | — | 滑条实时生效并持久化 |
 | `EmberIntroView` | MonoBehaviour | 序列化加载页控件 | 加载页视图 | 必需引用校验；不持有游戏宿主 |
 | `EmberIntro.Begin` / `Continue` | 方法 | IntroRoot 视图、字体准备与进入回调 | 就绪状态 | 校验字体后激活；就绪前不能继续；继续仅提交一次并隐藏视图 |

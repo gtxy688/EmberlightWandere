@@ -172,7 +172,6 @@ IntroRoot 同样使用持久图片：背景、徽标与进度条沿用原取图�
 | `EmberVisuals.Disc` / `Shape` / `Character` | 静态 | — | `Sprite` / `SpriteRenderer` | `Character` 目前**仅敌人路径**使用 |
 | `EmberEffects` | `MonoBehaviour` | 位置/类型 | — | 容量见需求 §7；仅 Playing 推进模拟，发射由调用方控制 |
 | `EmberFonts.CreateChinese()` | 静态 | — | TMP 字体资产 | 预烘静态图集优先，`ValidateBaked` 不通过则回落动态图集；动态回落的源字体缺失或创建失败时仍可返回 null；加载页有对应兜底分支 |
-| `EmberFonts.ApplyFont(Transform, TMP_FontAsset)` | 静态 | 根节点 + 字体 | — | 把字体刷到子树内所有 `TextMeshProUGUI`；主 UI 绑定也会为已有 TMP 控件赋已校验字体 |
 | `EmberKeeperAnimation` | `MonoBehaviour` | 阶段委托 | — | 暂停时停动画；门控由组合根注入，**不再用 `FindObjectOfType` 反查** |
 
 ## Unity 装配
@@ -185,4 +184,4 @@ IntroRoot 同样使用持久图片：背景、徽标与进度条沿用原取图�
 ## 影响与回归范围
 
 - **直接影响模块**：M6（UI 精灵）、M5（共享剪影服务）、M4（弹体外观）、M3（粒子反馈）。
-- **必须复验的契约**：预烘字体的 `ValidateBaked` 闸门（删掉它 = 资产坏了整个 UI 挂掉）、`EmberFonts.ApplyFont`、粒子上限、图集三级回退链、`AssetPostprocessor` 切片设置、字形预热覆盖（回落路径）。
+- **必须复验的契约**：预烘字体的 `ValidateBaked` 闸门（删掉它 = 资产坏了整个 UI 挂掉）、主 UI 与加载页对已校验字体的绑定、粒子上限、图集三级回退链、`AssetPostprocessor` 切片设置、字形预热覆盖（回落路径）。

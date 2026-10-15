@@ -12,7 +12,6 @@ namespace Emberlight
                 new EmberBasicShotWeapon(),
                 new EmberOrbitWeapon(),
                 new EmberTrailWeapon(),
-                new EmberPulseWeapon(),
                 new EmberPierceWeapon(),
                 new EmberBoomerangWeapon(),
                 new EmberMeteorWeapon()

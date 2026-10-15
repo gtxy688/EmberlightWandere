@@ -21,7 +21,7 @@
 
 `LevelConfig` 的计算使用 `UnityEngine.Mathf`，`ApplyWorld` 另依赖 M3 的 `EmberWorld`；`GameSpeed` 使用 `UnityEngine.Time` 与 `PlayerPrefs`。查询计算与场景副作用分开，调用 `ApplyWorld` 时须考虑可变静态边界。
 
-`LevelConfig` 的对外副作用是 `ApplyWorld()` 写入 `EmberWorld.Limit`（M3 的静态字段）；`GameSpeed` 另写入时间缩放与偏好设置。
+`LevelConfig` 的对外副作用是 `ApplyWorld()` 写入 `EmberWorld.Limit`（M3 的静态字段），由组合根在建边框前调用一次；`GameSpeed` 另写入时间缩放与偏好设置。
 
 ## 设计与数据流
 

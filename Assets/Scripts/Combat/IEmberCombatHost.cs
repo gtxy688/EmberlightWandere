@@ -22,9 +22,6 @@ namespace Emberlight
         /// <summary>结算一次敌方伤害（难度倍率与护盾顺序由宿主保证）。</summary>
         void HurtPlayer(float damage);
 
-        /// <summary>治疗灯芯；满血或非战斗阶段返回 false。</summary>
-        bool HealPlayer(float amount);
-
         /// <summary>拾取怪物治疗掉落；返回 false 表示本次调用无效。</summary>
         bool PickHealingDrop(float amount);
 

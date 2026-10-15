@@ -23,7 +23,7 @@
 | 被依赖模块 | 只使用的公开契约 | 用途 | 缺失时的行为 |
 |------------|------------------|------|--------------|
 | M1 | `LevelConfig.QuotaForWave / SpawnInterval / RollKind / TrashHp / AffixChance / EnemySpeed / IsBossWave / IsEliteWave / BossHpForWave / BossTier / WaveName / PicksAfterWave` | 全部波次与数值决策 | `Begin` 有 `LevelConfig` 重载；无配置时用 `Default` |
-| M0 | `IEmberCombatHost`：`Phase` / `Elapsed` / `Progress` / `HurtReady` / `NeedsHealing` / `HurtPlayer` / `HealPlayer` / `PickHealingDrop` / `PlayBossBurst` / `RegisterKill` / `OnWaveCleared` / `EndRun` | 阶段门控、玩家伤害、计分与收局 | 宿主由组合根提供；**不需要是 `EmberGame`** |
+| M0 | `IEmberCombatHost`：`Phase` / `Elapsed` / `Progress` / `HurtReady` / `NeedsHealing` / `HurtPlayer` / `PickHealingDrop` / `PlayBossBurst` / `RegisterKill` / `OnWaveCleared` / `EndRun` | 阶段门控、玩家伤害、计分与收局 | 宿主由组合根提供；**不需要是 `EmberGame`** |
 | M2 | `IEmberCombatHost.Progress`（`RunProgress`） | 注入武器 context 与结算伤害加成 | `Progress` 为 null 时须容忍（回营地后） |
 | M4 | `EmberWeapon.Tick(dt, ctx)`、`Reset()` | 每帧驱动全部武器 | 武器 `OwnsWeapon` 自我门控，未拥有则不动作 |
 | M5 | `IEnemyBehavior.Tick`、`EmberEnemyProjectiles`、`EmberEnemyVisual` | 敌人行为与表现 | 行为为空则退化为直线追击 |
@@ -150,7 +150,7 @@ Loading → Menu → SelectLength → SelectDifficulty → SelectSlots → Selec
 | `EmberKeeperVitals.Heal` / `PickHealingDrop` | 方法 | 回复量 | `EmberVitalOutcome` | 满血 `Heal` 返回 `Rejected`；满血拾取返回 `NoChange` 但仍算拾取 |
 | `IEmberCombatHost.EndRun(bool)` / `EmberMenuFlow.ShowMainMenu()` / `.BeginRun()` | 方法 | — | — | 流程入口 |
 | `EmberCombat.Tick(float)` | 方法 | dt | — | 战斗唯一推进点 |
-| `EmberCombat.Begin(..., LevelConfig)` / `TearDown()` | 方法 | 场景引用、配置 | — | 成对调用；`TearDown` 清理池与弹幕 |
+| `EmberCombat.Begin(..., LevelConfig)` / `TearDown()` | 方法 | 已准备的世界/玩家/相机、配置 | — | `Begin` 先统一清理旧状态再装配；`TearDown` 清理池、弹幕、武器与共享燃地。地图边界由调用方在创建世界边框前配置 |
 | `EmberCombat.AdvanceAfterUpgrade()` | 方法 | — | — | 由组合根在选卡完成后调用（`ReturnToPlay`） |
 | `EmberCombat.Wave` / `WaveQuota` / `WaveSpawned` / `WaveKilled` / `WaveRemaining` / `WaveKillsRemaining` / `EnemyCount` / `Boss` / `BossAlive` | 属性 | — | `int` / `EmberEnemy` / `bool` | HUD 只读数据源；Boss 波 `WaveRemaining` 返回 0。波次量转发自 `EmberWaveDirector`；`EnemyCount` 读名册，`Boss` / `BossAlive` 读战斗根持有的 Boss 引用 |
 | `EmberEnemy` | 类 | — | 敌人实例 | 顶层类型；`Targetable` 是所有武器命中判定的统一门 |
@@ -185,7 +185,7 @@ Loading → Menu → SelectLength → SelectDifficulty → SelectSlots → Selec
 ## Unity 装配
 
 - 主场景 `Assets/Scenes/Emberlight.unity`；`EmberCombat` 与 `EmberBoss` 是**普通 C# 类**，由 `EmberGame` 构造并持有，不是场景组件。
-- `EmberWorld` 是**静态类**，持有可变静态 `Limit`（由 `LevelConfig.ApplyWorld()` 写入）。跨场景不重置——同一进程内重开一局沿用同一边界值。
+- `EmberWorld` 是**静态类**，持有可变静态 `Limit`（由组合根调用 `LevelConfig.ApplyWorld()` 写入）。跨场景不重置——同一进程内重开一局沿用同一边界值。
 - `EmberPool` 是普通类，按 key 缓存 GameObject；`TearDown` 时清理。
 - 敌人 GameObject 由池借出，必须经 `EmberEnemySilhouette` 恢复基准外观后再应用类型装饰（见 M5）。
 - 创建/销毁所有权：`EmberGame` 拥有 `EmberCombat` 生命周期；`EmberCombat` 拥有武器实例与敌人池。

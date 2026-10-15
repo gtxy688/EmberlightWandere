@@ -49,12 +49,6 @@ namespace Emberlight
             confirmRoster = null;
         }
 
-        /// <summary>UI 入口：N 确定后开始选起始武器。</summary>
-        public void ShowRosterSelect(int slots, Action<int[]> onConfirm)
-        {
-            ShowRoster(slots, onConfirm);
-        }
-
         public void ShowSlots(Action<int> onConfirm)
         {
             Hide();

@@ -125,7 +125,7 @@ public abstract class EmberWeapon
 - **无 Prefab、无 ScriptableObject**：武器是普通 C# 类，`EmberCombat` 初始化时通过 `EmberWeaponFactory.CreateAll` 创建，开局由 `Begin` 重置。
 - 弹体与轨迹 GameObject 经 `EmberPool` 按 key 复用（`fire` / `burn` / `warn`）。
 - 武器不持有场景引用，场景引用全部经 `ctx`（`Player` / `World` / `Cam`）传入。
-- **生命周期**：`EmberCombat` 构造时创建并持有武器实例；`Begin` / `TearDown` 重置实例内部状态，回营地保留实例供下局复用。弹体与世界视图按池和本局世界生命周期回收。
+- **生命周期**：`EmberCombat` 构造时创建并持有武器实例；`TearDown` 统一重置实例内部状态，`Begin` 先调用它再重新装配，回营地保留实例供下局复用。弹体与世界视图按池和本局世界生命周期回收。
 
 ## 影响与回归范围
 

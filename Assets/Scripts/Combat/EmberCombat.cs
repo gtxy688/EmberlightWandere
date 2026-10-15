@@ -115,16 +115,12 @@ namespace Emberlight
             enemyCtx.Projectiles = enemyProjectiles;
             enemyCtx.Split = point => pendingBroods.Add(point);
             enemyCtx.Explode = Explode;
-            config.ApplyWorld();
             enemyCtx.Config = config;
             healingDrops.Bind(world, config);
             roster = new EmberEnemyRoster(pool, config, world, player, random, cam);
             waves = new EmberWaveDirector(this, config, random);
             burningTimer = 0f;
             inBurningAura = false;
-            for (int i = 0; i < weapons.Count; i++)
-                weapons[i].Reset();
-            burnGround.Reset();
             BindWeaponContext();
             BindDamageContext();
             waves.Begin();

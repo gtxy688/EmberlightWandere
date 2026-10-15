@@ -80,7 +80,7 @@ M2.RunFlowController ──► Host 契约 ──► M0  选卡规则不持有 E
 
 | 常用关键词 | 主要模块 | 读这个 |
 |------------|----------|--------|
-| 入口脚本 / 组合根 / EmberGame / 拆类 / 阶段状态机 / 装配顺序 | M0 | `00-composition-root.md` |
+| 入口脚本 / 组合根 / EmberGame / 拆类 / 阶段状态机 / 装配顺序 / 重开一局 / 初始化与清理 | M0 | `00-composition-root.md` |
 | 战斗宿主契约 / IEmberCombatHost / 解除 EmberGame 依赖 | M0 + M3 | `00-composition-root.md` → `03-combat-waves.md` |
 | 难度倍率 / 怪血 / 刷怪配额 / 刷怪间隔 / Boss 血量公式 | M1 | `01-config-tuning.md` |
 | 词缀概率 / 敌人基础 HP / 地图边界 / 敌人上限 | M1 | `01-config-tuning.md` |
@@ -151,7 +151,6 @@ M2.RunFlowController ──► Host 契约 ──► M0  选卡规则不持有 E
 
 | 问题 | 位置 | 影响 |
 |------|------|------|
-| `LevelConfig.ApplyWorld()` 被重复调用 | `EmberGame` 与 `EmberCombat` 各调一次 | 幂等，暂无实际危害，但属重复副作用 |
 | `LevelConfig.Default` 每次访问新建对象 | `LevelConfig.cs` | 属性而非缓存，高频访问会有额外分配 |
 | Runtime 内模块尚未按目录拆 asmdef | `Assets/Scripts/Emberlight.Runtime.asmdef` | Runtime 与 Editor/Tests 已隔离，但 Runtime 内依赖仍靠契约与审查约束 |
 

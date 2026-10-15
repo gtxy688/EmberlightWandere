@@ -12,7 +12,6 @@ namespace Emberlight.Tests
             public EmberOffer[] Offers { get; private set; }
             public EmberOffer Next = new EmberOffer(RunProgress.StatShield, EmberRarity.Bronze);
             public int Finished;
-            public int FinalWave => 25;
             public int PicksAfterWave(int wave) => LevelConfig.Default.PicksAfterWave(wave);
             public void RequestChoices() { Progress.OfferChoices(); Offers = new[] { Next }; }
             public void OnUpgradeOffered(EmberOffer[] offers) { Offers = offers; Phase = EmberRunPhase.Upgrade; }

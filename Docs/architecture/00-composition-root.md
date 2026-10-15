@@ -40,7 +40,7 @@
 
 ## 设计与数据流
 
-`Awake` 创建本局状态容器、选卡流程与输入单元；`Start` 装配战斗、菜单与场景视图。`RunProgress`、关卡配置与世界对象在 `StartRunWith` 开局时创建。视图绑定顺序与场景引用见下文「Unity 装配」。
+`Awake` 创建本局状态容器、选卡流程与输入单元；`Start` 装配战斗、菜单与场景视图。`RunProgress`、关卡配置与世界对象在 `StartRunWith` 开局时创建；构筑构造时直接接收武器与槽位，只初始化一次。视图绑定顺序与场景引用见下文「Unity 装配」。
 
 ```text
 EmberGame (MonoBehaviour, 组合根)
@@ -107,13 +107,13 @@ Elapsed += dt  →  Vitals.Tick(dt)  →  input.Tick()
 1. `Start` 配置相机与音频，进入 Loading；字段未赋值时，查找场景已有实例（含未激活对象）。找不到任一根视图则抛出配置错误，不在运行时生成替代 UI。
 2. 隐藏 `uiRoot`，在 `Emberlight Game` 上添加 `EmberIntro` 控制器，并调用 `Begin(introRoot, prepared, enter)`。`Begin` 校验加载页引用；字体经 `EmberFonts.CreateChinese` 内的闸门校验或回落后，才显示加载页。
 3. 准备回调调用 `EmberMenuUi.Bind`，校验主 UI 引用、绑定字体和暂停回调，开始安全区监听，再创建 `EmberHudPresenter`。加载就绪后，继续输入隐藏加载页并由 `EmberMenuFlow` 显示主菜单。
-4. 返回营地只清理本局世界与战斗，保留场景 UI 实例供复用；`OnDestroy` 解除安全区监听并恢复 `Time.timeScale`。
+4. 开局由组合根在创建边框前调用 `LevelConfig.ApplyWorld`，战斗 `Begin` 内经 `TearDown` 统一重置旧战斗，不再由开局入口重复清理。返回营地清理本局世界与战斗，保留场景 UI 实例供复用；`OnDestroy` 解除安全区监听并恢复 `Time.timeScale`。
 
 布局、静态图片与控件引用由 Prefab 维护；组合根负责绑定与生命周期协调，面板负责展示和交互。缺少必需控件引用时，`EmberUiRoot.ValidateReferences` / `EmberIntroView.ValidateReferences` 报错并提示 Editor 的 `Emberlight/UI/Connect UIRoot Runtime` 接线入口。
 
 ## 对外契约
 
-`EmberKeeperVitals` 构造时只注入构筑、伤害倍率与阶段提供者；不持有 `EmberRunState`，不引用 UnityEngine 或音频。受伤结果由组合根转换为音效、HUD 与收局动作。选卡控制器属于 M2，完整契约见 `02-run-progression.md`。`RunFlowController.Host` 只暴露 `Progress`、`FinalWave`、`PicksAfterWave`、阶段、候选与呈现回调；不暴露场景状态，不包含死亡回调。
+`EmberKeeperVitals` 构造时只注入构筑、伤害倍率与阶段提供者；不持有 `EmberRunState`，不引用 UnityEngine 或音频。受伤结果由组合根转换为音效、HUD 与收局动作。选卡控制器属于 M2，完整契约见 `02-run-progression.md`。`RunFlowController.Host` 只暴露 `Progress`、`PicksAfterWave`、阶段、候选与呈现回调；不暴露场景状态，不包含死亡回调。
 
 
 | 名称 | 类型 | 输入 | 输出 | 保证 |

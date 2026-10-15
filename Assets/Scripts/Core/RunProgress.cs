@@ -45,17 +45,12 @@ namespace Emberlight
         public int Score { get; private set; }
         public int Pending { get; private set; }
         public int ExtraShots { get; private set; }
-        public float AttackSpeedBonus { get; private set; }
         public float Shield { get; private set; }
         public float ShieldCapacity { get; private set; }
-        public float DamageBonus { get; private set; }
         public float DamageAmp { get; private set; }
         public float Luck { get; private set; }
         public int Orbits { get; private set; }
         public float TrailPower { get; private set; }
-        public float MoveSpeedBonus { get; private set; }
-        public float BonusMaxHealth { get; private set; }
-        public float WavePower { get; private set; }
         public int PierceLimit { get; private set; }
         public int MeteorExtra { get; private set; }
         public int BoomExtraTrips { get; private set; }
@@ -90,9 +85,11 @@ namespace Emberlight
         readonly Dictionary<int, float> weaponMagnitude = new Dictionary<int, float>();
         readonly Dictionary<int, float> weaponAttackSpeed = new Dictionary<int, float>();
 
-        public RunProgress()
+        public RunProgress() : this(null, 2) { }
+
+        public RunProgress(int[] slotWeapons, int slots)
         {
-            ConfigureRun(new[] { WeaponBasic }, 2);
+            ConfigureRun(slotWeapons, slots);
         }
 
         public bool OwnsWeapon(int id) { return ownedWeapons.Contains(id); }
@@ -156,16 +153,11 @@ namespace Emberlight
             weaponMagnitude.Clear();
             weaponAttackSpeed.Clear();
             ExtraShots = 0;
-            AttackSpeedBonus = 0;
-            DamageBonus = 0;
             Shield = ShieldCapacity = 0;
             DamageAmp = 0;
             Luck = 0;
             Orbits = 0;
             TrailPower = 0;
-            MoveSpeedBonus = 0;
-            BonusMaxHealth = 0;
-            WavePower = 0;
             PierceLimit = 2;
             MeteorExtra = 0;
             BoomExtraTrips = 0;
@@ -268,7 +260,7 @@ namespace Emberlight
         /// 生成候选并进入待选状态。抽卡规则与随机数消耗顺序全在 <see cref="EmberChoicePool.Build"/>，
         /// **不要在这里重建第二套抽卡逻辑**，否则同一随机种子的牌局会变。
         /// </summary>
-        public EmberOffer[] Choices(Random random, int waveCleared)
+        public EmberOffer[] Choices(Random random)
         {
             var offers = EmberChoicePool.Build(this, random);
             OfferChoices();
@@ -276,13 +268,13 @@ namespace Emberlight
         }
 
         /// <summary>消耗一次免费刷新并重建候选；没有次数或当前无待选卡时返回 false。</summary>
-        public bool TryRefresh(Random random, int waveCleared, out EmberOffer[] offers)
+        public bool TryRefresh(Random random, out EmberOffer[] offers)
         {
             offers = null;
             if (RefreshesRemaining <= 0 || Pending <= 0)
                 return false;
             RefreshesRemaining--;
-            offers = Choices(random, waveCleared);
+            offers = Choices(random);
             return true;
         }
 

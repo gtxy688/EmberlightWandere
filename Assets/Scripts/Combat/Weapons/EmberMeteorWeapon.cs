@@ -79,8 +79,6 @@ namespace Emberlight
             Vector2 point = e.view.position;
             bool skyfire = ctx.Progress.HasMetamorph(RunProgress.MetaMeteor);
             float radius = skyfire ? EmberWeaponTuning.Meteor.SkyfireRadius : EmberWeaponTuning.Meteor.Radius;
-            if (ctx.Progress.WavePower > 0)
-                radius += ctx.Progress.WavePower * 0.5f;
             float dmg = EmberWeaponTuning.Meteor.Damage * ctx.Progress.DamageMul * (1f + ctx.Progress.WeaponMagnitude(RunProgress.WeaponMeteor));
             if (skyfire)
                 dmg *= EmberWeaponTuning.Meteor.SkyfireDamage;

@@ -43,15 +43,8 @@ namespace Emberlight
             }
         }
 
-        /// <summary>生命上限 = 基础值 + 构筑加成。</summary>
-        public float MaxHealth
-        {
-            get
-            {
-                var current = progress();
-                return BaseMaxHealth + (current != null ? current.BonusMaxHealth : 0f);
-            }
-        }
+        /// <summary>当前单局的固定生命上限。</summary>
+        public float MaxHealth { get { return BaseMaxHealth; } }
 
         /// <summary>残血且正在战斗时允许普通治疗。</summary>
         public bool NeedsHealing
@@ -82,14 +75,6 @@ namespace Emberlight
         public void Tick(float dt)
         {
             HurtTimer -= dt;
-        }
-
-        /// <summary>把生命值钳到 [0, 上限]，返回实际生效的增量（可为负）。</summary>
-        public float ApplyHealthDelta(float delta)
-        {
-            float before = Health;
-            Health = Math.Max(0f, Math.Min(MaxHealth, before + delta));
-            return Health - before;
         }
 
         /// <summary>结算一次生命变化；返回 true 表示灯芯因此倒下。</summary>

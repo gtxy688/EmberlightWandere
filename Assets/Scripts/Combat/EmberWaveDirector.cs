@@ -258,7 +258,5 @@ namespace Emberlight
             host.OnWaveCleared(wave);
         }
 
-        /// <summary>发牌期间若被中断（回营地），清掉待选卡标记。</summary>
-        public void ClearAwaitingUpgrade() { awaitingUpgrade = false; }
     }
 }

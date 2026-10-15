@@ -26,7 +26,8 @@
 
 ```text
 EmberGame: 选槽位 N + 单选 1 把起始武器
-   └─ RunProgress.ConfigureRun(int[] slotWeapons, int slots)
+   └─ new RunProgress(int[] slotWeapons, int slots)
+         └─ ConfigureRun：统一初始化入口
          ├─ slots 钳制到 [1,5]
          ├─ 去重授予名册武器，超出 slots 的截断
          ├─ 首个被授予者 → CoreWeaponId
@@ -83,7 +84,6 @@ EmberGame: 选槽位 N + 单选 1 把起始武器
 
 - 攻击力(0) / 攻速(1) 写入 **per-weapon** 字典，只影响对应武器。
 - 全体伤害增幅(3) 是唯一的全局乘区（`DamageMul = 1 + DamageAmp`）。
-- 全局 `DamageBonus` 已停用（保留字段但不再作为通用出卡）。
 - 攻速与攻击力的品质档位分别查需求 §4.4，不共享一套增量表。
 
 ### 补偿选卡
@@ -109,6 +109,7 @@ EmberGame: 选槽位 N + 单选 1 把起始武器
 
 | 名称 | 类型 | 输入 | 输出或事件 | 错误/生命周期保证 |
 |------|------|------|------------|-------------------|
+| `RunProgress(int[], int)` | 构造函数 | 起始武器、槽位上限 | 已初始化的构筑 | 构造时只初始化一次；无参构造保留默认开局 |
 | `ConfigureRun(int[], int)` | 方法 | 起始武器数组、槽位上限 | 重置全部状态 | 钳制槽位到 1–5；空集兜底火球 |
 | `ConfigureRun(int, int)` | 方法 | 核心武器 id、槽位 | 同上 | 非名册 id 降级为火球（兼容重载） |
 | `OwnsWeapon(int)` | 查询 | 武器 id | `bool` | 武器 Tick 的第一道门 |
@@ -120,9 +121,9 @@ EmberGame: 选槽位 N + 单选 1 把起始武器
 | `DamageMul` | 属性 | — | `float` | `1 + DamageAmp`，6 把武器全部相乘 |
 | `Luck` / `Shield` / `ShieldCapacity` / `Orbits` / `TrailPower` | 属性 | — | 各类型 | 当前生效的构筑属性 |
 | `WeaponSlots` / `CoreWeaponId` / `OwnedWeaponCount` / `EmptySlots` / `RefreshesRemaining` | 属性 | — | `int` | HUD 与选卡 UI 的数据源 |
-| `Choices(Random, int)` | 方法 | 随机源、兼容波次参数（当前卡池未使用） | `EmberOffer[]` | 生成后调用 `OfferChoices`，将 Pending 设为一次待选；候选长度见需求 §4.3 |
+| `Choices(Random)` | 方法 | 随机源 | `EmberOffer[]` | 生成后调用 `OfferChoices`，将 Pending 设为一次待选；候选长度见需求 §4.3 |
 | `Choose(EmberOffer, out bool)` | 方法 | 候选牌 | `bool` + 是否授予新武器 | 成功才 `Pending--`；失败不改状态 |
-| `TryRefresh(Random, int, out EmberOffer[])` | 方法 | 随机源、波次 | `bool` + 新候选 | 次数耗尽或非选卡态返回 false |
+| `TryRefresh(Random, out EmberOffer[])` | 方法 | 随机源 | `bool` + 新候选 | 次数耗尽或非选卡态返回 false |
 | `OfferChoices()` / `AddScore(int)` / `FinalScore()` | 方法 | — | — | `AddScore` 负数抛异常 |
 | `AbsorbDamage(float)` | 方法 | 已乘难度倍率的伤害 | 穿透到生命的伤害 | 先扣护盾，溢出扣血 |
 | `EmberOffer` | struct | `id, rarity, weaponId = -1` | — | `WeaponId`：Id 为攻击力/攻速词条时指定已有武器，其余默认 -1 |
@@ -167,7 +168,7 @@ EmberGame: 选槽位 N + 单选 1 把起始武器
 
 ## Unity 装配
 
-- **无场景对象、无 Prefab、无 ScriptableObject**。`RunProgress` 由组合根（`EmberGame.StartRunWith`）在开局时 `new` 出来并由 `EmberRunState.Progress` 持有。
+- **无场景对象、无 Prefab、无 ScriptableObject**。`RunProgress` 由组合根（`EmberGame.StartRunWith`）在开局时直接用所选武器和槽位构造，并由 `EmberRunState.Progress` 持有；无参构造仍提供默认火球构筑。
 - 回营地时 `Progress` 被置为 `null`，因此**所有消费方必须容忍 null**（`EmberCombat.Tick` 注入前先判）。
 - `RunFlowController` 由组合根在 `Awake` 构造，开局和回营地调用 `Reset`；展示与恢复战斗通过 Host 回调请求。
 - `EmberRarity` 为枚举，`EmberRarityUtil` 为静态查表，无实例生命周期。

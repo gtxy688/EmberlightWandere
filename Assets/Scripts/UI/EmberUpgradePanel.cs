@@ -91,31 +91,26 @@ namespace Emberlight
                 subtitle.text = sub;
                 int n = offers.Length;
                 if (n > cards.Count) throw new InvalidOperationException("UIRoot has too few cached upgrade cards.");
-                float cardH = n > 4 ? 0.11f : (n > 3 ? 0.125f : 0.145f);
-                float gap = n > 4 ? 0.015f : 0.02f;
-                float top0 = 0.75f;
-                RectTransform scrollContent = null;
+                float cardH = n > 3 ? 0.125f : 0.145f;
+                const float gap = 0.02f;
+                const float top0 = 0.75f;
                 scroll.gameObject.SetActive(n > 4);
                 scrollHint.gameObject.SetActive(n > 4);
                 scroll.content.sizeDelta = new Vector2(0, n * 144f - 12f);
                 scroll.content.anchoredPosition = Vector2.zero;
-                scrollContent = n > 4 ? scroll.content : null;
+                RectTransform scrollContent = n > 4 ? scroll.content : null;
                 foreach (var cached in cards)
                     cached.Face.gameObject.SetActive(false);
                 for (int i = 0; i < n; i++)
                 {
                     EmberOffer offer = offers[i];
                     int id = offer.Id;
-                    float top = top0 - i * (cardH + gap);
                     Color accent = EmberRarityUtil.Tint(offer.Rarity).ToColor();
                     var view = cards[i];
                     var card = view.Face;
                     var parent = scrollContent != null ? scrollContent : root.transform;
                     if (card.transform.parent != parent)
                         card.transform.SetParent(parent, false);
-                    card.rectTransform.anchorMin = new Vector2(.055f, top - cardH);
-                    card.rectTransform.anchorMax = new Vector2(.945f, top);
-                    card.rectTransform.offsetMin = card.rectTransform.offsetMax = Vector2.zero;
                     card.transform.SetAsLastSibling();
                     card.gameObject.SetActive(true);
                     if (scrollContent != null)
@@ -125,6 +120,13 @@ namespace Emberlight
                         card.rectTransform.offsetMin = new Vector2(0, -i * 144f - 132f);
                         card.rectTransform.offsetMax = new Vector2(0, -i * 144f);
                     }
+                    else
+                    {
+                        float top = top0 - i * (cardH + gap);
+                        card.rectTransform.anchorMin = new Vector2(.055f, top - cardH);
+                        card.rectTransform.anchorMax = new Vector2(.945f, top);
+                        card.rectTransform.offsetMin = card.rectTransform.offsetMax = Vector2.zero;
+                    }
 
                     card.sprite = EmberCardFrames.Get(offer.Rarity);
                     card.color = Color.white;
@@ -132,7 +134,6 @@ namespace Emberlight
                     var inner = view.Inner;
                     inner.rectTransform.offsetMin = new Vector2(24f, 8f);
                     inner.rectTransform.offsetMax = new Vector2(-24f, -8f);
-                    var shadeTop = view.Shade;
                     view.Icon.sprite = EmberCardIcons.ForOffer(id);
                     var presentation = EmberOfferPresentation.Build(offer, progress, names, descriptions);
                     string titleText = presentation.Title;

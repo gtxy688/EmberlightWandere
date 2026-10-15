@@ -19,8 +19,6 @@ namespace Emberlight
             /// <summary>本局构筑；尚未开局时为 null。无需世界、相机等场景句柄。</summary>
             RunProgress Progress { get; }
 
-            int FinalWave { get; }
-
             int PicksAfterWave(int clearedWave);
 
             /// <summary>当前阶段，由组合根持有。</summary>
@@ -124,7 +122,7 @@ namespace Emberlight
             if (host.Phase != EmberRunPhase.Upgrade)
                 return false;
             EmberOffer[] next;
-            if (!host.Progress.TryRefresh(random, host.FinalWave, out next) || next == null)
+            if (!host.Progress.TryRefresh(random, out next) || next == null)
                 return false;
             host.OnUpgradeOffered(next);
             return true;
