@@ -15,8 +15,8 @@
   - 武器行为 → M4（本模块提供 `EmberWeaponContext` 的全部委托）
   - **局长阶段与玩家生命结算 → M0**（本模块只经 `IEmberCombatHost` 请求）
 
-**关键定位**：`EmberCombat` 是战斗仿真的单点入口，**拥有全部 7 个武器实例**并在每个 `Tick` 中统一驱动。
-它对宿主只依赖 `IEmberCombatHost`，**不持有 `EmberGame`**——
+**关键定位**：`EmberCombat` 是战斗仿真的单点入口，持有武器工厂返回的实例并在每个 `Tick` 中统一驱动。
+它对宿主只依赖 `IEmberCombatHost`，不持有 `EmberGame`。
 
 ## 依赖
 
@@ -27,7 +27,7 @@
 | M2 | `IEmberCombatHost.Progress`（`RunProgress`） | 注入武器 context 与结算伤害加成 | `Progress` 为 null 时须容忍（回营地后） |
 | M4 | `EmberWeapon.Tick(dt, ctx)`、`Reset()` | 每帧驱动全部武器 | 武器 `OwnsWeapon` 自我门控，未拥有则不动作 |
 | M5 | `IEnemyBehavior.Tick`、`EmberEnemyProjectiles`、`EmberEnemyVisual` | 敌人行为与表现 | 行为为空则退化为直线追击 |
-| M7 | `EmberEffects`（粒子）、`EmberPool`（池） | 打击反馈与对象复用 | 池空时丢弃，不报错 |
+| M7 | `EmberEffects` | 打击反馈 | 粒子容量满时跳过发射；对象池由 M3 自身管理 |
 | M8 | `EmberAudio` 各 `Play*` | 音效触发 | clip 缺失静默跳过 |
 
 **对外**：M3 经 `IEmberCombatHost` 反向请求阶段、伤害与收局；M6/M7 只读 `EmberCombat.Wave / WaveQuota / WaveRemaining / Boss / BossAlive / EncounterText` 与 `IEmberRunPhaseSource`。
@@ -59,12 +59,12 @@ EmberGame.Update()                       ← 组合根只负责顺序（见 00-c
                     ├─ outcome.BossDefeated → waves.NoteBossDefeated()
                     └─ 否则 waves.CheckWaveCleared()
                           └─ host.OnWaveCleared(wave)          ← IEmberCombatHost
-                                └─ RunFlowController.OnWaveCleared   （M0，规则见 00-composition-root.md）
-                                      └─ PicksAfterWave == 0 ? 直接推进 : 发牌（M2 + M6）
+                                └─ RunFlowController.OnWaveCleared   （M2，规则见 02-run-progression.md）
+                                      └─ 本波不需选卡 ? 恢复下一波 : 发牌（M2 + M6）
                                             └─ SelectUpgrade → combat.AdvanceAfterUpgrade()
 ```
 
-### 模块内的职责划分（2026-09-23）
+### 模块内的职责划分
 
 战斗按装配、波次、敌人名册与伤害结算划分职责：
 
@@ -98,7 +98,7 @@ Loading → Menu → SelectLength → SelectDifficulty → SelectSlots → Selec
 ```
 
 - `Upgrade` 与 `Paused` 期间**战斗不推进**；`Time.timeScale` 由 M1 的 `GameSpeed` 控制，因此要求"选卡时仍动"的动画必须用 `unscaledDeltaTime`。
-- 清波后若 `PicksAfterWave == 0`（最终波），直接结算。
+- 普通波清空后由 `RunFlowController` 查询奖励次数；零次时通过收尾回调继续下一波，并不代表胜利。最终 Boss 死亡由 `EmberWaveDirector.NoteBossDefeated` 走 `OnFinalBossDefeated` → `EndRun(true)`，不进入普通选卡分支。
 
 ### Boss（`EmberBoss`）
 
@@ -108,7 +108,7 @@ Loading → Menu → SelectLength → SelectDifficulty → SelectSlots → Selec
 追击 → 冲锋预警 → 冲锋 → 爆发预警 → 齐射预警 → 硬直 →（循环）
 ```
 
-- **暗弹齐射**：第 20 波起加入，1 秒预警；随 `BossTier` 增加弹数与暗焰落点。
+- **暗弹齐射**：开启波次和预警参数见需求 §3.2；随 `BossTier` 增加弹数与暗焰落点。
 - **半血狂怒**：低于半血后加快节奏并增加爆发区域。
 - 暗弹**可被玩家火球 / 穿透箭拦截击毁**（`ctx.Intercept`）。
 - 击败最终 Boss = 通关。
@@ -119,12 +119,12 @@ Loading → Menu → SelectLength → SelectDifficulty → SelectSlots → Selec
 |------|------|
 | 武器 → 敌人 | 经 `ctx.Damage(id, amount)`；先判 `Enemy.Targetable` |
 | 玩家受伤 | `EmberGame.HurtPlayer(damage)`：**先乘难度 `DamageMultiplier`，再过 `Progress.AbsorbDamage` 吃护盾，溢出扣生命** |
-| 无敌帧 | `HurtReady` 门（0.65 秒），近战接触前必查 |
+| 无敌帧 | `HurtReady` 门，近战接触前必查；时长见需求 §3.7 |
 | 可见性 | 自动选敌只针对摄像机内目标，并排除顶部状态栏区域；屏外不结算伤害 |
 
 ### 死亡处理顺序
 
-**先结算全部武器伤害，再统一处理死亡与分裂，最后检查清波**。这保证了：
+**先结算全部武器伤害，再统一处理死亡与分裂，最后检查清波**。最终死亡的 `Outcome.Kills` 由战斗根同时回报 `waves.NoteKill` 与宿主 `RegisterKill`，同步波次和整局击杀；重生接管不算最终死亡。这保证了：
 - 母体只在**最终**死亡时分裂（重生读条中不提前分裂）；
 - 重生 / 引线未结束时**不允许**提前进入选卡；
 - 分裂子体补入 HUD 总量但**不消耗**常规刷怪配额。
@@ -141,7 +141,7 @@ Loading → Menu → SelectLength → SelectDifficulty → SelectSlots → Selec
 | `IEmberCombatHost.Phase` | 属性 | — | 当前阶段 | **M3 的唯一阶段入口**；不依赖 `EmberGame` |
 | `IEmberCombatHost.Progress` | 属性 | — | `RunProgress` 或 **null** | 回营地后为 null，消费方必须容忍 |
 | `IEmberCombatHost.Elapsed` | 属性 | — | `float` | 敌人动画与武器节奏用 |
-| `IEmberCombatHost.HurtReady` | 属性 | — | `bool` | 无敌帧门（0.65s） |
+| `IEmberCombatHost.HurtReady` | 属性 | — | `bool` | 无敌帧门；时长见需求 §3.7 |
 | `IEmberCombatHost.HurtPlayer(float)` | 方法 | 原始伤害 | — | 难度倍率只乘一次、护盾先吸收；致死则收局 |
 | `IEmberCombatHost.RegisterKill()` | 方法 | — | — | 击杀计数 |
 | `IEmberCombatHost.OnWaveCleared(int)` | 方法 | 刚清完的波次 | — | **战斗 → 流程的唯一回调** |
@@ -152,7 +152,7 @@ Loading → Menu → SelectLength → SelectDifficulty → SelectSlots → Selec
 | `EmberCombat.Tick(float)` | 方法 | dt | — | 战斗唯一推进点 |
 | `EmberCombat.Begin(..., LevelConfig)` / `TearDown()` | 方法 | 场景引用、配置 | — | 成对调用；`TearDown` 清理池与弹幕 |
 | `EmberCombat.AdvanceAfterUpgrade()` | 方法 | — | — | 由组合根在选卡完成后调用（`ReturnToPlay`） |
-| `EmberCombat.Wave` / `WaveQuota` / `WaveSpawned` / `WaveKilled` / `WaveRemaining` / `WaveKillsRemaining` / `EnemyCount` / `Boss` / `BossAlive` | 属性 | — | `int` / `EmberEnemy` / `bool` | HUD 只读数据源；Boss 波 `WaveRemaining` 返回 0。**这些全部转发自 `EmberWaveDirector`**，战斗根不再自己存波次状态 |
+| `EmberCombat.Wave` / `WaveQuota` / `WaveSpawned` / `WaveKilled` / `WaveRemaining` / `WaveKillsRemaining` / `EnemyCount` / `Boss` / `BossAlive` | 属性 | — | `int` / `EmberEnemy` / `bool` | HUD 只读数据源；Boss 波 `WaveRemaining` 返回 0。波次量转发自 `EmberWaveDirector`；`EnemyCount` 读名册，`Boss` / `BossAlive` 读战斗根持有的 Boss 引用 |
 | `EmberEnemy` | 类 | — | 敌人实例 | 顶层类型；`Targetable` 是所有武器命中判定的统一门 |
 | `EmberWaveDirector` | 类 | `Host` 契约 | 波次只读量 | 不造敌人：需要刷怪时回调 `Host`。**不含伤害逻辑** |
 | `EmberEnemyRoster` | 类 | 池、配置、世界、玩家、随机源、显式相机 | `EmberEnemy` 或 null | 杂兵保证屏外且在地图内；无法落点时返回 null，只有成功才借出节点 |
@@ -165,7 +165,7 @@ Loading → Menu → SelectLength → SelectDifficulty → SelectSlots → Selec
 | 成员 | 类型 | 语义 |
 |------|------|------|
 | `Player` / `World` / `Cam` | `Transform` / `Camera` | 场景引用 |
-| `Effects` / `Pool` | M7 服务 | 粒子与池 |
+| `Effects` / `Pool` | M7 `EmberEffects` / M3 `EmberPool` | 粒子与池 |
 | `Progress` | `RunProgress` | 只读构筑状态（M2） |
 | `Elapsed` / `Random` / `PlayerSpeed` | `float` / `Random` / `float` | 局内时间、随机源、玩家速度 |
 | `EnemyCount` / `GetEnemy(int)` | `Func` | 敌人枚举访问 |
@@ -173,6 +173,7 @@ Loading → Menu → SelectLength → SelectDifficulty → SelectSlots → Selec
 | `ContactDamageFrom(int, float, Vector2)` | `Action` | 接触型持续伤害 |
 | `Intercept(Vector2, Vector2, float)` | `Func` | 弹体拦截（暗弹可被击毁） |
 | `StillPlaying` | `Func<bool>` | 是否仍在战斗态 |
+| `PlaySound` | `Action<EmberWeaponSound>` | 战斗根将武器反馈适配为 M8 调用；回调为空时跳过音效 |
 | `SpawnBurnPatch(Vector2, float)` | `Action` | 请求生成燃地，由战斗根绑定到共享 `EmberBurnGround.SpawnPatch` |
 | `DealDamage` / `DealContactDamage` | 方法 | 包装器；后者**返回是否真的扣了血**，用于音效去重 |
 | `PlayerPos` / `PlayerStanding` / `Visible(Vector2)` | 属性/方法 | 位置、是否静止（判定参数见 [需求 §4.8](../requirements.md#48-静止判定)）、可见性 |
@@ -211,7 +212,3 @@ Loading → Menu → SelectLength → SelectDifficulty → SelectSlots → Selec
 | Ember.UI.Upgrade.Show | 显示/刷新选卡，包括初始化阶段的预建 |
 
 在 Development Build 中采集并在 CPU Hierarchy 搜索 Ember.；父子时间包含关系不应重复相加。对照 Calls、Time ms、GC Alloc 判断批量调用与单次开销。
-
-## 2026-10-13 死亡回报契约与回归
-
-最终死亡由 `EmberCombatDamage.ResolveDeaths` 返回 `Outcome.Kills`；战斗对每次击杀同时调用 `waves.NoteKill` 与 `IEmberCombatHost.RegisterKill`，同步波次与整局击杀。重生被接管时不记最终死亡。共享燃地装配与音效回调见 M4 文档。

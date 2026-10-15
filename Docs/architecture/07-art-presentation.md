@@ -18,10 +18,10 @@
 | 被依赖模块 | 只使用的公开契约 | 用途 | 缺失时的行为 |
 |------------|------------------|------|--------------|
 | M2 | `EmberRarity` 枚举（卡框按稀有度取图）、词条 id（图标映射）、`AllNames`（字形预热） | 取图与预热 | 未知 id 回落占位图 |
-| M0 | **阶段委托**（`System.Func<EmberRunPhase>`，等价 `IEmberRunPhaseSource`），构造时注入 | "是否播放"门控与暂停冻结 | 委托为空时动画照常播放（不再反查游戏实例） |
+| M0 | **阶段委托**（`System.Func<EmberRunPhase>`），通过 `Initialize` 注入 | "是否播放"门控与暂停冻结 | 委托为空时粒子不推进，灯芯动画仍可推进；均不反查游戏实例 |
 | Resources | `Resources/Art/**`、`Resources/Fonts/**`、`Resources/Art/Baked/**` | 图集与字体 | 逐级回退，最终用程序化占位 |
 
-**边界（2026-09-23 起）**：`EmberKeeperAnimation` 与 `EmberEffects` 的阶段门控**改为构造时注入委托**，
+**边界（2026-09-23 起）**：`EmberKeeperAnimation` 与 `EmberEffects` 的阶段门控**通过 `Initialize` 注入委托**，
 表现通过注入的阶段委托工作，不主动查找游戏入口或读取游戏实例。
 因此 `Assets/Scripts/Visuals/` 下**零 `EmberGame` 类型引用**；这条边界现在由源码扫描可验证。
 
@@ -41,7 +41,7 @@
    程序化占位（EmberArt.Panel / Flame）
 
 中文字体
-   Resources/Fonts/NotoSansCJKsc-Regular SDF.asset（预烘静态，529 字形 / 2048×2048）
+   Resources/Fonts/NotoSansCJKsc-Regular SDF.asset（预烘静态，实际字形与纹理规格以资产及烘制工具为准）
        ↓ ValidateBaked 不通过或资产缺失
    CreateChineseDynamic()：otf → CreateFontAsset → 两段式字形预热
 
@@ -53,7 +53,7 @@
    EmberVisuals   共享 64×64 Disc 与单色 SpriteRenderer
 
 粒子
-   EmberEffects（MonoBehaviour，池上限 120）
+   EmberEffects（MonoBehaviour，容量见需求 §7）
       Trail / Impact / Nova；粒子模拟由 Playing 阶段门控
 ```
 
@@ -69,13 +69,7 @@
 2. `EmberFonts.ValidateBaked` 逐项校验（图集纹理存在且非空、`characterTable` 非空、`material` 存在、每个 `characterTable` 条目都有对应 glyph、每个 glyph 的 `atlasIndex` 都落在 `atlasTextures` 范围内）
 3. 通过 → 直接用；任一不通过 → `Debug.LogWarning` + 回落 `CreateChineseDynamic()`
 
-**历史：预烘曾失败三次，都让整个 UI 挂掉、游戏进不去，而资产字段校验全绿。**三次的根因已逐条定位并修正：
-
-| 尝试 | 症状 | 根因与修正 |
-|------|------|------------|
-| 一 | `m_AtlasTextures` 数组从未序列化 → `UnassignedReferenceException`（`GetFallbackMaterial`） | 旧工具先 `CreateAsset(font)` 再 `AddObjectToAsset(atlasTexture)`；`CreateAsset` 序列化的是**当时**的对象图，图集像素还没落盘。修正：**先写图集纹理与材质子资产，最后写字体资产**（`EmberFontBake.Write`） |
-| 二 | 资产有 1 个图集槽，但字形指向 atlas index 1 → `IndexOutOfRangeException` | 全程只数 `characterTable.Count`，**从未真正绘制过任何字形**。修正：`VerifyReloaded` 从磁盘重新加载后**真渲染一遍** |
-| 三 | `m_AtlasTextures: [{fileID: …}, {fileID: 0}]` + `m_AtlasTextureIndex: 1` → `NullReferenceException`（`GetFallbackMaterial` 读 `atlasTextures[1].name`） | **TMP 开了第二张图集**：2048² 装不下全部 90px/9padding 的 CJK 字形，`enableMultiAtlasSupport` 默认 `true`，于是数组里多了一个无纹理的槽，而字体指向它。修正：烘制传 `enableMultiAtlasSupport: false`，并**自动降采样点**直到全部装进一张；`ApplySingleAtlas` 在写盘前强制数组只含一张，有字形指向更高索引就**拒绝写盘** |
+`EmberFontBake` 写入时保证纹理、材质与字体对象的序列化顺序；禁用多图集，并在写盘前通过 `ApplySingleAtlas` 保证索引一致。`VerifyReloaded` 从磁盘重新加载后执行真实渲染检查。资产字段完整不代表画面正确，技术背景见 [开发历史](../archive/development-history.md)。
 
 烘制会逐步降低采样点，直到完整字符集装入单张图集。
 
@@ -83,10 +77,10 @@
 
 实现取舍：
 
-- **首屏中文字第 0 帧即可绘制**，加载页不必再 `SetActive(false)` 藏文字。
-- 运行时不再 `CreateFontAsset`、不再 `TryAddCharacters`，`PrewarmInBackground` 对静态图集直接 `yield break`。
-- **SDF 采样点由 90px 降到 72px**，字形轮廓精度略有下降；显示字号为 11–40px，余量仍充足，实际显示效果以游戏内画面为准。
-- **包体仍带完整 Noto CJK SC（约 16.4 MB）**：静态图集的 `m_SourceFontFile` 仍引用该 otf，裁剪需把字体移出 Resources 并确认引用关系，属未做的优化。
+- 加载页视图先保持隐藏，经 `CreateChinese` 校验或动态回落后赋字体，再显示；静态图集可直接绘制已烘字形。
+- 静态图集通过闸门时不再创建字体或追加字形，`PrewarmInBackground` 直接返回；动态回落仍会创建字体与预热。
+- 烘制采样点自适应单图集容量，实际值以生成资产为准；清晰度以游戏内画面判断。
+- 包体保留 Noto CJK SC 源字体以供重烘和动态回落；裁剪前须同时确认这两条资源路径。
 - 新增/修改文案若引入图集里没有的字，**该字会缺失**（静态图集不能追加字形）。改文案后必须按下面的批处理命令重跑烘制。
 - 重跑命令（批处理）：
   `Unity.exe -batchmode -quit -projectPath <proj> -executeMethod Emberlight.Editor.EmberFontBake.Bake`
@@ -129,18 +123,18 @@ python Tools/atlas_glyph_check.py
 ### 图集与导入设置
 
 - 图集为**离线生成**（内置 image_gen），原图**不做程序像素处理**。
-- 运行时按格创建并缓存 `Sprite`，**不读取像素**；关闭 mipmap、保留原比例、双线性过滤。
+- 运行时优先加载 `.meta` 切片的 Sprite，缺失时才按格创建并缓存，**不读取像素**；关闭 mipmap、保留原比例、双线性过滤。
 - 边缘修复：已离线移除四档卡框与 UI 面板外的深色底色，保留内部底色与手绘描边；导入启用 `alphaIsTransparency` 防止边缘采样色晕，**无运行时裁剪或纹理处理**。
 - Android 平台覆写为 **Uncompressed**（默认 ETC2 会让描边起块状伪影），写在各自 `.meta` 的 Android 平台块。
 - 4 个 `AssetPostprocessor` 导入器维护 Sprite / Multiple 导入设置；切片定义保存在图集 `.meta` 中，通过 Sprite Editor 编辑。
 
 ### 粒子
 
-- `EmberEffects` 池化，**上限 120**（移动端预算）；池空时直接丢弃，不报错。
+- `EmberEffects` 复用粒子对象，容量见需求 §7；达到活动上限时跳过发射，复用池无缓存时创建粒子对象。
 - 粒子模拟仅在 `EmberRunPhase.Playing` 推进，暂停时冻结。
 - 新局会清理旧特效世界。
 
-> ⚠️ 历史文档曾写"粒子上限 180"，**实际常量为 120**（`EmberEffects.cs:16`（`active.Count>=120`））。
+容量检查在 `Assets/Scripts/Visuals/EmberEffects.cs` 的 `Emit`；`Update` 按注入阶段控制模拟，`Emit` 本身不校验阶段。
 
 ### 玩家角色
 
@@ -155,6 +149,16 @@ python Tools/atlas_glyph_check.py
 - 「正背面 + 镜像」的简化动作，**不是完整八方动画**。
 - 粒子与对象池重新租用时恢复子特效，避免隐藏子对象影响后续表现。
 
+### UI Prefab 图片持久化
+
+`EmberUiPrefabRepair` 是 Editor 工具。菜单 `Emberlight/UI/Repair UIRoot Images` 修复并保存 `Assets/UI/UIRoot.prefab`；`Repair Selected Images` 修复选中对象，场景对象支持 Undo，需保存场景或 Apply 才持久化实例改动。
+
+工具沿用现有取图入口，将临时 Sprite 克隆为 `Assets/UI/Generated/Sprites/*.asset`，引用原 PNG，保留裁剪、pivot、PPU 和九宫格边框。仅修复已知 UI 节点，保留已有持久资源、布局、颜色和显隐；透明遮罩与点击区域允许空 Sprite。原纹理缺失时停止并提示先烘制程序化素材，不保存临时 Texture，也不改图集导入器或切片 `.meta`。
+
+影响范围：Editor 与 UIRoot 的图片引用。此修复工具不接管运行时数据刷新或按钮回调，也不改变字体闸门。运行入口由 M6 的 EmberMenuUi.Bind 接入同一 Prefab；连接工具创建的补充控件也经图片持久化处理。
+
+IntroRoot 同样使用持久图片：背景、徽标与进度条沿用原取图入口，保存到 Prefab 后停止 Play 仍可预览。EmberIntro 激活视图前仍调用 CreateChinese/ValidateBaked，再为已保存的 TMP 控件赋已校验字体；未绕过静态图集闸门。文案值保持原样，字形覆盖检查决定是否需要重烘。
+
 ## 对外契约
 
 | 名称 | 类型 | 输入 | 输出 | 保证 |
@@ -166,9 +170,9 @@ python Tools/atlas_glyph_check.py
 | `EmberUiArt.Piece` / 取图 | 静态 | `Piece` 枚举 | `Sprite` | 6 个归一化 rect 回退 |
 | `EmberWorldArt` | 静态类 | 格索引 | `Sprite` | 12 格世界美术；含 `Projectile` 重定向 |
 | `EmberVisuals.Disc` / `Shape` / `Character` | 静态 | — | `Sprite` / `SpriteRenderer` | `Character` 目前**仅敌人路径**使用 |
-| `EmberEffects` | `MonoBehaviour` | 位置/类型 | — | 池上限 120；仅 `Playing` 发射 |
-| `EmberFonts.CreateChinese()` | 静态 | — | TMP 字体资产 | 预烘静态图集优先，`ValidateBaked` 不通过则回落动态图集；两条路径都保证返回可用字体 |
-| `EmberFonts.ApplyFont(Transform, TMP_FontAsset)` | 静态 | 根节点 + 字体 | — | 把字体刷到子树内所有 `TextMeshProUGUI`；`TMP_Settings.defaultFontAsset` 在 TMP 3.0.7 是只读属性，无法用默认字体做注入，编辑器手搭的层级将来靠这个接 |
+| `EmberEffects` | `MonoBehaviour` | 位置/类型 | — | 容量见需求 §7；仅 Playing 推进模拟，发射由调用方控制 |
+| `EmberFonts.CreateChinese()` | 静态 | — | TMP 字体资产 | 预烘静态图集优先，`ValidateBaked` 不通过则回落动态图集；动态回落的源字体缺失或创建失败时仍可返回 null；加载页有对应兜底分支 |
+| `EmberFonts.ApplyFont(Transform, TMP_FontAsset)` | 静态 | 根节点 + 字体 | — | 把字体刷到子树内所有 `TextMeshProUGUI`；主 UI 绑定也会为已有 TMP 控件赋已校验字体 |
 | `EmberKeeperAnimation` | `MonoBehaviour` | 阶段委托 | — | 暂停时停动画；门控由组合根注入，**不再用 `FindObjectOfType` 反查** |
 
 ## Unity 装配
@@ -176,24 +180,9 @@ python Tools/atlas_glyph_check.py
 - 资源根：`Assets/Resources/Art/{UI,Cards,World,Baked}`、`Assets/Resources/Fonts`。
 - 4 个 `AssetPostprocessor`（`EmberCardFrameImporter` / `EmberCardIconImporter` / `EmberUiArtImporter` / `EmberWorldArtImporter`）在导入时维持 Sprite / Multiple 设置。**切片通过 Sprite Editor 编辑并保存在 `.meta`；导入器不负责重建切片。**
 - Android 压缩覆写位于 `.meta` 平台块（`overridden: 1` + `textureCompression: 0`），涉及三张 doodle 图集。
-- `EmberEffects` 与 `EmberKeeperAnimation` 是场景 `MonoBehaviour`；其余为静态类。
-- `EmberKeeperAnimation` 与 `EmberEffects` 都是场景 `MonoBehaviour`；其余为静态类。阶段门控由组合根**构造时注入委托**，没有任何 `FindObjectOfType` 反查。
+- `EmberKeeperAnimation` 与 `EmberEffects` 都是场景 `MonoBehaviour`；其余为静态类。阶段门控由组合根通过 `Initialize` 注入委托，没有任何 `FindObjectOfType` 反查。
 
 ## 影响与回归范围
 
 - **直接影响模块**：M6（UI 精灵）、M5（共享剪影服务）、M4（弹体外观）、M3（粒子反馈）。
 - **必须复验的契约**：预烘字体的 `ValidateBaked` 闸门（删掉它 = 资产坏了整个 UI 挂掉）、`EmberFonts.ApplyFont`、粒子上限、图集三级回退链、`AssetPostprocessor` 切片设置、字形预热覆盖（回落路径）。
-
-## 2026-10-13 字形来源契约
-
-公共卡面文案由 EmberCopy 收集，其中基础武器文案读 EmberWeaponCatalog；字体收集器不再依赖 UI 面板的名册数组。ValidateBaked 与动态回落保持原样。回归范围是编译后字符串堆覆盖、TMP 特殊字符、重新加载的字体网格以及图形 PlayMode 的菜单/HUD/选卡/结算。
-
-## UI Prefab 图片持久化（2026-10-13）
-
-`EmberUiPrefabRepair` 是 Editor 工具。菜单 `Emberlight/UI/Repair UIRoot Images` 修复并保存 `Assets/UI/UIRoot.prefab`；`Repair Selected Images` 修复选中对象，场景对象支持 Undo，需保存场景或 Apply 才持久化实例改动。
-
-工具沿用现有取图入口，将临时 Sprite 克隆为 `Assets/UI/Generated/Sprites/*.asset`，引用原 PNG，保留裁剪、pivot、PPU 和九宫格边框。仅修复已知 UI 节点，保留已有持久资源、布局、颜色和显隐；透明遮罩与点击区域允许空 Sprite。原纹理缺失时停止并提示先烘制程序化素材，不保存临时 Texture，也不改图集导入器或切片 `.meta`。
-
-影响范围：Editor 与 UIRoot 的图片引用。此修复工具不接管运行时数据刷新或按钮回调，也不改变字体闸门。2026-10-14 运行入口已由 M6 的 EmberMenuUi.Bind 接入同一 Prefab；连接工具创建的补充控件也经图片持久化处理。
-
-IntroRoot 同样使用持久图片：背景、徽标与进度条沿用原取图入口，保存到 Prefab 后停止 Play 仍可预览。EmberIntro 激活视图前仍调用 CreateChinese/ValidateBaked，再为已保存的 TMP 控件赋已校验字体；未绕过静态图集闸门。文案值保持原样，字形覆盖检查决定是否需要重烘。

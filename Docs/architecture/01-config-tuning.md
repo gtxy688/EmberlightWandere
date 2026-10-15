@@ -5,33 +5,33 @@
 
 ## 职责边界
 
-- **本模块负责**：单局全部可调数值的集中定义与查询——难度倍率、波次配额与刷怪间隔、Boss 血量与波次判定、精英波判定、选卡次数、敌人基础血量与速度、词缀概率、遭遇事件参数、地图边界、游戏倍速。
+- **本模块负责**：关卡与敌人参数的集中定义与查询——难度倍率、波次配额与刷怪间隔、Boss 血量与波次判定、精英波判定、选卡次数、敌人基础血量与速度、词缀概率、遭遇事件参数、地图边界、游戏倍速。
 - **本模块不负责**：
   - 战斗推进与刷怪执行 → M3
   - 选卡内容与卡池 → M2
   - 任何 UI 呈现与文案（`DifficultyName` / `WaveName` 只提供字符串，不含排版）→ M6
 
-**存在意义**：把原先散落在 `EmberCombat` / `EmberWorld` 的魔法数收敛到一处，使关卡/难度调参不需要改战斗逻辑（对应 `archive/Agent.md` 记录的解耦目标）。
+**存在意义**：把原先散落在 `EmberCombat` / `EmberWorld` 的魔法数收敛到一处，使关卡/难度调参不需要改战斗逻辑。
 
 ## 依赖
 
 | 被依赖模块 | 只使用的公开契约 | 用途 | 缺失时的行为 |
 |------------|------------------|------|--------------|
-| 无（叶节点） | — | — | — |
+| M3 `EmberWorld` | 可变静态字段 `Limit` | `ApplyWorld` 将配置的地图边界写入世界服务 | 调用时依赖 M3；不是独立叶节点 |
 
-`LevelConfig` 仅依赖 `UnityEngine.Mathf`；`GameSpeed` 依赖 `UnityEngine.Time` 与 `PlayerPrefs`。**不依赖任何其他 Emberlight 模块**，因此是本项目中最容易独立测试的部分。
+`LevelConfig` 的计算使用 `UnityEngine.Mathf`，`ApplyWorld` 另依赖 M3 的 `EmberWorld`；`GameSpeed` 使用 `UnityEngine.Time` 与 `PlayerPrefs`。查询计算与场景副作用分开，调用 `ApplyWorld` 时须考虑可变静态边界。
 
-唯一的对外副作用是 `ApplyWorld()` 写入 `EmberWorld.Limit`（M3 的静态字段），这是一处轻量的反向写入。
+`LevelConfig` 的对外副作用是 `ApplyWorld()` 写入 `EmberWorld.Limit`（M3 的静态字段）；`GameSpeed` 另写入时间缩放与偏好设置。
 
 ## 设计与数据流
 
 ```text
-EmberGame.BeginRun()
+EmberGame.StartRunWith()
    └─ LevelConfig.Create(difficulty, waves)   ← 唯一工厂
-         ├─ BossWave        = waves == 50 ? 50 : 25
+         ├─ BossWave        ← 征程长度归一化
          ├─ HealthMultiplier / DamageMultiplier / CountMultiplier
          │  IntervalMultiplier / AffixMultiplier   ← 按难度分支
-         └─ BossHp          = (BossWave == 50 ? 10000 : 6000) × HealthMultiplier
+         └─ BossHp          ← 对应征程基础血量 × HealthMultiplier
    └─ config.ApplyWorld()  → EmberWorld.Limit = MapLimit
 
 EmberCombat 每帧 / 每波查询同一 config 实例：
@@ -49,10 +49,10 @@ EmberCombat 每帧 / 每波查询同一 config 实例：
 
 ### 难度构造
 
-- 触发条件：`EmberGame.BeginRun` 收到玩家选择的难度与征程长度。
+- 触发条件：`EmberGame.StartRunWith` 收到菜单流程提交的武器与槽位，并读取所选难度和征程长度。
 - 处理顺序：先定 `BossWave`，再按难度写五个倍率，最后用血量倍率算 `BossHp`。
 - 成功结果：返回一个倍率齐备的 `LevelConfig`。
-- 失败与边界：`difficulty` 不在枚举内时回落 `Standard`；`waves` 非 50 一律按 25 处理。**标准难度的三个倍率保持默认 1.0，只有血量被显式设为 0.5**。
+- 失败与边界：`difficulty` 不在枚举内时回落 `Standard`；`waves` 非 50 一律按 25 处理。倍率值见需求 §3.3，标准难度仅显式覆盖血量倍率，其余使用默认值。
 
 ### Boss 与精英波判定
 
@@ -71,7 +71,7 @@ EmberCombat 每帧 / 每波查询同一 config 实例：
 
 ### 刷怪权重表
 
-三张互斥的权重表，列序固定为 `SpawnKinds = { 0普通, 1快速, 2高血, 4射手, 5母体, 7盾卫, 8引线虫 }`：
+三组互斥的权重表，列序固定为 `SpawnKinds = { 0普通, 1快速, 2高血, 4射手, 5母体, 7盾卫, 8引线虫 }`：
 
 | 表 | 适用 | 说明 |
 |----|------|------|
@@ -99,16 +99,17 @@ EmberCombat 每帧 / 每波查询同一 config 实例：
 | `QuotaForWave` / `SpawnInterval` | 实例方法 | `int wave` | `int` / `float` | Boss 波配额返回 0；间隔有下限钳制 |
 | `TrashHp` | 实例方法 | `int wave, int kind` | `float` | 未知 kind 回落普通怪公式 |
 | `RollKind` | 实例方法 | `int wave, Random` | `int kind` | 权重和不足时回落 kind 0 |
-| `AffixChance` | 实例方法 | `int wave` | `float` | 第 3 波前为 0；结果封顶 0.5 |
+| `AffixChance` | 实例方法 | `int wave` | `float` | 第 3 波前为 0；增长段与最终结果分别钳制，公式见需求 §3.5 |
 | `BossHpForWave` / `BossTier` | 实例方法 | `int wave` | `float` / `int` | 最终波用 `BossHp`；Tier 钳制 1–5 |
 | `WaveName` | 实例方法 | `int wave` | `string` | 覆盖最终/Boss/精英/前 5 波/四种后期主题 |
 | `ApplyWorld` | 实例方法 | — | — | 唯一副作用：写 `EmberWorld.Limit` |
 | `GameSpeed` 倍速 API | 静态 | 档位 | 设置 `Time.timeScale` + 写 Prefs | 需在场景切换后保持 |
 
-**具体数值不在此复制**，一律见 `../requirements.md` §3。
+玩法参数见 `../requirements.md` §3，游戏速度范围见 §7；本模块只说明查询规则。
 
 ## Unity 装配
 
+- 武器参数归 `Core/EmberWeaponTuning.cs`（M4），构筑应用和卡面预览共用；本模块只持有关卡与敌人参数。
 - **无场景对象、无 Prefab、无 ScriptableObject**：配置由代码构造，不进资源管线。
 - `LevelConfig` 是普通 C# 类（非 `MonoBehaviour`），生命周期由 `EmberGame` 持有的引用决定。
 - `GameSpeed` 为静态类，状态存活于 `Time.timeScale` 与 `PlayerPrefs`；**不参与场景切换清理**，设计上跨局保持。
@@ -120,7 +121,3 @@ EmberCombat 每帧 / 每波查询同一 config 实例：
 - `SpawnScreenPadding` / `SpawnBandWidth` / `SpawnMapInset` 控制普通与遭遇杂兵的屏外外沿带和地图内缩，完整权威值见 requirements §3.1；只影响落点，不改变配额、间隔、Boss 与分裂规则。回归覆盖地图边缘、不同视口比例、无合法区域和配额重试。
 - **直接影响模块**：M3（消费全部数值）、M2（消费 `PicksAfterWave`）、M6（显示 `DifficultyName` / `WaveName`）、M5（消费敌人血量/速度/词缀概率）。
 - **必须复验的契约**：难度倍率表、`QuotaForWave` 与 `SpawnInterval` 的钳制、`PicksAfterWave` 的三种分支、`IsBossWave` / `IsEliteWave` 的互斥性。
-
-## 武器配置边界（2026-10-13）
-
-武器基础参数与专属增量集中在 `Core/EmberWeaponTuning.cs`，供构筑应用、武器计算与 UI 预览共用；所属行为路由见 M4。LevelConfig 仍负责关卡与敌人参数。修改参数会同时影响六武器冷却、伤害、专属与质变预览。

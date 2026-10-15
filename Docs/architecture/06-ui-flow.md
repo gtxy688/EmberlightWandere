@@ -18,7 +18,8 @@
 | 被依赖模块 | 只使用的公开契约 | 用途 | 缺失时的行为 |
 |------------|------------------|------|--------------|
 | M2 | `RunProgress`（作为方法参数）：`Luck` / `CoreWeaponId` / `RefreshesRemaining` / `EmptySlots` / `WeaponMagnitude` / `WeaponAttackSpeed` / `DamageAmp` / `OwnsWeapon`；id 常量 | 卡面数值预览、HUD 幸运与槽位 | 参数为空则该块不绘制 |
-| M3 | 只读 `EnemyCount` / `Wave` / `WaveQuota` / `WaveSpawned` / `WaveRemaining` / `Boss` / `BossAlive` / `Elapsed` / `Kills` / `Health` / `Shield` | HUD 与结算 | 无战斗实例时隐藏战斗块 |
+| M3 | 战斗的波次、剩余敌人、Boss 与遭遇文本 | HUD 战斗块 | 无战斗时跳过 Boss 更新 |
+| M0 状态容器 | `EmberRunState` 的 `Health` / `MaxHealth` / `Elapsed` / `Kills`，护盾从 `Progress` 查询 | HUD 基础状态 | 缺少状态或构筑时跳过推送 |
 | M7 | `EmberArt` / `EmberUiArt` / `EmberCardFrames` / `EmberCardIcons` / `EmberWorldArt` | 全部精灵 | 缺图时回退程序化占位 |
 | M8 | `EmberAudio.PlayUiClick` / `PlayUiConfirm` / `PlayCardOpen` / `PlayCardPick` | 交互音 | clip 缺失静默跳过 |
 | M1 | `DifficultyName` / `WaveName` | 文案 | — |
@@ -43,6 +44,8 @@ EmberUiRoot（场景 Prefab 引用，Canvas 540×960 / 安全区 / 摇杆 / 遮�
 
 `EmberHudPresenter.Push()` 是战斗 HUD 的**每帧推送入口**：每帧把只读数值喂给 `EmberHud`，UI 不主动拉取。
 它由组合根在 `EmberMenuUi.Bind` 之后创建，只接收入参（`EmberHud` / `EmberRunState` / `EmberCombat` / 阶段委托），**不持有 `EmberGame`**。
+
+HUD 缓存上次显示的生命、护盾、秒数、击杀、武器/槽位/幸运、波次与 Boss 阶段；条形值持续跟随状态，文字只在对应数据变化时格式化。`Stage` 是波次文字唯一写入点，Presenter 仅在波次、征程或配置变化时查询波名。暂停和选卡后恢复须反映最新状态，缓存实现不等于已达到某个 FPS/GC 指标。
 
 
 ### 开局四步（Gods-Select-v3）
@@ -71,7 +74,7 @@ EmberUiRoot（场景 Prefab 引用，Canvas 540×960 / 安全区 / 摇杆 / 遮�
 
 - 候选张数 = `3 + 空位数`。
 - **≤4 张直接排布；>4 张使用纵向滚动区域与固定卡高**，卡高与行步长见 [需求 §7「UI 与音频默认参数」](../requirements.md#ui-与音频默认参数)。保留底部刷新按钮（最多 7 张不溢出屏幕）。
-- 卡面分区：标题 / 说明 / 数值预览。说明预留两行并自适应字号（12–15）；**移除省略号截断**。
+- 卡面分区：标题 / 说明 / 数值预览。说明预留两行并自适应字号，具体字号由面板与 Prefab 定义；**移除省略号截断**。
 - 护盾说明按语义固定两行，保留叠加、受伤优先消耗、仅本局有效的信息。
 - 徽章：通用显示稀有度名；专属「专属」；质变「质变」；新武器「新武器」。
 - `EmberCardMotion`：入场淡入、按压缩放、选中闪光，**全部使用 `unscaledDeltaTime`**（因 `GameSpeed` 走 `Time.timeScale`）。
@@ -83,7 +86,7 @@ EmberUiRoot（场景 Prefab 引用，Canvas 540×960 / 安全区 / 摇杆 / 遮�
 - 显示 `武器 已有/N` 与幸运值。
 - 顶栏删除与击杀信息重复的余烬展示；文字自适应避免越界。
 - 暂停与 Boss 框同步描边。
-- 遭遇事件触发时顶部横幅 2 秒（「遭遇 · 精英小队」/「遭遇 · 围杀圈」），暂停时不推进。
+- 遭遇事件触发时显示顶部短时横幅（「遭遇 · 精英小队」/「遭遇 · 围杀圈」），暂停时不推进。
 - 战斗状态栏在暂停、结算、升级时隐藏。
 
 ### 设置与暂停
@@ -97,7 +100,7 @@ EmberUiRoot（场景 Prefab 引用，Canvas 540×960 / 安全区 / 摇杆 / 遮�
 ### 加载页
 
 - `Assets/UI/IntroRoot.prefab` 保存标题、图标、提示、进度条、百分比和就绪标语；`EmberIntroView` 持有序列化引用，EmberIntro 只负责加载与继续输入。
-- 进度条分段推进（约 0.15 → 0.55 → 1.0），最短展示约 5 秒。
+- 进度条分段推进并满足最短展示时间；表现参数见需求 §7，由 `EmberIntro.Load` 定义。
 - **中文字体就绪前隐藏中文文案**（避免渲染缺字方框）。
 - 就绪后显示「烬灯行者 / EmberlightWanderer / 提灯入夜，以火破晓。」并启用继续输入。
 - 加载页按原排序覆盖主 UI；继续时隐藏实例，不销毁视图。布局、字号与静态图片不由运行时代码重新创建或覆盖。
@@ -121,7 +124,7 @@ EmberUiRoot（场景 Prefab 引用，Canvas 540×960 / 安全区 / 摇杆 / 遮�
 
 武器名称和基础说明读取 `EmberWeaponCatalog`；卡面、菜单与开局说明读取 `EmberCopy`。`EmberFonts.CardGlyphSet()` 收集升级文案、品质名称和卡面补充字符，`MenuGlyphSet()` 收集菜单、开局选择与结算常量。
 
-修改文案后按 M7 的流程检查编译后字形覆盖并重新烘制静态图集。
+修改文案后按 M7 的流程检查编译后字形覆盖并重新烘制静态图集。`EmberOfferPresentation.Build` 将候选与只读构筑转成标题、说明、数字预览与徽章；数字读取共享参数，面板只绑定展示结果。
 
 ## Unity 装配
 
@@ -141,13 +144,3 @@ EmberUiRoot（场景 Prefab 引用，Canvas 540×960 / 安全区 / 摇杆 / 遮�
 - **直接影响模块**：M2（卡面读取构筑数据）、M3（HUD 读取战斗状态）、M7（精灵供给）、M8（交互音）。
 - **必须复验的契约**：开局四步的顺序与单选约束、候选卡数量与滚动阈值、`unscaledDeltaTime` 使用、返回营地的二次确认、字体预热覆盖。
 - UI 创建边界需复验缺失引用报错、Editor 配置工具与场景 Prefab 复用；HUD 缓存需复验秒/数值变化及时显示及波次文案不重复写入。
-
-## 2026-10-13 对外契约与回归范围
-
-编辑预览与运行时使用同一 `Assets/UI/UIRoot.prefab` 实例；图片修复菜单与资源持久化契约见 `07-art-presentation.md` 的「UI Prefab 图片持久化」。2026-10-14 已接入 EmberMenuUi.Bind，面板数据与回调由各控制器绑定，UI 不持有游戏组合根。
-
-`EmberOfferPresentation.Build` 将候选与只读构筑转成标题、说明、数字预览与徽章；面板只绑定展示结果、布局与交互。Editor 的 EmberUiFactory 创建共用 Image/TMP 节点；已保存的 Prefab 是布局入口。武器卡按 ID 读 Catalog；数字预览读共享配置，修正旧 ID 错位和专属/质变的过期预览，实际玩法数值不变。
-
-### HUD 更新契约（2026-10-14）
-
-EmberHud 缓存上次显示的生命、护盾、秒数、击杀、武器数/槽位/幸运、波次与 Boss 阶段。条形值跟随状态，文字只在对应数据变化时格式化并赋值；Stage 是波次文字唯一写入点。EmberHudPresenter 只在波次、局长或关卡配置变化时查询波名。暂停/选卡后恢复仍反映最新状态；不以源码缓存推断已达到某个 FPS/GC 指标。

@@ -19,13 +19,13 @@
 
 ## 模块清单
 
-第 2 列为文档编号，模块文档位于 `Docs/architecture/`。
+第 1 列为模块编号，模块文档位于 `Docs/architecture/`。
 
 | 编号 | 模块 | 核心职责 | 明确不负责 | 架构文档 |
 |------|------|----------|------------|----------|
 | M0 | 组合根 | 持有阶段与本局状态、装配各单元、驱动每帧顺序、结果转译与回调接线 | **不放数值规则或状态推进规则**（分别归各职责单元） | `00-composition-root.md` |
 | M1 | 配置与调参 | 难度倍率、波次配额/间隔、Boss 与敌人基础数值、游戏速度 | 不含战斗逻辑与状态推进 | `01-config-tuning.md` |
-| M2 | 单局进度与构筑 | Id 空间（`EmberWeaponCatalog`）、候选卡生成（`EmberChoicePool`）、构筑状态推进与品质 roll（`RunProgress`）、刷新、结算分 | 不含战斗、不含 UI 呈现 | `02-run-progression.md` |
+| M2 | 单局进度与构筑 | Id 空间（`EmberWeaponCatalog`）、候选卡生成（`EmberChoicePool`）、构筑状态推进与品质 roll（`RunProgress`）、选卡序列（`RunFlowController`）、刷新、结算分 | 不含战斗、不含 UI 呈现 | `02-run-progression.md` |
 | M3 | 战斗与波次 | 刷怪、遭遇事件、伤害结算、死亡/分裂/重生、清波判定、Boss 招式 | 不含选卡内容、不含落卡 UI | `03-combat-waves.md` |
 | M4 | 武器系统 | 6 把武器的 Tick 行为与专属/质变形态 | 不反向依赖 `EmberGame`，不做敌人生成 | `04-weapon-system.md` |
 | M5 | 敌人系统 | 行为策略、暗弹弹幕、剪影与动画表现、治疗掉落 | 不做伤害应用（由 M3 结算） | `05-enemy-system.md` |
@@ -51,17 +51,18 @@ M3(战斗) ──► IEmberCombatHost ──► M0  由组合根实现，M3 不�
    │
    ├──► M4(武器) ──► M2(进度)
    │       │
-   │       └──► M7(表现)  M4 经 ctx.Effects / ctx.Pool
+   │       └──► M7(表现)  M4 经 ctx.Effects；ctx.Pool 归 M3
    │
    ├──► M5(敌人) ──► M1(配置)
    ├──► M3.(Boss)
    └──► M1(配置)
 
-M7(表现) ──► IEmberRunPhaseSource  只读阶段门控，不再反查游戏实例
+M7(表现) ──► Func<EmberRunPhase>  通过 Initialize 注入，只读阶段门控
 M8(音频) ──► 无玩法依赖（Resources 自加载）
 
-M2(进度) ──► 无（零 UnityEngine 引用）
-RunFlowController ──► Host 契约 ──► M0  选卡推进规则不持有 EmberGame
+M1(配置) ──► M3.EmberWorld.Limit  ApplyWorld 的反向静态写入
+M2(进度) ──► M4.EmberWeaponTuning  共享升级常量，零 UnityEngine 引用
+M2.RunFlowController ──► Host 契约 ──► M0  选卡规则不持有 EmberGame
 ```
 
 稳定的关键契约：
@@ -69,7 +70,7 @@ RunFlowController ──► Host 契约 ──► M0  选卡推进规则不持�
 - `EmberWeapon` / `EmberWeaponContext`（M4 与 M3 之间）——**M4 不反向依赖 `EmberGame`**。
 - `RunProgress`（M2）——**零 `UnityEngine` 引用**，纯 C#；与卡池、品质和流程等纯逻辑单元一起支持独立测试。
 - `IEmberCombatHost`（M3 与 M0 之间）——战斗只需要阶段/计时/伤害入口，不再持有整个游戏类。
-- `IEmberRunPhaseSource`（M7 与 M0 之间）——表现层只问"该不该播"。
+- 阶段委托 `Func<EmberRunPhase>`（M7 与组合根之间）——表现组件经 `Initialize` 接收；`IEmberRunPhaseSource` 是战斗宿主继承的只读阶段接口，不是这两个组件的入参。
 - `RunFlowController.Host`（选卡流程与 M0 之间）——选卡次数与补偿规则可脱离场景验证。
 - `EmberRunPhase` + `EmberCombat.Tick`（M3 与 M6 之间）。
 
@@ -84,7 +85,7 @@ RunFlowController ──► Host 契约 ──► M0  选卡推进规则不持�
 | 难度倍率 / 怪血 / 刷怪配额 / 刷怪间隔 / Boss 血量公式 | M1 | `01-config-tuning.md` |
 | 词缀概率 / 敌人基础 HP / 地图边界 / 敌人上限 | M1 | `01-config-tuning.md` |
 | 游戏速度 / 1x–5x / 倍速 | M1 | `01-config-tuning.md` |
-| 选卡 / 出卡 / 卡池 / 补偿选卡 / 刷新 / 槽位 N / 侥幸权重 | M2 | `02-run-progression.md` |
+| 选卡 / 出卡 / 卡池 / 补偿选卡 / 刷新 / 槽位 N / 候选权重 / RunFlowController | M2 | `02-run-progression.md` |
 | 候选怎么拼 / 同屏唯一键 / 出卡张数 / EmberChoicePool | M2 | `02-run-progression.md` |
 | 词条 Id 分区 / 武器名册 / EmberWeaponCatalog / Definition / 武器文案 / 专属与质变映射 | M2 | `02-run-progression.md` |
 | 幸运 / 稀有度 / 铜银金钻 / 品质 roll | M2 | `02-run-progression.md` |
@@ -119,6 +120,7 @@ RunFlowController ──► Host 契约 ──► M0  选卡推进规则不持�
 | 数值口径 / 参数归属 / 表现默认值 / 产品行为 / 单局规则边界 / 不做什么 | 需求 | `../requirements.md` |
 | 工程源码交付 / 打包工程 / 导入验证 | M9 | `09-build-platform.md` → `../../README.md` |
 | 测试运行 / run-tests / PlayMode 冒烟 | 开发工具 | `../../README.md` |
+| UI 复用检查工具 / RuntimeUiChecks | 开发工具 | `../../Tools/UiReuse/README.md` |
 | 离线编译校验 / 不启动 Unity 验证改动 | 工具 | `../../Tools/compile-check.ps1` |
 | 设计取舍说明 / 阅卷入口 | 交付 | `../技术分析.md` → `../../README.md` |
 | 历史决策 / 踩坑记录 / 重构过程 | 归档（只读） | `../archive/` |
@@ -132,18 +134,18 @@ RunFlowController ──► Host 契约 ──► M0  选卡推进规则不持�
 | M3 | M4 | `EmberWeapon.Tick(dt, EmberWeaponContext)` | 武器无 Tick 即不生效；`OwnsWeapon` 为假时武器自我门控 |
 | M4 | M2 | `RunProgress.OwnsWeapon/HasMetamorph/WeaponMagnitude/WeaponAttackSpeed/DamageMul` | 只读；进度为空时武器不运行 |
 | M4 | M3 | `ctx.Damage / DamageFrom / Intercept / FindNearestVisibleEnemy` | 委托未赋值时空引用风险由 M3 保证全部赋值 |
-| M4 | M7 | `ctx.Effects`（粒子）、`ctx.Pool`（弹体池） | 池空时 `EmberEffects` 直接丢弃粒子，不报错 |
+| M4 | M7 / M3 | `ctx.Effects`（粒子）/ `ctx.Pool`（弹体池） | 粒子满时跳过发射；对象池无缓存时创建视图 |
 | M3 | M5 | `IEnemyBehavior.Tick` / `EmberEnemyProjectiles` | 行为为空则退化为直线追击 |
-| M3 | M2 | `IEmberCombatHost.OnWaveCleared` → `RunFlowController` → `Progress.Choices` | 无进度时不发牌 |
+| M3 | M2（经 M0 接线） | `IEmberCombatHost.OnWaveCleared` → `RunFlowController` → `Progress.Choices` | 无进度时不发牌 |
 | M6 | M2 | `RunProgress` 作为**方法参数**传入，UI 不持有 `EmberGame` | 参数为空则不绘制该块 |
-| M6 | M3 | 只读 `EnemyCount / Wave / WaveRemaining / Boss / BossAlive` | 无战斗实例时 HUD 隐藏战斗块 |
+| M6 | M0 状态 / M3 战斗 | Presenter 读取 `EmberRunState` 的生命/计时/击杀及战斗的波次/Boss | 无构筑时跳过推送；无战斗时保留基本状态并跳过 Boss 更新 |
 | M0 | M3 | `IEmberCombatHost` | 由组合根实现；**实现方不必是 `EmberGame`** |
 | M3 | M0 | `IEmberCombatHost` 反向请求阶段、伤害入口、计分与收局 | 宿主未提供时战斗不推进 |
 | M4 | M8 | `ctx.PlaySound(EmberWeaponSound)`，由 M3 装配音频适配 | 无回调时只跳过音效 |
 | M4 | M0 | **无依赖**（经 `EmberWeaponContext`） | — |
-| M7 | M0 | 阶段委托；构造时注入，不用服务定位器 | 委托为空时动画照常播放 |
+| M7 | M0 | 阶段委托；通过 `Initialize` 注入 | 委托为空时粒子不推进，灯芯动画仍可推进 |
 | M8 | M7/Resources | `Resources.Load("Audio/...")` | **clip 缺失静默跳过**，只警告一次，不崩 |
-| M9 | 全部 | 仅在编辑器期改写 PlayerSettings 与资源导入设置 | 缺环境变量即停止打包并列缺失项 |
+| M9 | 全部 | 仅在编辑器期改写 PlayerSettings 与资源导入设置 | 缺工具链或资源停止；自有签名另校验环境变量 |
 
 ## 已知边界问题（技术债，非本轮修复范围）
 

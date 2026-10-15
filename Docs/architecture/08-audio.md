@@ -16,10 +16,10 @@
 
 | 被依赖模块 | 只使用的公开契约 | 用途 | 缺失时的行为 |
 |------------|------------------|------|--------------|
-| Resources | `Resources.Load("Audio/Music|Sfx/...")` | clip 加载 | **缺失静默跳过**，只警告一次 |
+| Resources | `Resources.Load("Audio/...")` | clip 加载 | **缺失静默跳过**，只警告一次 |
 | M3/M4/M5/M6 | 调用方各自触发 `Play*` | 接线点 | — |
 
-**无玩法依赖**：本模块不知道难度、波次或武器数值，只接收"播放某个音"的指令。
+**无玩法依赖**：本模块不知道难度、波次或武器数值，只接收播放指令。生命反馈由组合根按结算结果调用；武器只报告 `EmberWeaponSound`，由 M3 适配，不创建音频单例。
 
 ## 设计与数据流
 
@@ -36,18 +36,9 @@ EmberAudio（MonoBehaviour 单例，DontDestroyOnLoad）
 
 ## 关键机制
 
-### 历史缺陷与修复（不要再退回）
+### 资源与听音前提
 
-初版有四个导致"完全没声音"的原因，均已修复：
-
-| 原因 | 修复 |
-|------|------|
-| Resources 下 ogg `.meta` 导入为 `3D: 1` + `preloadAudioData: 0` | 批量改为 `3D: 0`（2D）+ `preloadAudioData: 1` |
-| 代码未强制 2D | `music` / `sfx` 的 `spatialBlend` 显式设 0 |
-| 场景无 `AudioListener` | `Ensure()` 时挂到 `Camera.main` |
-| `clip == null` 时静默 return，无日志 | 加载失败时 `Debug.LogWarning` 一次列出缺失名 |
-
-> ⚠️ 新增 WAV 的**默认导入设置是 `3D: 1` + `preloadAudioData: 0`**，与本模块约定冲突。每次新增音频资源后都要检查导入设置，否则表现为"资源在但听不到"。
+两个 AudioSource 均强制 2D；`Ensure` 补齐监听器，资源缺失时警告并跳过播放。音频导入保持 2D 与预载，新增素材后同时检查导入设置、资源路径和实际听音。
 
 ### 资源路径约定
 
@@ -62,12 +53,7 @@ Assets/Resources/Audio/
 
 工作区源文件可放在 `Assets/Audio/`；成品需拷到 `Assets/Resources/Audio/`。
 
-武器专属音效有两代实现：
-
-- **v1（AI 生成，TJGenerators / Sonilo SFX）**：24-bit/44.1kHz 立体声，时长 2.01–2.94s。原始 prompt 与接线表保留在归档记录中。
-- **v2（原创程序合成）**：44.1kHz / 16-bit / **单声道**，0.19–0.72s，存于 `Assets/Resources/Audio/Sfx/Generated`，生成器随说明保存可重现。**v2 为现行**——短素材更适合高频触发，且不依赖长音效跳头播放。
-
-两者都保留通用 clip 回退（资源缺失时退回 `fire` / `meteor_impact`）。
+当前武器音效优先加载 `Assets/Resources/Audio/Sfx/Generated` 中的短 WAV；缺失时回退 `Sfx` 根目录的同名武器音，再回退通用发射或命中音。具体素材清单与来源见 `../reference/audio-credits.md`。现仓库保留成品 WAV，没有合成生成器，不提供重新合成步骤。
 
 ### 触发点与节流
 
@@ -114,7 +100,7 @@ Assets/Resources/Audio/
 
 ## Unity 装配
 
-- `EmberAudio` 是 `MonoBehaviour` 单例，`DontDestroyOnLoad`，随 `EmberGame` 生命周期。
+- `EmberAudio` 是 `MonoBehaviour` 单例，`Ensure` 惰性创建，使用 `DontDestroyOnLoad`；不随单局或组合根销毁自动回收。
 - 两个 `AudioSource` 由代码创建，**不依赖场景预置**。
 - 缺 `AudioListener` 时自动挂到 `Camera.main`。
 - 资源全部走 `Resources.Load`，**不进 Addressables**；因此音频资源变更只需重新导入，无需改场景。
@@ -124,7 +110,3 @@ Assets/Resources/Audio/
 
 - **直接影响模块**：M3/M4/M5/M6 的触发点、M6 的设置滑条。
 - **必须复验的契约**：导入设置（2D）、缺失回退、节流间隔、`DamageFrom` 驱动的伤害后发声、音量持久化。
-
-## 反馈装配契约（2026-10-13）
-
-生命结算不创建音频单例，接受伤害后的音效由组合根根据结算结果播放。武器与共享燃地只调用 `ctx.PlaySound(EmberWeaponSound)`，由战斗根适配到现有 Audio 方法；既有节流、音量与曲目规则保持原样。回归是护盾吸收仍有受伤反馈、被阶段/无敌帧拒绝时不播、各武器反馈路径与 UI 交互；

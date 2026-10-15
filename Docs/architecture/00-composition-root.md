@@ -18,7 +18,7 @@
   - 构筑、卡池、品质 roll → `RunProgress`（M2）
   - 开局四步界面流程 → `EmberMenuFlow`（M6）
   - HUD 字段构成 → `EmberHudPresenter`（M6）
-  - 数值 → `LevelConfig`（M1）
+  - 关卡与敌人数值 → `LevelConfig`（M1）；武器参数 → `EmberWeaponTuning`（M4）
 
 **最重要的边界约束**：`EmberGame` 只做装配、顺序与结果转译，**不要在这里放数值规则或状态推进规则**。
 
@@ -31,7 +31,7 @@
 | 被依赖模块/单元 | 只使用的公开契约 | 用途 | 缺失时的行为 |
 |-----------------|------------------|------|--------------|
 | M1 `LevelConfig` | `Create` / `ApplyWorld` / `DifficultyName` / `BossWave` / `PicksAfterWave` | 建一局的关卡配置 | 未开局时 HUD 与结算不绘制 |
-| M2 `RunProgress` | `ConfigureRun` / `Choices` / `Choose` / `TryRefresh` / `AddScore` | 本局构筑 | 为 null 时选卡入口直接返回 |
+| M2 `RunProgress` / `RunFlowController` | `ConfigureRun` / `Choices` / `Choose` / `TryRefresh` / `AddScore` / `OnWaveCleared` / `Reset` | 本局构筑与选卡序列 | 为 null 时选卡入口直接返回 |
 | M3 `EmberCombat` | `Begin` / `Tick` / `TearDown` / `AdvanceAfterUpgrade` / `Boss` / `PlayBossBurst` | 战斗推进 | 未 `Begin` 时 `Tick` 无效果 |
 | M7 `EmberEffects` | `Initialize(阶段委托)` / `Nova` / `Impact` | 世界特效宿主 | 委托为空时特效不推进 |
 | M6 `EmberUiRoot` / `EmberMenuUi` / `EmberMenuFlow` / `EmberHudPresenter` | `Bind` / `Show` / `Set` / `Stage` / `Boss` | 绑定场景界面并推送数据 | 缺少 UIRoot 或必需引用时报配置错误；绑定前不推送 |
@@ -47,7 +47,7 @@ EmberGame (MonoBehaviour, 组合根)
 ├─ EmberRunPhase            enum：11 个单局阶段
 ├─ EmberRunState            本局数据 + 世界/灯芯/相机/特效句柄
 │    └─ EmberKeeperVitals   生命 / 护盾吸收 / 无敌帧 / 回血 / 掉落拾取
-├─ RunFlowController        波次选卡次数、新武器补偿、刷新
+├─ RunFlowController        M2：波次选卡次数、新武器补偿、刷新
 ├─ EmberInput               触屏/鼠标 → 摇杆向量（经 Presenter 回调）
 ├─ EmberKeeperMotion        位移 + 边界钳制 + 相机跟随（静态）
 ├─ EmberHudPresenter        每帧把只读状态推给 EmberHud
@@ -113,7 +113,7 @@ Elapsed += dt  →  Vitals.Tick(dt)  →  input.Tick()
 
 ## 对外契约
 
-`EmberKeeperVitals` 构造时只注入构筑、伤害倍率与阶段提供者；不持有 `EmberRunState`，不引用 UnityEngine 或音频。受伤结果由组合根转换为音效、HUD 与收局动作。`RunFlowController.Host` 只暴露 `Progress`、`FinalWave`、`PicksAfterWave`、阶段、候选与呈现回调；不暴露场景状态，不包含死亡回调。
+`EmberKeeperVitals` 构造时只注入构筑、伤害倍率与阶段提供者；不持有 `EmberRunState`，不引用 UnityEngine 或音频。受伤结果由组合根转换为音效、HUD 与收局动作。选卡控制器属于 M2，完整契约见 `02-run-progression.md`。`RunFlowController.Host` 只暴露 `Progress`、`FinalWave`、`PicksAfterWave`、阶段、候选与呈现回调；不暴露场景状态，不包含死亡回调。
 
 
 | 名称 | 类型 | 输入 | 输出 | 保证 |
