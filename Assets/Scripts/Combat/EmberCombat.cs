@@ -103,7 +103,7 @@ namespace Emberlight
             Begin(runWorld, keeper, camera, fx, LevelConfig.Default);
         }
 
-        public void Begin(Transform runWorld, Transform keeper, Camera camera, EmberEffects fx, LevelConfig levelConfig)
+        public void Begin(Transform runWorld, Transform keeper, Camera camera, EmberEffects fx, LevelConfig levelConfig, GameObject shadePrefab = null)
         {
             TearDown();
             world = runWorld;
@@ -112,7 +112,7 @@ namespace Emberlight
             cam = camera;
             effects = fx;
             config = levelConfig ?? LevelConfig.Default;
-            pool.Bind(runWorld, 80);
+            pool.Bind(runWorld, 80, shadePrefab);
             enemyProjectiles.Bind(runWorld, camera);
             enemyCtx.Player = player;
             enemyCtx.Camera = cam;

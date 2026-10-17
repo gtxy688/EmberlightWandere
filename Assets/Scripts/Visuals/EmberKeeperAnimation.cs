@@ -1,58 +1,50 @@
+using System;
 using UnityEngine;
+
 namespace Emberlight
 {
-    // 只用局部变换做连续动画：不换帧，也不改玩法位置。
+    /// <summary>驱动 Prefab 的外观子节点；根节点的位置与命中规则由移动模块负责。</summary>
     public sealed class EmberKeeperAnimation : MonoBehaviour
     {
-        Transform body, cloak, face, lantern;
-        SpriteRenderer glow;
-        System.Func<EmberRunPhase> phase;
-        Vector3 previous;
+        [SerializeField] SpriteRenderer body, glow;
+        Func<EmberRunPhase> phase;
+        Vector3 previous, restPosition, restScale;
+        Quaternion restRotation;
+        Color glowColor;
         Vector2 drift;
         float phaseClock, moving;
-        /// <summary>注入阶段闸门：由组合根在创建灯芯时传入，表现层不反查游戏层。</summary>
-        public void Initialize(System.Func<EmberRunPhase> phaseProvider)
+
+        public void Initialize(Func<EmberRunPhase> phaseProvider)
         {
+            if (body == null || glow == null)
+                throw new InvalidOperationException("Keeper prefab requires its body and ground glow references.");
             phase = phaseProvider;
-            body = new GameObject("Floating keeper").transform;
-            body.SetParent(transform,false);
-            // 地面阴影。挂在灯芯根节点而非 body：它是地面阴影，不能跟着悬浮一起上下浮。
-            // 偏移取 -0.50 是为了不被斗篷盖住——灯芯斗篷挂在 body 的 y=-0.08、高 0.78（跨 -0.51..0.31），
-            // 阴影放 -0.25 会整条藏在斗篷里；-0.50 时跨 -0.64..-0.36，正好在斗篷下留出可见的一条。
-            EmberVisuals.Shape("Shadow",transform,new Vector2(0,-.50f),new Vector2(.90f,.28f),new Color(0,0,0,.30f),1);
-            var blue = new Color(.20f,.35f,.45f);
-            cloak=EmberVisuals.Shape("Cloak",body,new Vector2(0,-.08f),new Vector2(.66f,.78f),blue,3).transform;
-            EmberVisuals.Shape("Hood rim",body,new Vector2(0,.23f),new Vector2(.69f,.62f),new Color(.26f,.43f,.52f),4);
-            EmberVisuals.Shape("Hood",body,new Vector2(0,.25f),new Vector2(.61f,.55f),blue,5);
-            face=EmberVisuals.Shape("Hidden face",body,new Vector2(0,.21f),new Vector2(.44f,.32f),new Color(.035f,.06f,.085f),6).transform;
-            for(int i=-1;i<=1;i+=2)
-                EmberVisuals.Shape("Warm eye",face,new Vector2(i*.22f,.02f),new Vector2(.13f,.25f),new Color(1f,.79f,.35f),7);
-            lantern=new GameObject("Swinging lantern").transform;
-            lantern.SetParent(body,false);lantern.localPosition=new Vector2(.37f,.10f);
-            var loop=EmberVisuals.Shape("Handle",lantern,new Vector2(0,-.04f),new Vector2(.15f,.15f),new Color(.72f,.51f,.22f),7);loop.sprite=EmberArt.Ring;
-            var housing=EmberVisuals.Shape("Lantern case",lantern,new Vector2(0,-.18f),new Vector2(.23f,.28f),new Color(.62f,.39f,.17f),7);housing.sprite=EmberArt.Panel;
-            var glass=EmberVisuals.Shape("Warm glass",lantern,new Vector2(0,-.18f),new Vector2(.15f,.19f),new Color(1f,.68f,.22f),8);glass.sprite=EmberArt.Panel;
-            EmberArt.Fire(lantern,new Vector2(0,-.18f),.11f,9);
-            glow=EmberVisuals.Shape("Lantern light",lantern,new Vector2(0,-.18f),Vector2.one*.65f,new Color(1f,.5f,.1f,.12f),2);glow.sprite=EmberArt.Glow;
-            previous=transform.position;
+            previous = transform.position;
+            restPosition = body.transform.localPosition;
+            restScale = body.transform.localScale;
+            restRotation = body.transform.localRotation;
+            glowColor = glow.color;
         }
+
         void LateUpdate()
         {
-            Vector3 delta=transform.position-previous;previous=transform.position;
-            float dt=Time.deltaTime;if(dt<=0||body==null)return;
-
-            if(phase!=null && phase()!=EmberRunPhase.Playing)return;
-            Vector2 velocity=delta.sqrMagnitude<1f?(Vector2)delta/dt:Vector2.zero;
-            float blend=1f-Mathf.Exp(-dt*9f);
-            drift=Vector2.Lerp(drift,Vector2.ClampMagnitude(velocity/3.3f,1),blend);
-            moving=Mathf.Lerp(moving,Mathf.Clamp01(velocity.magnitude/3.3f),blend);
-            phaseClock+=dt*(2.4f+moving*2f);
-            body.localPosition=new Vector3(0,.025f*Mathf.Sin(phaseClock),0);
-            body.localRotation=Quaternion.Euler(0,0,-drift.x*5f);
-            cloak.localScale=new Vector3(.66f*(1f+.025f*Mathf.Sin(phaseClock)),.78f*(1f-.018f*Mathf.Sin(phaseClock)),1);
-            face.localPosition=new Vector3(drift.x*.035f,.21f+drift.y*.016f,0);
-            lantern.localRotation=Quaternion.Euler(0,0,Mathf.Sin(phaseClock*.85f)*(3f+moving*9f)+drift.x*9f);
-            glow.color=new Color(1f,.5f,.1f,.12f+.015f*Mathf.Sin(phaseClock*2.3f));
+            Vector3 delta = transform.position - previous;
+            previous = transform.position;
+            float dt = Time.deltaTime;
+            if (dt <= 0 || phase == null || phase() != EmberRunPhase.Playing) return;
+            Vector2 velocity = delta.sqrMagnitude < 1 ? (Vector2)delta / dt : Vector2.zero;
+            float blend = 1 - Mathf.Exp(-dt * 9);
+            drift = Vector2.Lerp(drift, Vector2.ClampMagnitude(velocity / EmberKeeperMotion.PlayerSpeed, 1), blend);
+            moving = Mathf.Lerp(moving, Mathf.Clamp01(velocity.magnitude / EmberKeeperMotion.PlayerSpeed), blend);
+            phaseClock += dt * (2.4f + moving * 2);
+            float bob = Mathf.Sin(phaseClock);
+            body.transform.localPosition = restPosition + Vector3.up * (.025f * bob);
+            body.transform.localRotation = restRotation * Quaternion.Euler(0, 0, -drift.x * 5);
+            body.transform.localScale = Vector3.Scale(restScale, new Vector3(1 + .015f * bob, 1 - .01f * bob, 1));
+            if (Mathf.Abs(drift.x) > .08f) body.flipX = drift.x < 0;
+            var color = glowColor;
+            color.a *= 1 + .1f * Mathf.Sin(phaseClock * 2.3f);
+            glow.color = color;
         }
     }
 }

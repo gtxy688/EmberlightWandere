@@ -12,11 +12,13 @@ namespace Emberlight
     {
         readonly Dictionary<string, Stack<GameObject>> stacks = new Dictionary<string, Stack<GameObject>>();
         Transform holder;
+        GameObject shadePrefab;
         int maxPerKey = 64;
 
-        public void Bind(Transform runWorld, int maxPerKey = 64)
+        public void Bind(Transform runWorld, int maxPerKey = 64, GameObject shadePrefab = null)
         {
             Clear(destroy: true);
+            this.shadePrefab = shadePrefab;
             this.maxPerKey = maxPerKey < 8 ? 8 : maxPerKey;
             if (runWorld == null) return;
             var go = new GameObject("EmberPool");
@@ -109,7 +111,9 @@ namespace Emberlight
             using (RentEnemyMarker.Auto())
             {
                 bool boss = key == "boss";
-                var go = Rent(key, parent, p => EmberVisuals.Character(boss ? "Nightwarden" : "Shade", p, body).gameObject);
+                var go = Rent(key, parent, p => !boss && shadePrefab != null
+                    ? UnityEngine.Object.Instantiate(shadePrefab, p, false)
+                    : EmberVisuals.Character(boss ? "Nightwarden" : "Shade", p, body).gameObject);
                 go.transform.SetParent(parent, false);
                 go.transform.rotation = Quaternion.identity;
                 // Recolor cloak/hood if present (children Shape nodes).

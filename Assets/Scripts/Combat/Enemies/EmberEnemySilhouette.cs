@@ -3,7 +3,11 @@ namespace Emberlight
 {
     public sealed class EmberEnemySilhouette : MonoBehaviour
     {
+        [SerializeField] Sprite ordinarySprite;
+        [SerializeField] SpriteRenderer ordinaryBody;
         Transform[] parts;
+        Sprite[] sprites;
+        bool[] active;
         Vector3[] positions, scales;
         Quaternion[] rotations;
         Color[] colors;
@@ -59,11 +63,13 @@ namespace Emberlight
             {
                 int count=transform.childCount;
                 parts=new Transform[count];positions=new Vector3[count];scales=new Vector3[count];rotations=new Quaternion[count];colors=new Color[count];
+                sprites=new Sprite[count];active=new bool[count];
                 for(int i=0;i<count;i++)
                 {
                     parts[i]=transform.GetChild(i);positions[i]=parts[i].localPosition;
                     scales[i]=parts[i].localScale;rotations[i]=parts[i].localRotation;
-                    var renderer=parts[i].GetComponent<SpriteRenderer>();if(renderer!=null)colors[i]=renderer.color;
+                    active[i]=parts[i].gameObject.activeSelf;
+                    var renderer=parts[i].GetComponent<SpriteRenderer>();if(renderer!=null){colors[i]=renderer.color;sprites[i]=renderer.sprite;}
                 }
                 decoration=new GameObject("Silhouette").transform;decoration.SetParent(transform,false);
                 // 轮廓配饰按兵种复用，不在刷怪时重建。
@@ -79,9 +85,22 @@ namespace Emberlight
             for(int i=0;i<parts.Length;i++)
             {
                 var p=parts[i];p.localPosition=positions[i];p.localScale=scales[i];p.localRotation=rotations[i];
-                var renderer=p.GetComponent<SpriteRenderer>();if(renderer!=null)renderer.color=colors[i];
+                p.gameObject.SetActive(active[i]);
+                var renderer=p.GetComponent<SpriteRenderer>();if(renderer!=null){renderer.color=colors[i];renderer.sprite=sprites[i];}
                 if(renderer!=null && p.name=="Cloak")renderer.color=body;
                 if(renderer!=null && p.name=="Hood")renderer.color=body*1.2f;
+            }
+            // 普通怪使用手绘整体；其他兵种保留原有轮廓，复用时恢复 Sprite 与显隐。
+            if(kind==0 && ordinarySprite!=null && ordinaryBody!=null)
+            {
+                foreach(var p in parts)
+                    if(p.GetComponent<SpriteRenderer>()!=null && p!=ordinaryBody.transform && p.name!="Shadow")p.gameObject.SetActive(false);
+                ordinaryBody.sprite=ordinarySprite;
+                ordinaryBody.color=new Color(.82f,.82f,.88f);
+                ordinaryBody.transform.localPosition=new Vector3(0,.12f,0);
+                ordinaryBody.transform.localScale=Vector3.one*(1.25f/ordinarySprite.bounds.size.y);
+                decoration.gameObject.SetActive(false);
+                return;
             }
             decoration.gameObject.SetActive(true);
             for(int i=3;i<roles.Length;i++)if(roles[i]!=null)roles[i].gameObject.SetActive(kind==i);

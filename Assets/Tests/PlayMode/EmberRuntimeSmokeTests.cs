@@ -10,7 +10,7 @@ using UnityEngine.UI;
 
 namespace Emberlight.Tests
 {
-    public sealed class EmberRuntimeSmokeTests
+    public sealed partial class EmberRuntimeSmokeTests
     {
         GameObject panelHost;
         int previousSpeed, previousHint;
@@ -74,7 +74,7 @@ namespace Emberlight.Tests
             return canvas.transform;
         }
 
-        static IEnumerator EnterRun(EmberGame game, Transform uiHost)
+        static IEnumerator EnterRun(EmberGame game, Transform uiHost, int starter = 13)
         {
             ClickLabel(game, EmberCopy.MenuChoices[0]);
             Assert.That(game.Phase, Is.EqualTo(EmberRunPhase.SelectLength));
@@ -84,7 +84,7 @@ namespace Emberlight.Tests
             Assert.That(game.Phase, Is.EqualTo(EmberRunPhase.SelectSlots));
             ClickLabel(game, "确认");
             Assert.That(game.Phase, Is.EqualTo(EmberRunPhase.SelectRoster));
-            ButtonNamed(uiHost, "Roster 13").onClick.Invoke();
+            ButtonNamed(uiHost, "Roster " + starter).onClick.Invoke();
             yield return null;
             ButtonNamed(uiHost, "Confirm starter").onClick.Invoke();
             Assert.That(game.Phase, Is.EqualTo(EmberRunPhase.Playing));

@@ -541,6 +541,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   uiRoot: {fileID: 217228434}
   introRoot: {fileID: 1534102034}
+  artSet: {fileID: 11400000, guid: 37b34ff4d15a5ae4dbaf52f02123f453, type: 2}
 --- !u!4 &806069786
 Transform:
   m_ObjectHideFlags: 0

@@ -14,6 +14,7 @@ namespace Emberlight
     {
         [SerializeField] EmberUiRoot uiRoot;
         [SerializeField] EmberIntroView introRoot;
+        [SerializeField] EmberArtSet artSet;
 
         /// <summary>当前局长阶段；只有 Playing 阶段推进战斗与 HUD。</summary>
         public EmberRunPhase Phase { get; private set; }
@@ -146,6 +147,8 @@ namespace Emberlight
         {
             if (ui == null || ui.BattleHud == null)
                 return;
+            if (artSet == null) throw new System.InvalidOperationException("The scene requires an art set.");
+            artSet.ValidateReferences();
             Run.Level = LevelConfig.Create(menuFlow.SelectedDifficulty, menuFlow.SelectedWaves);
             flow.Reset();
             if (ui.GodsSelect != null)
@@ -163,22 +166,14 @@ namespace Emberlight
             Run.Buffs.Clear();
             Run.Kills = 0;
             Run.Vitals.Reset();
-            // 灯芯的外形由 EmberKeeperAnimation 负责（兜帽轮廓、细眼、提灯摆动）。
-            Run.Keeper = new GameObject("Keeper").transform;
-            Run.Keeper.SetParent(Run.World, false);
-            Run.Keeper.gameObject.AddComponent<EmberKeeperAnimation>().Initialize(() => Phase);
-            var deco = new System.Random(73);
-            for (int i = 0; i < 160; i++)
-            {
-                Vector2 p = new Vector2((float)deco.NextDouble() * 46 - 23, (float)deco.NextDouble() * 46 - 23);
-                EmberVisuals.Shape("Ruin stone", Run.World, p, new Vector2(.3f + (float)deco.NextDouble(), .18f), new Color(.10f, .15f, .19f), 0);
-            }
+            Instantiate(artSet.CourtyardPrefab, Run.World, false);
+            Run.Keeper = Instantiate(artSet.KeeperPrefab, Run.World, false).transform;
+            Run.Keeper.GetComponent<EmberKeeperAnimation>().Initialize(() => Phase);
 
             var level = Run.Level;
             level.ApplyWorld();
-            EmberWorld.BuildBoundary(Run.World);
             // Begin 只激活槽位内的武器（由 OwnsWeapon 门控）。
-            combat.Begin(Run.World, Run.Keeper, Run.Cam, Run.Effects, level);
+            combat.Begin(Run.World, Run.Keeper, Run.Cam, Run.Effects, level, artSet.ShadePrefab);
             EmberKeeperMotion.Follow(Run);
             SetPlaying();
             hud.Push();
