@@ -29,6 +29,8 @@ namespace Emberlight
         public EmberEffects Effects { get; set; }
         /// <summary>灯芯生命结算；每局共用同一个实例，<see cref = "Clear"/> 时重置。</summary>
         public EmberKeeperVitals Vitals { get; private set; }
+        /// <summary>玩家的临时 Buff 与 Debuff；独立于选卡构筑。</summary>
+        public BuffManager Buffs { get; } = new BuffManager();
 
         /// <summary>当前生命，转发自 <see cref = "Vitals"/>。</summary>
         public float Health
@@ -39,7 +41,7 @@ namespace Emberlight
             }
         }
 
-        /// <summary>生命上限 = 基础值 + 本局构筑加成，转发自 <see cref = "Vitals"/>。</summary>
+        /// <summary>当前固定生命上限，转发自 <see cref = "Vitals"/>。</summary>
         public float MaxHealth
         {
             get
@@ -71,6 +73,7 @@ namespace Emberlight
             Keeper = null;
             Effects = null;
             Vitals.Reset();
+            Buffs.Clear();
         }
     }
 }

@@ -74,6 +74,15 @@ namespace Emberlight.Editor
             finally { PrefabUtility.UnloadPrefabContents(root); }
         }
 
+        [MenuItem("Emberlight/UI/Update Buff HUD")]
+        public static void UpdateBuffHud()
+        {
+            if (EditorApplication.isPlayingOrWillChangePlaymode) throw new InvalidOperationException("Stop Play Mode first.");
+            EmberFontBake.Bake();
+            EmberIntroPrefabSetup.ConfigurePrefab();
+            ConfigurePrefab();
+        }
+
         static void ConnectScene(Scene scene)
         {
             var roots = scene.GetRootGameObjects();
@@ -152,13 +161,15 @@ namespace Emberlight.Editor
             var boss = At<Transform>(view.Safe, "Boss HUD");
             var encounter = At<Transform>(hud, "Encounter banner");
             var labels = DirectTexts(hud);
+            var buffs = EmberBuffHudSetup.Configure(hud, labels[0].font);
             view.Hud = new EmberUiRoot.HudReferences
             {
                 Root = hud.gameObject, BossRoot = boss.gameObject, EncounterRoot = encounter.gameObject,
                 Health = At<Image>(hud, "Life track/Life fill"), Shield = At<Image>(hud, "Shield track/Shield fill"),
                 WaveFill = At<Image>(hud, "Wave track/Wave fill"), BossFill = At<Image>(boss, "Boss life track/Boss life fill"),
                 HealthText = DirectTexts(At<Transform>(hud, "Life track"))[0], Clock = labels[0], ShieldText = labels[1], WaveText = labels[2],
-                BossText = DirectTexts(boss)[0], EncounterLabel = DirectTexts(encounter)[0], Pause = At<Button>(hud, "Pause")
+                BossText = DirectTexts(boss)[0], EncounterLabel = DirectTexts(encounter)[0], Pause = At<Button>(hud, "Pause"),
+                Buffs = buffs
             };
             hud.gameObject.SetActive(false);
             boss.gameObject.SetActive(false);

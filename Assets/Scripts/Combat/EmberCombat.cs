@@ -9,7 +9,7 @@ namespace Emberlight
     /// 只做四件事——拥有武器实例、装配各战斗单元、驱动每帧顺序、把单元之间的回调接起来。
     /// 具体规则分别属于：波次推进 <see cref="EmberWaveDirector"/>、敌人实例化与回收
     /// <see cref="EmberEnemyRoster"/>、伤害与死亡结算 <see cref="EmberCombatDamage"/>、
-    /// 敌方弹幕 <see cref="EmberEnemyProjectiles"/>、治疗掉落 <see cref="EmberHealingDrops"/>。
+    /// 敌方弹幕 <see cref="EmberEnemyProjectiles"/>、治疗掉落 <see cref="EmberDrops"/>。
     /// 对宿主的依赖只有 <see cref="IEmberCombatHost"/>，不认识 `EmberGame`。
     /// </summary>
     public sealed class EmberCombat : EmberWaveDirector.Host
@@ -18,10 +18,12 @@ namespace Emberlight
         readonly EmberBurnGround burnGround = new EmberBurnGround();
         readonly EmberWeaponContext weaponCtx = new EmberWeaponContext();
         readonly IEmberCombatHost host;
+        readonly System.Func<bool> canReceiveBuff;
+        readonly System.Func<BuffConfig, bool> applyBuff;
         readonly System.Random random = new System.Random();
         readonly EmberPool pool = new EmberPool();
         readonly EmberEnemyProjectiles enemyProjectiles;
-        readonly EmberHealingDrops healingDrops;
+        readonly EmberDrops drops;
         readonly EmberEnemyContext enemyCtx = new EmberEnemyContext();
         readonly EmberCombatDamage.Context damageCtx = new EmberCombatDamage.Context();
         readonly List<Vector2> pendingBroods = new List<Vector2>();
@@ -40,8 +42,10 @@ namespace Emberlight
         public EmberCombat(IEmberCombatHost owner)
         {
             host = owner;
+            canReceiveBuff = () => host.HurtReady;
+            applyBuff = host.TryAddBuff;
             enemyProjectiles = new EmberEnemyProjectiles(pool);
-            healingDrops = new EmberHealingDrops(pool, host);
+            drops = new EmberDrops(pool, host);
         }
 
         // 只读状态，供 HUD 与武器 context 读取。
@@ -116,7 +120,7 @@ namespace Emberlight
             enemyCtx.Split = point => pendingBroods.Add(point);
             enemyCtx.Explode = Explode;
             enemyCtx.Config = config;
-            healingDrops.Bind(world, config);
+            drops.Bind(world, config);
             roster = new EmberEnemyRoster(pool, config, world, player, random, cam);
             waves = new EmberWaveDirector(this, config, random);
             burningTimer = 0f;
@@ -130,7 +134,7 @@ namespace Emberlight
         {
             if (roster != null)
                 roster.Clear(destroyViews: false);
-            healingDrops.Clear();
+            drops.Clear();
             enemyProjectiles.Clear();
             pendingBroods.Clear();
             pool.Clear(destroy: true);
@@ -178,11 +182,12 @@ namespace Emberlight
             damageCtx.Effects = effects;
             damageCtx.Player = player;
             damageCtx.Camera = cam;
+            damageCtx.PlayerBuffs = host.Buffs;
             damageCtx.EnemyContext = enemyCtx;
             damageCtx.PlayHit = () => EmberAudio.Ensure().PlayHit();
             damageCtx.AddScore = amount => host.Progress.AddScore(amount);
             damageCtx.NoteSplitPoint = point => pendingBroods.Add(point);
-            damageCtx.HealingDrops = healingDrops;
+            damageCtx.Drops = drops;
             damageCtx.Random = random;
         }
 
@@ -231,7 +236,7 @@ namespace Emberlight
                 return;
             var progress = host.Progress;
             waves.Tick(dt);
-            healingDrops.Tick(dt, player.position);
+            drops.Tick(dt, player.position);
             // Boss 不需要单独 Tick：它也在名册里，由 TickEnemies 的 ai 分支推进。
             enemyProjectiles.Move(dt);
             TickEnemies(dt);
@@ -253,7 +258,7 @@ namespace Emberlight
             TickWeapons(dt, progress);
             if (host.Phase != EmberRunPhase.Playing)
                 return;
-            enemyProjectiles.HitPlayer(player.position, host.HurtPlayer);
+            enemyProjectiles.HitPlayer(player.position, host.HurtPlayer, applyBuff, canReceiveBuff);
             if (host.Phase != EmberRunPhase.Playing)
                 return;
             ResolveDeaths();

@@ -106,7 +106,7 @@ namespace Emberlight.Tests
             }
         }
 
-        static void Capture(Canvas canvas, string name)
+        static void Capture(Canvas canvas, string name, bool includeWorld = false)
         {
             var node = new GameObject("Smoke capture", typeof(Camera));
             var camera = node.GetComponent<Camera>();
@@ -115,6 +115,7 @@ namespace Emberlight.Tests
             camera.backgroundColor = new Color(.025f, .04f, .055f);
             camera.nearClipPlane = .1f;
             camera.farClipPlane = 10;
+            if (includeWorld) camera.CopyFrom(Camera.main);
             var texture = new RenderTexture(540, 960, 24);
             var image = new Texture2D(540, 960, TextureFormat.RGB24, false);
             var oldMode = canvas.renderMode;
@@ -220,6 +221,167 @@ namespace Emberlight.Tests
             Assert.That(game.Run.Vitals.HurtReady, Is.True);
             CheckTextMeshes(uiHost);
             Capture(uiHost.GetComponent<Canvas>(), "redundancy-restarted-hud");
+        }
+
+        [UnityTest]
+        public IEnumerator BuffDrops_HudPauseUpgradeExpirationAndRestart()
+        {
+            yield return SceneManager.LoadSceneAsync("Assets/Scenes/Emberlight.unity");
+            var game = Object.FindObjectOfType<EmberGame>();
+            var uiHost = UiHost();
+            yield return WaitFor(() => game.GetComponent<EmberIntro>() != null && game.GetComponent<EmberIntro>().Ready,
+                20, "Loading did not finish");
+            game.GetComponent<EmberIntro>().Continue();
+            yield return EnterRun(game, uiHost);
+            game.Run.Level.BuffDropChance = 1;
+            System.Func<SpriteRenderer> findDrop = () => game.Run.World.GetComponentsInChildren<SpriteRenderer>()
+                .FirstOrDefault(view => view.name == "buff-drop");
+            yield return WaitFor(() => game.Buffs.Active.Count > 0 || findDrop() != null, 20, "Enemy death produced no Buff drop");
+            var drop = findDrop();
+            if (drop != null) game.Run.Keeper.position = drop.transform.position;
+            yield return WaitFor(() => game.Buffs.Active.Count > 0, 3, "Buff drop was not picked up");
+            game.Run.Level.BuffDropChance = 0;
+
+            game.TryAddBuff(EmberBuffCatalog.Power);
+            game.TryAddBuff(EmberBuffCatalog.Haste);
+            game.TryAddBuff(EmberBuffCatalog.Slow);
+            yield return null;
+            var hudView = uiHost.GetComponent<EmberUiRoot>().Hud;
+            var strip = hudView.Buffs.transform;
+            Assert.That(strip.Find("power/Time").GetComponent<TextMeshProUGUI>().text, Is.EqualTo("8s"));
+            Assert.That(strip.Find("haste/Time").GetComponent<TextMeshProUGUI>().text, Is.EqualTo("8s"));
+            Assert.That(strip.Find("slow/Time").GetComponent<TextMeshProUGUI>().text, Is.EqualTo("3s"));
+            Assert.That(ActiveBuffNotices(uiHost).Any(t => t.text == "迟缓 -25%"), Is.True);
+            var floatingRoot = (RectTransform)uiHost.Find("Safe area/Buff floating");
+            var playerScreen = (Vector2)game.Run.Cam.WorldToScreenPoint(game.Run.Keeper.position);
+            var feedbackScreen = RectTransformUtility.WorldToScreenPoint(null, floatingRoot.position);
+            Assert.That(feedbackScreen.x, Is.EqualTo(playerScreen.x).Within(1));
+            Assert.That(feedbackScreen.y - playerScreen.y,
+                Is.EqualTo(EmberBuffHud.NoticeOffset * uiHost.GetComponent<Canvas>().scaleFactor).Within(1));
+            Canvas.ForceUpdateCanvases();
+            var iconsRect = (RectTransform)strip;
+            var encounterRect = (RectTransform)hudView.EncounterRoot.transform;
+            var bossRect = (RectTransform)hudView.BossRoot.transform;
+            var corners = new Vector3[4];
+            iconsRect.GetWorldCorners(corners);
+            float iconsBottom = corners[0].y;
+            encounterRect.GetWorldCorners(corners);
+            Assert.That(corners[1].y, Is.LessThan(iconsBottom), "Encounter banner overlaps Buff icons.");
+            float encounterBottom = corners[0].y;
+            bossRect.GetWorldCorners(corners);
+            Assert.That(corners[1].y, Is.LessThan(encounterBottom), "Boss bar overlaps the encounter banner.");
+            CheckTextMeshes(uiHost);
+            Capture(uiHost.GetComponent<Canvas>(), "buff-icons-hud", true);
+            game.Pause();
+            float remaining = game.Buffs.Active[0].Remaining;
+            yield return new WaitForSecondsRealtime(.25f);
+            Assert.That(game.Buffs.Active[0].Remaining, Is.EqualTo(remaining));
+            Assert.That(strip.gameObject.activeInHierarchy, Is.False);
+            Assert.That(ActiveBuffNotices(uiHost), Is.Empty);
+            Assert.That(game.TryAddBuff(EmberBuffCatalog.Slow), Is.False);
+            ClickLabel(game, "继续战斗");
+            game.OnWaveCleared(1);
+            remaining = game.Buffs.Active[0].Remaining;
+            yield return new WaitForSecondsRealtime(.25f);
+            Assert.That(game.Buffs.Active[0].Remaining, Is.EqualTo(remaining));
+            game.SelectUpgrade(game.CurrentOffers.First(offer => offer.Kind == EmberOfferKind.Generic));
+            Assert.That(game.Phase, Is.EqualTo(EmberRunPhase.Playing));
+            Assert.That(game.Buffs.Active.Count, Is.EqualTo(3), "Changing waves cleared active Buffs.");
+            yield return WaitFor(() => !game.Buffs.Active.Any(buff => buff.Config == EmberBuffCatalog.Slow), 5,
+                "Slow did not expire while playing");
+            Assert.That(game.Buffs.MoveSpeedMultiplier, Is.EqualTo(1.3f).Within(.001f));
+            Assert.That(strip.Find("slow").gameObject.activeSelf, Is.False);
+            game.TryAddBuff(EmberBuffCatalog.Haste);
+            Assert.That(ActiveBuffNotices(uiHost).Any(t => t.text == "刷新 · 疾行 +30%"), Is.True);
+            Assert.That(strip.Find("haste/Ring").GetComponent<Image>().fillAmount, Is.EqualTo(1));
+            Capture(uiHost.GetComponent<Canvas>(), "buff-icons-refreshed", true);
+            GameSpeed.Multiplier = 5;
+            GameSpeed.Apply();
+            yield return new WaitForSecondsRealtime(.65f);
+            Assert.That(ActiveBuffNotices(uiHost).Length, Is.GreaterThan(0), "Game speed shortened the real-time pickup notice.");
+            GameSpeed.Multiplier = 1;
+            GameSpeed.Apply();
+            yield return WaitFor(() => ActiveBuffNotices(uiHost).Length == 0, 2, "The floating notice did not dismiss itself.");
+            game.Run.Vitals.Tick(1);
+            game.HurtPlayer(100000);
+            ClickLabel(game, EmberCopy.ReturnChoice);
+            Assert.That(game.Buffs.Active, Is.Empty);
+            yield return EnterRun(game, uiHost);
+            Assert.That(game.Buffs.Active, Is.Empty);
+            Assert.That(game.Buffs.DamageMultiplier, Is.EqualTo(1));
+            Assert.That(game.Buffs.MoveSpeedMultiplier, Is.EqualTo(1));
+            yield return null;
+            Assert.That(strip.gameObject.activeSelf, Is.False);
+            Assert.That(ActiveBuffNotices(uiHost), Is.Empty);
+        }
+
+        [UnityTest]
+        public IEnumerator PickupArtwork_RendersAtGameScaleAndStillPicksUp()
+        {
+            yield return SceneManager.LoadSceneAsync("Assets/Scenes/Emberlight.unity");
+            var game = Object.FindObjectOfType<EmberGame>();
+            var uiHost = UiHost();
+            yield return WaitFor(() => game.GetComponent<EmberIntro>() != null && game.GetComponent<EmberIntro>().Ready,
+                20, "Loading did not finish");
+            game.GetComponent<EmberIntro>().Continue();
+            yield return EnterRun(game, uiHost);
+            var pool = new EmberPool();
+            pool.Bind(game.Run.World);
+            var drops = new EmberDrops(pool, game);
+            var level = new LevelConfig { HealDropChance = 1, BuffDropChance = 0 };
+            drops.Bind(game.Run.World, level);
+            try
+            {
+                drops.OnDeath(new Vector2(-2, 2.5f), 0, EnemyAffix.None, new ArtworkRandom(0));
+                level.HealDropChance = 0;
+                level.BuffDropChance = 1;
+                drops.OnDeath(new Vector2(-.35f, 2.5f), 0, EnemyAffix.None, new ArtworkRandom(0));
+                drops.OnDeath(new Vector2(1.65f, 2.5f), 0, EnemyAffix.None, new ArtworkRandom(.75));
+                var views = game.Run.World.GetComponentsInChildren<SpriteRenderer>()
+                    .Where(view => view.name == "healing-drop" || view.name == "buff-drop").ToArray();
+                Assert.That(views.Length, Is.EqualTo(3));
+                foreach (var view in views)
+                {
+                    Assert.That(view.sprite.name, Does.StartWith("pickup-"));
+                    Assert.That(view.bounds.size.x, Is.EqualTo(.62f).Within(.001f));
+                    Assert.That(view.color, Is.EqualTo(Color.white));
+                }
+                yield return null;
+                Capture(uiHost.GetComponent<Canvas>(), "pickup-art-in-game", true);
+                game.HurtPlayer(40);
+                float injured = game.Run.Health;
+                foreach (var view in views)
+                {
+                    game.Run.Keeper.position = view.transform.position;
+                    drops.Tick(.01f, game.Run.Keeper.position);
+                    if (view.sprite.name == "pickup-power")
+                        Assert.That(ActiveBuffNotices(uiHost).Any(t => t.text == "增伤 +30%"), Is.True);
+                    else if (view.sprite.name == "pickup-haste")
+                        Assert.That(ActiveBuffNotices(uiHost).Any(t => t.text == "疾行 +30%"), Is.True);
+                }
+                yield return null;
+                CheckTextMeshes(uiHost);
+                Capture(uiHost.GetComponent<Canvas>(), "buff-icons-pickup", true);
+                Assert.That(game.Run.Health, Is.GreaterThan(injured));
+                Assert.That(game.Buffs.Active.Count, Is.EqualTo(2));
+                Assert.That(game.Buffs.DamageMultiplier, Is.EqualTo(1.3f).Within(.001f));
+                Assert.That(game.Buffs.MoveSpeedMultiplier, Is.EqualTo(1.3f).Within(.001f));
+                Assert.That(views.All(view => !view.gameObject.activeSelf), Is.True);
+            }
+            finally { drops.Clear(); pool.Clear(true); }
+        }
+
+        static TextMeshProUGUI[] ActiveBuffNotices(Transform uiHost)
+        {
+            return uiHost.Find("Safe area/Buff floating").GetComponentsInChildren<TextMeshProUGUI>(true)
+                .Where(text => text.gameObject.activeSelf).ToArray();
+        }
+
+        sealed class ArtworkRandom : System.Random
+        {
+            readonly double value;
+            public ArtworkRandom(double value) { this.value = value; }
+            public override double NextDouble() => value;
         }
 
         [UnityTest]

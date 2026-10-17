@@ -26,6 +26,7 @@ namespace Emberlight
 
         /// <summary>本局构筑进度；未开局时为 null。</summary>
         public RunProgress Progress { get { return Run.Progress; } }
+        public BuffManager Buffs { get { return Run.Buffs; } }
 
         /// <summary>UI API：最近一次发到桌面上的候选。</summary>
         public EmberOffer[] CurrentOffers { get { return offered; } }
@@ -131,10 +132,12 @@ namespace Emberlight
             // 输入与生命结算都可能改阶段（暂停 / 收局），每步之后重新确认还在局内。
             if (Phase != EmberRunPhase.Playing)
                 return;
+            Run.Buffs.Tick(dt);
             EmberKeeperMotion.Step(Run, input.Stick, dt);
             combat.Tick(dt);
             if (Phase != EmberRunPhase.Playing)
                 return;
+            hud.TickFeedback(Time.unscaledDeltaTime);
             hud.Push();
         }
 
@@ -157,6 +160,7 @@ namespace Emberlight
             Run.Effects = Run.World.gameObject.AddComponent<EmberEffects>();
             Run.Effects.Initialize(() => Phase);
             Run.Progress = new RunProgress(weapons, slots);
+            Run.Buffs.Clear();
             Run.Kills = 0;
             Run.Vitals.Reset();
             // 灯芯的外形由 EmberKeeperAnimation 负责（兜帽轮廓、细眼、提灯摆动）。
@@ -354,6 +358,17 @@ namespace Emberlight
                 return false;
             hud.Push();
             EmberAudio.Ensure().PlayPickupHeal();
+            return true;
+        }
+
+        /// <summary>战斗来源只请求施加 Buff；生命周期与属性规则由 BuffManager 管理。</summary>
+        public bool TryAddBuff(BuffConfig config)
+        {
+            if (Phase != EmberRunPhase.Playing || Run.Progress == null) return false;
+            bool added = Run.Buffs.Add(config);
+            if (!config.IsDebuff) EmberAudio.Ensure().PlayPickupHeal();
+            hud.NotifyBuff(config, !added);
+            hud.Push();
             return true;
         }
 

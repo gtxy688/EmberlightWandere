@@ -7,7 +7,7 @@ namespace Emberlight
     /// </summary>
     public static class EmberKeeperMotion
     {
-        /// <summary>灯芯基础移动速度（单位/秒），实际速度再乘构筑加成。</summary>
+        /// <summary>灯芯基础移动速度（单位/秒），实际速度再乘临时 Buff 倍率。</summary>
         public const float PlayerSpeed = 3.3f;
 
         /// <summary>相机在 Z 轴的固定偏移（2D 正交，必须为负才能看到 +Z 方向的精灵）。</summary>
@@ -19,7 +19,7 @@ namespace Emberlight
             if (run == null || run.Keeper == null) return;
 
             Vector2 move = Vector2.ClampMagnitude(EmberInput.KeyboardAxis() + stick, 1);
-            run.Keeper.position += (Vector3)(move * (PlayerSpeed * dt));
+            run.Keeper.position += (Vector3)(move * (PlayerSpeed * run.Buffs.MoveSpeedMultiplier * dt));
             run.Keeper.position = EmberWorld.Clamp(run.Keeper.position);
             Follow(run);
         }

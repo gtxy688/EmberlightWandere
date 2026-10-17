@@ -1,5 +1,7 @@
 # M3 战斗与波次
 
+临时 Buff 通过宿主的 `Buffs` 与 `TryAddBuff` 接线：伤害 context 读取玩家倍率，掉落和迟缓弹请求施加。效果计时与属性合成归 M10；掉落模块为 `EmberDrops`，支持治疗和 Buff 两种入口。迟缓弹按命中前无敌帧判定附加许可，死亡后的请求被宿主拒绝，拦截与回池清理见 M5。
+
 > 相关需求：`../requirements.md` §2（主循环）、§3.1–3.2、§3.5、§5
 > 代码：`Assets/Scripts/Combat/` 下的 `EmberCombat.cs`（战斗根）、`EmberWaveDirector.cs`、
 > `EmberEnemyRoster.cs`、`EmberCombatDamage.cs`、`EmberEnemy.cs`、`EmberBoss.cs`、

@@ -63,7 +63,7 @@ EmberGame (MonoBehaviour, 组合根)
 ```text
 Elapsed += dt  →  Vitals.Tick(dt)  →  input.Tick()
                                         ↓ 若阶段已改变则中止本帧
-                  EmberKeeperMotion.Step()
+                  Buffs.Tick(dt) → EmberKeeperMotion.Step()
                                         ↓
                   combat.Tick(dt)
                                         ↓ 若阶段已改变则中止本帧
@@ -78,6 +78,8 @@ Elapsed += dt  →  Vitals.Tick(dt)  →  input.Tick()
 4. 无敌帧**只在 Playing 阶段递减**（保持重构前口径）：暂停与选卡期间不会"白送"无敌帧。
 
 ### 阶段所有权
+
+玩家临时效果由 `EmberRunState.Buffs` 持有。Playing 帧在输入后的阶段检查通过后、移动前调用 BuffManager.Tick；组合根只转发施加请求与呈现结果，合成规则见 M10。新局与 `Run.Clear` 清空 Buff，普通换波保留。
 
 `Phase` 只有组合根能写（`private set`）。其他模块通过各自契约**请求**切换：
 
@@ -131,7 +133,7 @@ Elapsed += dt  →  Vitals.Tick(dt)  →  input.Tick()
 
 ## 影响与回归范围
 
-- **直接影响模块**：M1–M8 全部（组合根是唯一的装配点）。
+- **直接影响模块**：M1–M8 与 M10（组合根是唯一的装配点）。
 - **必须复验的契约**：
   - 每帧顺序（尤其无敌帧递减时机与阶段二次检查）；
   - 生命结算口径：难度倍率只乘一次、护盾先于生命、溢出丢弃、满血拾取仍播提示音；

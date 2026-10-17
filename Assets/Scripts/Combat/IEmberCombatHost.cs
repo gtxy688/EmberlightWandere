@@ -12,6 +12,8 @@ namespace Emberlight
 
         /// <summary>本局构筑进度：武器归属、属性加成、计分。</summary>
         RunProgress Progress { get; }
+        BuffManager Buffs { get; }
+        bool TryAddBuff(BuffConfig config);
 
         /// <summary>无敌帧是否已结束——接触伤害要先问这一次能不能打中。</summary>
         bool HurtReady { get; }

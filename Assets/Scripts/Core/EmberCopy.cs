@@ -6,6 +6,8 @@ namespace Emberlight
     /// </summary>
     public static class EmberCopy
     {
+        public const string BuffRefreshed = "刷新";
+        public const string BuffGlyphs = BuffRefreshed;
         public const string SlotsTitle = "武器槽位";
         public const string SlotsSummary = "拿得越少强化越快，拿得越多打法越丰富 · 默认推荐 2 把";
         public const string RosterTitle = "挑选起始武器";

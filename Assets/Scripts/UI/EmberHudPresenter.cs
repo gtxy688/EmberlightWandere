@@ -29,6 +29,8 @@ namespace Emberlight
             int quota = combat != null ? combat.WaveQuota : 0;
 
             hud.Set(run.Health, run.MaxHealth, run.Progress, run.Elapsed, run.Kills, wave, remaining, quota);
+            hud.Buffs(run.Buffs.Active);
+            if (run.Keeper != null) hud.PositionBuffFeedback(run.Cam, run.Keeper.position);
             int total = level != null ? level.BossWave : 0;
             if (wave != shownWave || total != shownTotal || level != shownLevel)
             {
@@ -48,5 +50,9 @@ namespace Emberlight
                 boss == null ? "" : boss.ai.Phase,
                 boss != null && phase != null && phase() == EmberRunPhase.Playing);
         }
+
+        public void NotifyBuff(BuffConfig config, bool refreshed) => hud.NotifyBuff(config, refreshed);
+
+        public void TickFeedback(float unscaledDeltaTime) => hud.TickFeedback(unscaledDeltaTime);
     }
 }

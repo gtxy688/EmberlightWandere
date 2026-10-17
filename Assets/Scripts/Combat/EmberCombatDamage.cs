@@ -35,6 +35,7 @@ namespace Emberlight
             public EmberEffects Effects;
             public Transform Player;
             public Camera Camera;
+            public BuffManager PlayerBuffs;
             /// <summary>行为策略回调用的共享 context（由战斗根持有并复用）。</summary>
             public EmberEnemyContext EnemyContext;
             public System.Action PlayHit;
@@ -42,7 +43,7 @@ namespace Emberlight
             public System.Action<int> AddScore;
             /// <summary>记录一个分裂落点（烬胎母体死亡位置）。</summary>
             public System.Action<Vector2> NoteSplitPoint;
-            public EmberHealingDrops HealingDrops;
+            public EmberDrops Drops;
             /// <summary>掉落 roll 用的随机源；必须与 <see cref="EmberEnemyRoster"/> 用同一个实例。</summary>
             public System.Random Random;
         }
@@ -69,6 +70,9 @@ namespace Emberlight
             if (index < 0 || index >= roster.Count) return;
             var e = roster.At(index);
             if (!e.Targetable || !EmberWorld.Visible(ctx.Camera, e.view.position)) return;
+
+            // 临时增伤在实际命中时统一应用一次，覆盖弹体、接触与共享燃地。
+            amount *= ctx.PlayerBuffs != null ? ctx.PlayerBuffs.DamageMultiplier : 1f;
 
             // 铁灯卫：正面 60° 内减伤。
             if (e.kind == 7)
@@ -103,7 +107,7 @@ namespace Emberlight
             if (e.affix != EnemyAffix.Rebirth || e.revived || e.IsBoss) return false;
             e.revived = true;
             e.hp = 0f;
-            e.dead = e.detonating = false;
+            e.dead = e.detonating = e.slowShot = false;
             e.reviveTimer = config.RebirthDelay;
             e.charge = e.fuse = 0f;
             // 复活后给一套全新的行为状态，避免残留读条中的射击。
@@ -132,8 +136,8 @@ namespace Emberlight
                 bool boss = e.IsBoss;
                 if (e.behavior != null) e.behavior.OnDeath(BuildEnemyContext(ctx, e));
                 if (ctx.Effects != null) ctx.Effects.Impact(e.view.position, true);
-                if (ctx.HealingDrops != null)
-                    ctx.HealingDrops.OnDeath(e.view.position, e.kind, e.affix, ctx.Random);
+                if (ctx.Drops != null)
+                    ctx.Drops.OnDeath(e.view.position, e.kind, e.affix, ctx.Random);
                 if (e.kind == 5 && ctx.NoteSplitPoint != null) ctx.NoteSplitPoint(e.view.position);
 
                 roster.Release(e);

@@ -33,6 +33,7 @@
 | M7 | 美术与表现 | 程序化精灵、图集取图、粒子、中文 TMP 字体 | 不改玩法数值与碰撞 | `07-art-presentation.md` |
 | M8 | 音频 | BGM/SFX 总线、音量持久化、播放节流 | 不决定玩法，缺失资源静默降级 | `08-audio.md` |
 | M9 | 构建与平台 | Android 打包、PlayerSettings、资源导入器 | 不改运行时行为 | `09-build-platform.md` |
+| M10 | Buff 系统 | Buff 配置、对象、计时与属性修正 | 不做掉落、技能命中与 UI 创建 | `10-buff-system.md` |
 
 ## 依赖图
 
@@ -59,6 +60,7 @@ M3(战斗) ──► IEmberCombatHost ──► M0  由组合根实现，M3 不�
 
 M7(表现) ──► Func<EmberRunPhase>  通过 Initialize 注入，只读阶段门控
 M8(音频) ──► 无玩法依赖（Resources 自加载）
+M0 ──► M10(Buff) ◄── M3(伤害读取) / M5(施加请求) / M6(只读呈现)
 
 M1(配置) ──► M3.EmberWorld.Limit  ApplyWorld 的反向静态写入
 M2(进度) ──► M4.EmberWeaponTuning  共享升级常量，零 UnityEngine 引用
@@ -92,7 +94,8 @@ M2.RunFlowController ──► Host 契约 ──► M0  选卡规则不持有 E
 | 专属 / 质变 / 进化 / 连发 / 燎原 / 日冕 | M2 + M4 | `02-run-progression.md` → `04-weapon-system.md` |
 | 结算 / Score / 余烬 / 击杀计分 | M2 | `02-run-progression.md` |
 | 护盾 / 回血道具 / 掉落率 | M2 + M5 | `02-run-progression.md` |
-| 拾取 / 治疗掉落 / 自动吸附 | M5 | `05-enemy-system.md` |
+| 拾取 / 治疗掉落 / Buff 掉落 / 自动吸附 | M5 | `05-enemy-system.md` |
+| Buff / Debuff / BuffConfig / BuffManager / 增伤 / 疾行 / 迟缓 / 减速 / 效果刷新与到期 | M10 | `10-buff-system.md` |
 | 波次 / 清波 / 精英挑战 / 遭遇事件 / 阶段 Boss / Profiler 标记 / 刷怪尖峰 / 屏外刷怪 / EmberSpawnPlacement | M3 | `03-combat-waves.md` |
 | 暗弹 / 齐射 / 半血狂怒 / Boss 招式 | M3 | `03-combat-waves.md` |
 | 受伤 / 无敌帧 / 护盾吸收顺序 / 生命纯逻辑 | M0 | `00-composition-root.md` |
@@ -106,9 +109,11 @@ M2.RunFlowController ──► Host 契约 ──► M0  选卡规则不持有 E
 | 敌人动画 / 剪影 / 角色标记 / 预警圈 | M5 + M7 | `05-enemy-system.md` |
 | 主菜单 / 开局流程 / 选难度 / 选槽位 / 选武器 | M6 | `06-ui-flow.md` |
 | HUD / 文字刷新缓存 / 血条 / 波次横幅 / 暂停 / 设置页 / 音量滑条 / UI 复用 / 旧 UI 创建清理 / UIRoot 运行时引用 / Connect UIRoot Runtime | M6 + M0 | `06-ui-flow.md` → `00-composition-root.md` |
+| Buff 拾取提示 / 效果说明 / 持续时间提示 / Buff 倒计时 / 图标计时环 / 角色浮字 / EmberBuffHud / EmberBuffPresentation | M6 + M10 | `06-ui-flow.md` → `10-buff-system.md` |
 | HUD 推送点 / 安全区适配 / 摇杆输入 / 相机跟随 | M6 + M0 | `00-composition-root.md` → `06-ui-flow.md` |
 | 卡面排版 / EmberOfferPresentation / EmberUiFactory / 徽章 / 图标映射 / 滚动选卡 / 卡高 / 行步长 | M6 + M7 | `06-ui-flow.md` |
 | 简笔画素材 / 图集 / 程序化精灵 / 粒子 | M7 | `07-art-presentation.md` |
+| 掉落物美术 / 拾取物图标 / 药瓶 / 火种护符 / 风羽 / EmberPickupArt | M7 + M5 | `07-art-presentation.md` → `05-enemy-system.md` |
 | UIRoot / Prefab 图片丢失 / Editor 图片绑定 / Repair UIRoot Images | M7 + M6 | `07-art-presentation.md` → `06-ui-flow.md` |
 | 加载页 / IntroRoot / 加载页预制体 | M6 + M7 | `06-ui-flow.md` → `07-art-presentation.md` |
 | 中文字体 / TMP 图集 / 字体预热 | M7 | `07-art-presentation.md` |
@@ -117,6 +122,7 @@ M2.RunFlowController ──► Host 契约 ──► M0  选卡规则不持有 E
 | Android 打包 / APK / keystore / PlayerSettings / 包依赖 / 本地工具清理 | M9 | `09-build-platform.md` |
 | 性能 / 对象池 / 粒子上限 / 帧率 | M9 + M7 | `09-build-platform.md` |
 | 项目总览 / 模块依赖 / 任务归属 | 总览 | `00-overview.md` |
+| 源码学习 / 通读 / 精读 / 学习笔记 / 阅读地图 | 学习方法（非架构契约） | `../学习笔记/通用源码学习方案.md` |
 | 数值口径 / 参数归属 / 表现默认值 / 产品行为 / 单局规则边界 / 不做什么 | 需求 | `../requirements.md` |
 | 工程源码交付 / 打包工程 / 导入验证 | M9 | `09-build-platform.md` → `../../README.md` |
 | 测试运行 / run-tests / PlayMode 冒烟 | 开发工具 | `../../README.md` |

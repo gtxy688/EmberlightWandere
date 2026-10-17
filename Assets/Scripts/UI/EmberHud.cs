@@ -11,6 +11,7 @@ namespace Emberlight
         readonly Image health, shield, waveFill, bossFill;
         readonly TextMeshProUGUI healthText, shieldText, waveText, clock, bossText, encounterLabel;
         readonly GameObject bossRoot, encounterRoot;
+        readonly EmberBuffHud buffs;
         bool hasStats;
         float lastHealth, lastMaxHealth, lastShield;
         int lastSecond, lastKills, lastOwned, lastSlots, lastLuck;
@@ -32,6 +33,8 @@ namespace Emberlight
             bossRoot = view.BossRoot;
             encounterRoot = view.EncounterRoot;
             encounterLabel = view.EncounterLabel;
+            buffs = view.Buffs;
+            buffs.Initialize();
             view.Pause.onClick.AddListener(() => pause?.Invoke());
             Show(false);
             encounterRoot.SetActive(false);
@@ -90,10 +93,22 @@ namespace Emberlight
             if (show && encounterLabel.text != message) encounterLabel.text = message;
         }
 
+        public void Buffs(System.Collections.Generic.IReadOnlyList<Buff> active) => buffs.Present(active);
+
+        public void NotifyBuff(BuffConfig config, bool refreshed) => buffs.Notify(config, refreshed);
+
+        public void PositionBuffFeedback(Camera camera, Vector3 playerPosition) => buffs.PositionFeedback(camera, playerPosition);
+
+        public void TickFeedback(float unscaledDeltaTime) => buffs.TickFeedback(unscaledDeltaTime);
+
         public void Show(bool visible)
         {
             if (Root.activeSelf != visible) Root.SetActive(visible);
-            if (!visible) bossRoot.SetActive(false);
+            if (!visible)
+            {
+                bossRoot.SetActive(false);
+                buffs.ClearFeedback();
+            }
         }
 
         public void Boss(float ratio, string phase, bool show)

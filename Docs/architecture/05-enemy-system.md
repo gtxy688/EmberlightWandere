@@ -1,7 +1,7 @@
 # M5 敌人系统
 
 > 相关需求：`../requirements.md` §3.1、§3.4、§3.5、§4.4（回血掉落）
-> 代码：`Assets/Scripts/Combat/Enemies/`（4 个文件）+ `Assets/Scripts/Combat/EmberHealingDrops.cs`
+> 代码：`Assets/Scripts/Combat/Enemies/`（4 个文件）+ `Assets/Scripts/Combat/EmberDrops.cs`
 
 ## 职责边界
 
@@ -19,7 +19,7 @@
 |------------|------------------|------|--------------|
 | M1 | `EnemySpeed(kind)`、`TrashHp(wave, kind)`、射击/护盾/爆炸/词缀参数、`EnemyLimit` | 全部行为数值 | — |
 | M3 | `EmberEnemy` 实例（顶层类型，原 `EmberCombat.Enemy`）与 `EmberEnemyContext` | 行为策略读写敌人数据 | — |
-| M0 | `IEmberCombatHost`：`NeedsHealing` / `PickHealingDrop` / `HurtPlayer` / `Phase` | 掉落吸附与伤害入口（经 M3 转交，不再直接读 `game.State`） | — |
+| M0 | `IEmberCombatHost`：`NeedsHealing` / `PickHealingDrop` / `TryAddBuff` / `HurtPlayer` / `Phase` | 掉落吸附、Buff 请求与伤害入口（经 M3 转交，不再直接读 `game.State`） | — |
 | M7 | `EmberEnemySilhouette` / `EmberEnemyVisual` 使用的共享精灵与粒子 | 外观 | 精灵缺失时用程序化占位 |
 
 ## 设计与数据流
@@ -92,7 +92,15 @@ EmberCombat 刷怪：RollKind(wave, rng) → kind
 
 治疗量与掉落率见需求 §4.4；吸附、寿命与容量见 §3.7。
 
-`EmberHealingDrops.OnDeath` 只在最终死亡时调用，分裂子体不掉落，重生接管不重复掉落。`Tick` 在 Playing 阶段推进；普通换波保留，满血也允许吸附拾取，溢出治疗丢弃且不补护盾。容量满时替换最早掉落物，拾取或过期后回池。
+`EmberDrops.OnDeath` 只在最终死亡时调用，分裂子体不掉落，重生接管不重复掉落。`Tick` 在 Playing 阶段推进；普通换波保留，满血也允许吸附拾取，溢出治疗丢弃且不补护盾。容量满时替换最早掉落物，拾取或过期后回池。
+
+同一模块还独立判定 Buff 掉落，拾取经 `IEmberCombatHost.TryAddBuff` 请求施加增伤或疾行，不替代治疗判定。治疗与 Buff 共用掉落寿命、吸附和总容量；规则见需求 §4.10。
+
+外观由 `EmberPickupArt` 从专用图集按名称取图，治疗、增伤、疾行分别使用药瓶、火种护符、风羽。Sprite 采用居中 pivot，按 bounds 换算缩放；保留既有显示宽度和脉动/临近到期闪烁。彩色素材不额外染色，回池复用时重新赋图。
+
+### 射手迟缓技能
+
+射手按配置的射击频率释放迟缓弹；对应蓄力预警和弹体显示青色。命中先检查原有无敌帧，再扣血并请求施加迟缓。弹体仍可被拦截，回池清除效果引用，普通暗弹不携带 Debuff；Buff 生命周期由 M10 管理。配置归 `LevelConfig.ShooterSlowEvery` 和 `EmberBuffCatalog.Slow`。
 
 ### 表现层
 
@@ -109,7 +117,7 @@ EmberCombat 刷怪：RollKind(wave, rng) → kind
 | `ChaseBehavior` / `ShooterBehavior` / `SplitBehavior` / `ShieldBehavior` / `BomberBehavior` | 类 | — | — | 由 M3 按 kind 构造 |
 | `EnemyAffix` | 枚举 | — | `Burning` / `Wind` / `Rebirth` | 与 `LevelConfig` 概率配合 |
 | `EmberEnemyProjectiles` | 类 | — | 暗弹弹幕 | 容量见需求 §3.7；`Intercept` 可击毁 |
-| `EmberHealingDrops` | 类 | `EmberPool` + `IEmberCombatHost` | 掉落生成与拾取 | 构造时注入契约（非反查）：**不持有 `EmberGame`**，只经 `IEmberCombatHost.Phase / NeedsHealing / PickHealingDrop` 工作 |
+| `EmberDrops` | 类 | `EmberPool` + `IEmberCombatHost` | 掉落生成与拾取 | 构造时注入契约（非反查）：**不持有 `EmberGame`**，只经 `IEmberCombatHost.Phase / NeedsHealing / PickHealingDrop` 工作 |
 | `EmberEnemySilhouette` | `MonoBehaviour` | kind | 外观 | 借出时应用、归还前还原 |
 | `EmberEnemyVisual` | 类 | 敌人实例 | 提示与动画 | 仅动外观子节点 |
 

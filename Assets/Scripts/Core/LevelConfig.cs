@@ -30,6 +30,8 @@ namespace Emberlight
         public float AffixMultiplier { get; private set; } = 1f;
         public float HealDropChance = .08f, EliteHealDropChance = .20f;
         public float HealDropAmount = 20f, HealDropLifetime = 60f;
+        public float BuffDropChance = .12f, EliteBuffDropChance = .25f;
+        public int ShooterSlowEvery = 3;
         public float ShooterNear = 5.5f, ShooterFar = 7f, ShooterInterval = 2.6f, ShooterCharge = .4f;
         public float ShooterBulletSpeed = 6f, ShooterDamage = 8f;
         public float ShieldTurnSpeed = 65f, ShieldFrontMultiplier = .3f;

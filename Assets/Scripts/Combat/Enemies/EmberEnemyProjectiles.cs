@@ -11,6 +11,7 @@ namespace Emberlight
             public SpriteRenderer view;
             public Vector2 velocity, previous;
             public float life, damage;
+            public BuffConfig buff;
         }
         readonly List<Bolt> bolts = new List<Bolt>(48);
         readonly Stack<Bolt> spare = new Stack<Bolt>(48);
@@ -22,16 +23,18 @@ namespace Emberlight
         public EmberEnemyProjectiles(EmberPool pool) { this.pool = pool; }
         public void Bind(Transform root, Camera cam) { Clear(); world = root; camera = cam; }
 
-        public void Fire(Vector2 origin, Vector2 direction, float speed, float damage)
+        public void Fire(Vector2 origin, Vector2 direction, float speed, float damage, BuffConfig buff = null)
         {
             if (bolts.Count >= 48 || !EmberWorld.Visible(camera, origin)) return;
             var b = spare.Count > 0 ? spare.Pop() : new Bolt();
-            b.view = pool.RentShape("dark-bolt", world, origin, new Vector2(.24f, .40f), new Color(.85f, .40f, 1f), 10);
+            b.view = pool.RentShape("dark-bolt", world, origin, new Vector2(.24f, .40f),
+                buff == null ? new Color(.85f, .40f, 1f) : new Color(.25f, 1f, .9f), 10);
             b.view.sprite = EmberArt.Flame;
             b.view.transform.rotation = Quaternion.Euler(0, 0, Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg - 90f);
             b.previous = origin;
             b.velocity = direction.normalized * speed;
             b.damage = damage;
+            b.buff = buff;
             b.life = 4f;
             bolts.Add(b);
         }
@@ -48,7 +51,8 @@ namespace Emberlight
             }
         }
 
-        public void HitPlayer(Vector2 player, System.Action<float> hurt)
+        public void HitPlayer(Vector2 player, System.Action<float> hurt,
+            System.Func<BuffConfig, bool> applyBuff = null, System.Func<bool> canReceive = null)
         {
             for (int i = bolts.Count - 1; i >= 0; i--)
             {
@@ -56,8 +60,12 @@ namespace Emberlight
                 if (DistanceToSegment(player, b.previous, b.view.transform.position) <= .43f)
                 {
                     float damage = b.damage;
+                    var buff = b.buff;
+                    // 必须在伤害入口启动无敌帧之前记录本次是否可命中。
+                    bool accepted = canReceive == null || canReceive();
                     Remove(i);
                     hurt(damage);
+                    if (accepted && buff != null && applyBuff != null) applyBuff(buff);
                 }
                 else if (!EmberWorld.Visible(camera, b.view.transform.position)) Remove(i);
             }
@@ -89,6 +97,7 @@ namespace Emberlight
             var b = bolts[index];
             if (b.view != null) pool.Release("dark-bolt", b.view);
             b.view = null;
+            b.buff = null;
             bolts.RemoveAt(index);
             spare.Push(b);
         }

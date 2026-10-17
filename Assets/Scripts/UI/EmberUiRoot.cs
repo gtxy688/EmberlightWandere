@@ -28,6 +28,7 @@ namespace Emberlight
             public GameObject Root, BossRoot, EncounterRoot;
             public Image Health, Shield, WaveFill, BossFill;
             public TextMeshProUGUI HealthText, ShieldText, WaveText, Clock, BossText, EncounterLabel;
+            public EmberBuffHud Buffs;
             public Button Pause;
         }
 
@@ -38,7 +39,8 @@ namespace Emberlight
                 Hud == null || Hud.Root == null || Hud.Pause == null || Hud.BossRoot == null || Hud.EncounterRoot == null ||
                 Hud.Health == null || Hud.Shield == null || Hud.WaveFill == null || Hud.BossFill == null ||
                 Hud.HealthText == null || Hud.ShieldText == null || Hud.WaveText == null || Hud.Clock == null ||
-                Hud.BossText == null || Hud.EncounterLabel == null || MenuButtons == null || MenuButtons.Length < 3 || Array.Exists(MenuButtons, b => b == null))
+                Hud.BossText == null || Hud.EncounterLabel == null || Hud.Buffs == null ||
+                MenuButtons == null || MenuButtons.Length < 3 || Array.Exists(MenuButtons, b => b == null))
                 throw new InvalidOperationException("UIRoot references are incomplete. Run Emberlight/UI/Connect UIRoot Runtime in the Editor.");
         }
     }

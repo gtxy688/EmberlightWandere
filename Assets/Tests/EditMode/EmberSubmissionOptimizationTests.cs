@@ -160,5 +160,119 @@ namespace Emberlight.Tests
             hud.Stage(2, 25, "标准", "第二波");
             Assert.That(view.Hud.WaveText.text, Does.Contain("2/25"));
         }
+
+        [Test]
+        public void BuffIconPrefab_UsesThreePersistentIconsAndRadialCountdowns()
+        {
+            uiNode = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>("Assets/UI/UIRoot.prefab"));
+            var hud = uiNode.transform.Find("Safe area/Battle HUD");
+            var icons = hud.Find("Buff icons");
+            Assert.That(icons, Is.Not.Null, "The selected icon design has not replaced the text panel.");
+            Assert.That(hud.Find("Buff effects"), Is.Null);
+            Assert.That(hud.Find("Buff notice"), Is.Null);
+            foreach (string id in new[] { "power", "haste", "slow" })
+            {
+                var slot = icons.Find(id);
+                Assert.That(slot, Is.Not.Null);
+                var icon = slot.Find("Icon").GetComponent<UnityEngine.UI.Image>();
+                var ring = slot.Find("Ring").GetComponent<UnityEngine.UI.Image>();
+                Assert.That(icon.sprite, Is.Not.Null);
+                Assert.That(EditorUtility.IsPersistent(icon.sprite), Is.True);
+                Assert.That(ring.sprite, Is.Not.Null);
+                Assert.That(EditorUtility.IsPersistent(ring.sprite), Is.True);
+                Assert.That(ring.type, Is.EqualTo(UnityEngine.UI.Image.Type.Filled));
+                Assert.That(ring.fillMethod, Is.EqualTo(UnityEngine.UI.Image.FillMethod.Radial360));
+                Assert.That(slot.Find("Time"), Is.Not.Null);
+            }
+        }
+
+        [Test]
+        public void BuffHud_UpdatesRingsAndSecondsAndRefreshesWithoutRebuildingTextEveryFrame()
+        {
+            uiNode = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>("Assets/UI/UIRoot.prefab"));
+            var view = uiNode.GetComponent<EmberUiRoot>();
+            var hud = new EmberHud(view.Hud, null);
+            hud.Show(true);
+            var buffs = new BuffManager();
+            var power = new BuffConfig("power", "增伤", BuffAttribute.Damage, .45f, 6);
+            buffs.Add(power);
+            buffs.Add(new BuffConfig("slow", "迟缓", BuffAttribute.MoveSpeed, -.15f, 2, true));
+            hud.Buffs(buffs.Active);
+            var strip = view.Hud.Buffs.transform;
+            var time = strip.Find("power/Time").GetComponent<TMPro.TextMeshProUGUI>();
+            var ring = strip.Find("power/Ring").GetComponent<UnityEngine.UI.Image>();
+            Assert.That(time.text, Is.EqualTo("6s"));
+            Assert.That(ring.fillAmount, Is.EqualTo(1));
+            Assert.That(strip.Find("slow/Time").GetComponent<TMPro.TextMeshProUGUI>().text, Is.EqualTo("2s"));
+            int dirtied = 0;
+            time.RegisterDirtyVerticesCallback(() => dirtied++);
+            buffs.Tick(.1f);
+            hud.Buffs(buffs.Active);
+            Assert.That(dirtied, Is.Zero, "A timer within the same displayed second rebuilt the text.");
+            Assert.That(ring.fillAmount, Is.LessThan(1));
+            buffs.Tick(2);
+            hud.Buffs(buffs.Active);
+            Assert.That(time.text, Is.EqualTo("4s"));
+            Assert.That(ring.fillAmount, Is.EqualTo(3.9f / 6).Within(.001f));
+            Assert.That(strip.Find("slow").gameObject.activeSelf, Is.False);
+            buffs.Add(power);
+            hud.Buffs(buffs.Active);
+            Assert.That(time.text, Is.EqualTo("6s"));
+            Assert.That(ring.fillAmount, Is.EqualTo(1));
+            buffs.Clear();
+            hud.Buffs(buffs.Active);
+            Assert.That(strip.gameObject.activeSelf, Is.False);
+        }
+
+        [Test]
+        public void BuffNotice_ReusesLabelsForSimultaneousEffectsAndFadesBeforeItClears()
+        {
+            uiNode = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>("Assets/UI/UIRoot.prefab"));
+            var view = uiNode.GetComponent<EmberUiRoot>();
+            var hud = new EmberHud(view.Hud, null);
+            hud.Show(true);
+            var layer = view.Safe.Find("Buff floating");
+            var notices = layer.GetComponentsInChildren<TMPro.TextMeshProUGUI>(true);
+            int nodes = uiNode.GetComponentsInChildren<RectTransform>(true).Length;
+            Assert.That(layer.gameObject.activeSelf, Is.False);
+            hud.NotifyBuff(EmberBuffCatalog.Power, false);
+            Assert.That(notices[0].text, Is.EqualTo("增伤 +30%"));
+            hud.NotifyBuff(EmberBuffCatalog.Haste, false);
+            hud.NotifyBuff(EmberBuffCatalog.Slow, false);
+            Assert.That(Array.TrueForAll(notices, text => text.gameObject.activeSelf), Is.True);
+            Assert.That(notices[1].text, Is.EqualTo("疾行 +30%"));
+            Assert.That(notices[2].text, Is.EqualTo("迟缓 -25%"));
+            Assert.That(layer.GetComponentsInChildren<UnityEngine.UI.Image>(true), Is.Empty, "Floating text gained a background plate.");
+            hud.TickFeedback(1);
+            Assert.That(notices[0].GetComponent<CanvasGroup>().alpha, Is.InRange(.01f, .99f));
+            Assert.That(notices[0].rectTransform.anchoredPosition.y, Is.GreaterThan(0));
+            hud.NotifyBuff(EmberBuffCatalog.Haste, true);
+            Assert.That(notices[0].text, Is.EqualTo("刷新 · 疾行 +30%"));
+            hud.TickFeedback(.5f);
+            Assert.That(notices[0].gameObject.activeSelf, Is.True, "A fresh notice reused the previous timeout.");
+            Assert.That(notices[1].gameObject.activeSelf, Is.False);
+            hud.TickFeedback(EmberBuffHud.NoticeSeconds);
+            Assert.That(layer.gameObject.activeSelf, Is.False);
+            Assert.That(uiNode.GetComponentsInChildren<RectTransform>(true).Length, Is.EqualTo(nodes));
+            hud.NotifyBuff(EmberBuffCatalog.Power, false);
+            hud.Show(false);
+            hud.Show(true);
+            Assert.That(layer.gameObject.activeSelf, Is.False, "A stale pickup message returned after a panel transition.");
+        }
+
+        [Test]
+        public void BuffHudSetup_RepeatBindingPreservesEditedLayoutAndViewIdentity()
+        {
+            uiNode = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>("Assets/UI/UIRoot.prefab"));
+            var view = uiNode.GetComponent<EmberUiRoot>();
+            var rect = (RectTransform)view.Hud.Buffs.transform;
+            rect.anchoredPosition += new Vector2(4, -3);
+            var before = rect.anchoredPosition;
+            int nodes = uiNode.GetComponentsInChildren<RectTransform>(true).Length;
+            var bound = Emberlight.Editor.EmberBuffHudSetup.Configure(view.Hud.Root.transform, view.Hud.Clock.font);
+            Assert.That(bound, Is.SameAs(view.Hud.Buffs));
+            Assert.That(rect.anchoredPosition, Is.EqualTo(before));
+            Assert.That(uiNode.GetComponentsInChildren<RectTransform>(true).Length, Is.EqualTo(nodes));
+        }
     }
 }

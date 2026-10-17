@@ -1,7 +1,7 @@
 # M7 美术与表现
 
 > 相关需求：`../requirements.md` §7（技术约束：中文字体雷区）
-> 代码：`Assets/Scripts/Visuals/`（9 个文件）+ `Assets/Scripts/Core/EmberFonts.cs` + `Assets/Editor/EmberFontBake.cs` + 4 个资源导入器
+> 代码：`Assets/Scripts/Visuals/` + `Assets/Scripts/Core/EmberFonts.cs` + `Assets/Editor/EmberFontBake.cs`、`EmberPickupArtSetup.cs` 与资源导入器
 
 ## 职责边界
 
@@ -61,9 +61,27 @@
 
 ## 关键机制
 
+### 拾取物专用图集
+
+`Assets/Resources/Art/Pickups/ember-pickups.png` 保存用户确认的三件套透明原图，`EmberPickupArt` 用 `Resources.LoadAll<Sprite>` 按名称缓存，不依赖子资源返回顺序。切片名为 `pickup-heal`、`pickup-power`、`pickup-haste`，对应药瓶、火种护符和风羽。缺失素材时回落已有图元，工程检查会发现缺失的持久切片。
+
+`EmberPickupArtSetup.Configure` 通过 Unity 2022 自带的 Sprite Editor 数据接口切片，校验 provider 与名字/Id 数据支持，按原图宽度整数分成三格，居中 pivot，末格承接余数像素。重复运行保留已有 spriteID；`.meta` 是切片权威，不在运行时切图。导入保留原尺寸与透明通道、关闭 mipmap，使用 Bilinear 与非压缩设置，Android 同步覆写。没有改动其他图集的导入规则。
+
+可在关闭本工程的编辑器后重新配置：
+
+```powershell
+& "<Unity 安装目录>/Editor/Unity.exe" -batchmode -quit -projectPath "<项目>" -executeMethod Emberlight.Editor.EmberPickupArtSetup.Configure -logFile "<日志绝对路径>"
+```
+
+来源与生成提示词见 [拾取物美术说明](../reference/pickup-art.md)。
+
+Buff HUD 复用持久的火种、风羽 Sprite；迟缓使用 `Assets/Resources/Art/Buffs/buff-slow.png`，为独立的紫色靴子与向下箭头透明图标，不作为世界掉落。`EmberBuffHudSetup` 导入单 Sprite 并限制导入分辨率，源 PNG 保留原像素。环使用既有烘焙圆环纹理的持久 Sprite，填充由 uGUI 的 Radial360 控制，不把数字或圆环烘入图标。来源见 [拾取物美术说明](../reference/pickup-art.md)。
+
 ### ⚠️ 中文字体（历史雷区，已解决）
 
 `EmberFonts.CreateChinese()` **优先使用预烘静态图集**，加载不到或校验不通过时回落到运行时动态图集：
+
+现有 Buff 名称从 `EmberBuffCatalog`、效果和提示用词从 `EmberCopy.BuffGlyphs` 加入 `EmberFonts.AllGlyphs`，烘制与运行时预热使用同一字符来源。新增可见效果名称也需纳入字形来源并重烘；`Update Buff HUD` 同步刷新两个 UI Prefab 的字体引用。
 
 1. `Resources.Load<TMP_FontAsset>("Fonts/NotoSansCJKsc-Regular SDF")`
 2. `EmberFonts.ValidateBaked` 逐项校验（图集纹理存在且非空、`characterTable` 非空、`material` 存在、每个 `characterTable` 条目都有对应 glyph、每个 glyph 的 `atlasIndex` 都落在 `atlasTextures` 范围内）

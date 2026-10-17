@@ -30,6 +30,7 @@ namespace Emberlight
 
         public EnemyAffix affix;
         public bool dead, revived, detonating;
+        public bool slowShot;
         public float reviveTimer, fuse, facing, charge, age;
         public Vector2 aim, moveDirection;
 

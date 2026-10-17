@@ -48,6 +48,7 @@ namespace Emberlight
     public sealed class ShooterBehavior : ChaseBehavior
     {
         float cooldown = 1f, charge;
+        int shotsFired;
         Vector2 aim;
         public override void Tick(float dt, EmberEnemyContext ctx)
         {
@@ -57,6 +58,7 @@ namespace Emberlight
             {
                 charge = 0;
                 e.charge = 0;
+                e.slowShot = false;
                 ctx.Move(ctx.Delta.normalized, dt);
                 return;
             }
@@ -67,9 +69,12 @@ namespace Emberlight
                 e.aim = aim;
                 if (charge == 0)
                 {
-                    ctx.Projectiles.Fire(ctx.Position, aim, ctx.Config.ShooterBulletSpeed, ctx.Config.ShooterDamage);
+                    ctx.Projectiles.Fire(ctx.Position, aim, ctx.Config.ShooterBulletSpeed, ctx.Config.ShooterDamage,
+                        e.slowShot ? EmberBuffCatalog.Slow : null);
+                    shotsFired++;
                     cooldown = ctx.Config.ShooterInterval - ctx.Config.ShooterCharge;
                     e.charge = 0;
+                    e.slowShot = false;
                 }
                 return;
             }
@@ -83,6 +88,7 @@ namespace Emberlight
                 aim = ctx.Delta.sqrMagnitude > .001f ? ctx.Delta.normalized : Vector2.down;
                 e.aim = aim;
                 e.charge = .01f;
+                e.slowShot = ctx.Config.ShooterSlowEvery > 0 && (shotsFired + 1) % ctx.Config.ShooterSlowEvery == 0;
             }
         }
     }

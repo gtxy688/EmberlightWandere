@@ -91,7 +91,7 @@ namespace Emberlight.Editor
             return repaired;
         }
 
-        static Sprite PersistSprite(Sprite source, string key, string directory)
+        internal static Sprite PersistSprite(Sprite source, string key, string directory)
         {
             if (EditorUtility.IsPersistent(source)) return source;
             if (source.texture == null || !EditorUtility.IsPersistent(source.texture))

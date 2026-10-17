@@ -8,6 +8,19 @@ namespace Emberlight.Tests
 {
     public sealed class EmberUiPrefabRepairTests
     {
+        [TestCase("Assets/UI/UIRoot.prefab")]
+        [TestCase("Assets/UI/IntroRoot.prefab")]
+        public void SavedPrefab_FontReferencesRemainUsableAfterBake(string path)
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            var font = Resources.Load<TMPro.TMP_FontAsset>("Fonts/NotoSansCJKsc-Regular SDF");
+            foreach (var label in prefab.GetComponentsInChildren<TMPro.TextMeshProUGUI>(true))
+            {
+                Assert.That(label.font, Is.SameAs(font), path + ": " + label.name);
+                Assert.That(label.fontSharedMaterial, Is.Not.Null, path + ": " + label.name);
+            }
+        }
+
         const string TestDirectory = "Assets/__EmberUiRepairTests";
         GameObject root;
 

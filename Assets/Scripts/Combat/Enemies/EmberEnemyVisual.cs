@@ -130,7 +130,8 @@ namespace Emberlight
                 tell.transform.localPosition = enemy.aim * (length * .5f);
                 tell.transform.localScale = new Vector3(length, .045f + enemy.charge * .05f, 1f);
                 tell.transform.localRotation = Quaternion.Euler(0, 0, Mathf.Atan2(enemy.aim.y, enemy.aim.x) * Mathf.Rad2Deg);
-                tell.color = new Color(.85f, .4f, 1f, .25f + enemy.charge * .45f);
+                tell.color = enemy.slowShot ? new Color(.25f, 1f, .9f, .25f + enemy.charge * .45f)
+                    : new Color(.85f, .4f, 1f, .25f + enemy.charge * .45f);
             }
             aura.color = Color.clear;
             wake.color = Color.clear;

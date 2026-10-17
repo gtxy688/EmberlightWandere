@@ -32,7 +32,8 @@ namespace Emberlight
         {
             get
             {
-                return GlyphSet + CardGlyphSet() + MenuGlyphSet();
+                return GlyphSet + CardGlyphSet() + MenuGlyphSet()
+                    + EmberBuffCatalog.Power.Name + EmberBuffCatalog.Haste.Name + EmberBuffCatalog.Slow.Name + EmberCopy.BuffGlyphs;
             }
         }
 

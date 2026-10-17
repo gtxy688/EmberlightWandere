@@ -1,5 +1,7 @@
 # M6 界面与流程
 
+战斗 HUD 的 `HudReferences.Buffs` 绑定 UIRoot 内的 `EmberBuffHud`。它管理序列化图标槽位和有限浮字标签，Presenter 传入只读 Buff 列表、相机和玩家位置；`EmberBuffPresentation` 从配置生成简短效果文案，不重复保存效果数值。环逐帧读取剩余比例，秒数变化时才更新文字，不修改 Buff。Editor 的 `Update Buff HUD` 入口负责字体与控件迁移，运行时不创建替代控件。
+
 > 相关需求：`../requirements.md` §2（主循环）、§4.1（开局四步）、§7（UI 编辑与复用）
 > 代码：`Assets/Scripts/UI/`（面板、流程与展示模型）+ `Assets/Editor/`（控件工厂与 Prefab 工具）+ `Assets/Scripts/Core/EmberGame.cs`（组合根，持有阶段）
 
@@ -19,6 +21,7 @@
 |------------|------------------|------|--------------|
 | M2 | `RunProgress`（作为方法参数）：`Luck` / `CoreWeaponId` / `RefreshesRemaining` / `EmptySlots` / `WeaponMagnitude` / `WeaponAttackSpeed` / `DamageAmp` / `OwnsWeapon`；id 常量 | 卡面数值预览、HUD 幸运与槽位 | 参数为空则该块不绘制 |
 | M3 | 战斗的波次、剩余敌人、Boss 与遭遇文本 | HUD 战斗块 | 无战斗时跳过 Boss 更新 |
+| M10 | `BuffManager.Active`、`Buff.Config` / `Remaining`、施加的新增 / 刷新结果 | 效果说明、剩余时间与短提示 | 列表为空时隐藏效果区 |
 | M0 状态容器 | `EmberRunState` 的 `Health` / `MaxHealth` / `Elapsed` / `Kills`，护盾从 `Progress` 查询 | HUD 基础状态 | 缺少状态或构筑时跳过推送 |
 | M7 | `EmberArt` / `EmberUiArt` / `EmberCardFrames` / `EmberCardIcons` / `EmberWorldArt` | 全部精灵 | 缺图时回退程序化占位 |
 | M8 | `EmberAudio.PlayUiClick` / `PlayUiConfirm` / `PlayCardOpen` / `PlayCardPick` | 交互音 | clip 缺失静默跳过 |
@@ -88,6 +91,9 @@ HUD 缓存上次显示的生命、护盾、秒数、击杀、武器/槽位/幸�
 - 暂停与 Boss 框同步描边。
 - 遭遇事件触发时显示顶部短时横幅（「遭遇 · 精英小队」/「遭遇 · 围杀圈」），暂停时不推进。
 - 战斗状态栏在暂停、结算、升级时隐藏。
+- Buff 图标横排在顶部 HUD 下方，Boss 与遭遇横幅各有独立位置。每个槽位按配置 Id 绑定图标、径向 Filled 环和秒数；到期隐藏，布局组收起空位。新增 Buff 须给 Prefab 增加同 Id 的槽位与美术，未绑定的 Id 明确报告配置错误。
+- 组合根把 `BuffManager.Add` 的新增 / 刷新结果交给 Presenter，在角色上方显示效果名称和修正百分比，刷新有独立前缀。浮字复用预存标签，同帧多次拾取分别显示，满时替换最早一条；`TickFeedback` 使用非缩放时间上移并淡出，参数见需求 §7。隐藏 HUD 清空浮字，恢复时图标仍反映当前 Buff。
+- 浮字位置由 Presenter 传入相机与角色位置，经屏幕坐标转换为安全区局部坐标，不从 UI 查询游戏入口；外层浮字容器没有背景 Image 或射线拦截。`EmberBuffHud` 没有自行推进的 Update，计时和位置由现有推送入口驱动。
 
 ### 设置与暂停
 
@@ -112,6 +118,8 @@ HUD 缓存上次显示的生命、护盾、秒数、击杀、武器/槽位/幸�
 | `EmberUiRoot` | MonoBehaviour | 序列化控件引用 | 菜单、HUD、面板视图 | 只持有视图；ValidateReferences 检查必需引用 |
 | `EmberMenuUi.Bind` | 方法 | EmberUiRoot、已校验字体、暂停回调 | UI 根与面板 | 使用现有控件、注册交互；不重建布局；必要时补 EventSystem |
 | `EmberHud.Set(...)` | 方法 | 生命、护盾、波次、`RunProgress` 等 | — | `RunProgress` 为空时不绘制该块 |
+| `EmberHud.Buffs` / `NotifyBuff` / `PositionBuffFeedback` / `TickFeedback` | 方法 | 只读列表 / 配置与刷新标记 / 相机与角色位置 / 非缩放时间 | 转发给图标与浮字组件 | 剩余时间来自 Buff；浮字与效果计时分离，不修改玩法数据 |
+| `EmberBuffHud` | MonoBehaviour | 已装配的图标与浮字引用 | 径向环、秒数、角色浮字 | 缺引用或槽位 Id 不合法时报错，不动态补建；秒数缓存、环持续更新；隐藏清空反馈 |
 | `EmberUiFactory`（Editor） | 静态工厂 | 尺寸与父节点 | Prefab 控件 | 只在编辑器准备资产；Runtime 不引用 |
 | `EmberUpgradePanel.Show` | 方法 | 候选数组、`RunProgress` | — | 候选为空不显示；>4 张自动滚动 |
 | `EmberGodsSelectPanel.ShowSlots` / `ShowRoster` | 方法 | 默认值/回调 | — | 单选 1 把；未选择时确认禁用 |
@@ -132,6 +140,7 @@ HUD 缓存上次显示的生命、护盾、秒数、击杀、武器/槽位/幸�
 - 主场景另持有 `Assets/UI/IntroRoot.prefab`，`EmberGame.introRoot` 引用 EmberIntroView。场景编辑时默认隐藏加载页，打开其 Prefab Mode 可预览；Play 时校验字体后显示。
 - `Emberlight/UI/Connect UIRoot Runtime` 使用 Editor API 配置两套 Prefab 的引用与持久图片，首次生成加载页，关联当前主场景并标记待保存。已有 IntroRoot 不重新创建控件、覆盖锚点或字号；日常改布局无需重跑菜单。
 - 布局与静态图片归 Prefab；运行时更新文字、交互状态、按候选数量排卡与安全区。EmberUiFactory 与开局选择页补建归 Editor，Runtime 只绑定序列化控件；缺失引用明确报错。
+- `Update Buff HUD` 经 `EmberBuffHudSetup` 首次迁移旧文字面板，生成 `Battle HUD/Buff icons` 与安全区下的 `Buff floating`，并错开 Boss / 遭遇横幅；重复运行绑定原组件，保留已有布局。图标和环引用持久 Sprite，不引用设计示意图。
 - 当前布局以竖屏为目标，PlayerSettings 锁定 Portrait（见 M9）。
 - 面板的生命周期由 `EmberMenuUi` 统一持有；暂停与设置是浮层而非独立场景。
 - `EmberUiRoot`、`EmberGodsSelectPanel`、`EmberSettingsPanel` 与 `EmberUpgradePanel` 为 `MonoBehaviour`；EmberMenuUi 与 EmberHud 为普通类。
