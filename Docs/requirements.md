@@ -319,13 +319,13 @@ Buff 与 Debuff 统一使用 `BuffConfig`、`Buff`、`BuffManager`；配置归 `
 
 ### UI 复用与状态栏呈现
 
-菜单、开局选择、设置与升级面板复用 Prefab 中的控件，重复打开不重建整个界面。刷新、关闭和再次打开须正确重置交互状态与业务回调，不改变选项规则和设置语义。战斗 HUD 保留生命、护盾、波次、武器、幸运和暂停功能，通过细条与独立文字行改善层次与可读性。EmberIntro 绑定 IntroRoot 已有控件并推进加载；校验字体后才显示加载页，加载就绪后接受继续输入并隐藏视图，不销毁 Prefab 实例。
+菜单、开局选择、设置与升级面板复用 Prefab 中的控件，重复打开不重建整个界面。刷新、关闭和再次打开须正确重置交互状态与业务回调，不改变选项规则和设置语义。战斗 HUD 保留生命、护盾、波次、武器、幸运和暂停功能，使用紧凑的三行布局与手绘九宫格面板；文字、数字和填充条为真实控件。EmberIntro 绑定 IntroRoot 已有控件并推进加载；校验字体后才显示加载页，加载就绪后接受继续输入并隐藏视图，不销毁 Prefab 实例。
 
 运行时不回落到代码创建控件；缺少面板引用或缓存容量不足时报配置错误。控件工厂与旧快照补建仅在 Editor 中运行。HUD 的生命/护盾/构筑/击杀文字随对应值变化更新，时间按显示秒更新；波次文案只有一个写入点，内容和原展示一致。
 
 ### UI 与音频默认参数
 
-以下是当前实现的**表现默认值**，允许调节，不作为玩法平衡规则。数值统一维护在本节，修改时同步对应源码；表中的布局与节流参数目前由代码定义，并非 Inspector 配置项。
+以下是当前实现的**表现默认值**，允许调节，不作为玩法平衡规则。数值统一维护在本节，修改时同步对应源码；节流与动画常量在代码中维护，Editor 首次写入的布局和外观可直接在 Prefab 调整。
 
 | 参数 | 当前默认值 | 作用与源码归属 |
 |------|------------|----------------|
@@ -335,7 +335,7 @@ Buff 与 Debuff 统一使用 `BuffConfig`、`Buff`、`BuffManager`；配置归 `
 | Buff 浮字位置 / 上移 / 行间距 | 角色上方 58 / 上移 26 / 间隔 24 Canvas 单位 | 同文件 `NoticeOffset` / `NoticeRise` / `NoticeStackStep`；通过传入的相机投影并跟随角色，不持有游戏入口 |
 | Buff 浮字缓存 | 3 个标签 | UIRoot 内预存，可同时显示多次拾取；缓存满时复用最早一条，不在运行时创建控件 |
 | Buff 图标默认布局 | 槽位 60×72、间距 12；环 52、底盘 48、图标 42 Canvas 单位；秒数字号 16 | `Assets/Editor/EmberBuffHudSetup.cs` 首次迁移写入 Prefab；日常布局与字体大小可直接在 Prefab 调整，重复配置不覆盖 |
-| 图标下方横幅 / Boss 布局 | 相对顶部 HUD 底部下移 88 / 146，高度 48 / 58 Canvas 单位 | 同工具迁移到固定间隔，避免矮 Game 窗口中相对锚点重叠；迁移版本保存在组件上，后续保留手动调整 |
+| 图标下方横幅 / Boss 布局 | 横幅相对 HUD 底部下移 84、高度 32；Boss 相对安全区顶部下移 270、高度 48 Canvas 单位 | `EmberArtSampleHudSetup.Configure` 首次迁移；重复绑定相同面板时保留人工排版，Buff 图标位置不随单个效果出现而变动 |
 | 常规发射与命中音最短间隔 | 0.05 秒 | `Assets/Scripts/Audio/EmberAudio.cs` 的 `FireHitMinInterval`；`PlayFire`、`PlayHit` 及火球、穿透火矢、回旋烬蝶发射各有独立计时器 |
 | 火雨落地音最短间隔 | 0.02 秒 | 同文件 `MeteorImpactMinInterval` / `PlayMeteorImpact`；多个落点共用计时器 |
 | 环火接触音最短间隔 | 0.35 秒 | 同文件 `PlayWeaponOrbitContact`；实际造成伤害后触发，共用环火计时器 |
@@ -344,6 +344,27 @@ Buff 与 Debuff 统一使用 `BuffConfig`、`Buff`、`BuffManager`；配置归 `
 | SFX 初始音量 | 1.0 | 同文件 `Bootstrap` / `SfxVolume`；未保存音效音量时使用 |
 
 音频间隔使用 `Time.unscaledTime`，不随游戏倍速或暂停缩放。受击、回血拾取音没有独立的音频节流计时器。音量取值限制在 0–1，已有 `PlayerPrefs` 设置优先于初始值；修改音量立即生效并保存。
+
+### 手绘美术样板默认参数
+
+本分支已接入玩家、普通敌人、石地、三类装饰和战斗 HUD 的手绘样板。其他兵种、边界装饰与菜单沿用原外观。样板不改变移动、碰撞、伤害、掉落或 Buff 规则；新增资源由 `EmberArtSet` 保存引用，日常外观编辑使用 Prefab。
+
+| 参数 | 当前默认值 | 维护归属 |
+|---|---|---|
+| 顶部战斗栏 | 高 128、距顶部 8、左右各留 12 Canvas 单位 | `EmberArtSampleHudSetup.Configure` 首次迁移写入 UIRoot |
+| HUD 字号 | 统计 14（自适应 12–14）；生命 19（17–19）；波次、护盾、暂停 13（11–13） | 同工具与 UIRoot Prefab |
+| 条形控件 / 暂停按钮 | 生命条高 26、护盾条高 3、波次条 66×8；暂停 40×32 Canvas 单位 | 同工具与 UIRoot Prefab |
+| HUD 切片 | alpha > 8 的外接矩形；九宫格左右边 120、上下边 70 源像素，Image 的 PPU multiplier 为 4 | `EmberArtSampleSetup.Import` / `PanelBounds`；原 PNG 不改像素 |
+| 角色显示高度 | 玩家 1.65、普通敌人 1.25 世界单位，按 Sprite bounds 换算缩放（含原图透明边缘） | Keeper Prefab / `EmberEnemySilhouette.Apply`；不改变逻辑碰撞半径 |
+| 普通怪 Sprite 基准 | 局部位置 (0, 0.12, 0)，乘色 RGBA (0.82, 0.82, 0.88, 1) | `EmberEnemySilhouette.Apply`；其余兵种先恢复模板 |
+| 玩家浮动 / 呼吸 / 倾斜 | 浮动振幅 0.025，呼吸缩放振幅 0.015，最大倾斜 5° | `EmberKeeperAnimation.LateUpdate`，只作用于外观子节点 |
+| 玩家动画时钟 | 基础角速度 2.4，加移动量 × 2；平滑响应 9；水平移动量超过 0.08 才翻转 | 同组件；暂停及非 Playing 冻结 |
+| 脚下柔光 | 宽 2.4、基础 alpha 0.23；随动画时钟 × 2.3 脉动，alpha 振幅为基础值的 10% | Keeper Prefab / `EmberKeeperAnimation` |
+| 石地 | 80×80 世界单位；源图 PPU 313.5，每次平铺覆盖 4×4 世界单位；乘色 RGB (0.68, 0.74, 0.82) | Courtyard Prefab / 贴图导入设置 |
+| 装饰 Sprite 高度 | 灯柱 1.6、碎墙 0.65、蜡烛 0.9 世界单位；庭院实例可独立缩放 | Lantern / Rubble / Candles Prefab |
+| 新贴图导入上限 | 石地与 HUD 4096，其余样板图 1024；关闭 mipmap、Bilinear、非压缩，Android 同步覆写 | `EmberArtSampleSetup.Import`；保留独立源 PNG |
+
+环境使用静态 Prefab 布置；石地为 Tiled，装饰使用透明 Sprite，未增加实时光照系统。场景只绑定美术集资产，玩家与庭院在每局创建，敌人模板由对象池实例化。完整参数与素材变更仍需在实际游戏视图检查，不能只检查序列化字段。
 
 
 ## 8. 胜负结算

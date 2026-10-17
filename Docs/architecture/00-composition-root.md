@@ -35,7 +35,7 @@
 | M3 `EmberCombat` | `Begin` / `Tick` / `TearDown` / `AdvanceAfterUpgrade` / `Boss` / `PlayBossBurst` | 战斗推进 | 未 `Begin` 时 `Tick` 无效果 |
 | M7 `EmberEffects` | `Initialize(阶段委托)` / `Nova` / `Impact` | 世界特效宿主 | 委托为空时特效不推进 |
 | M6 `EmberUiRoot` / `EmberMenuUi` / `EmberMenuFlow` / `EmberHudPresenter` | `Bind` / `Show` / `Set` / `Stage` / `Boss` | 绑定场景界面并推送数据 | 缺少 UIRoot 或必需引用时报配置错误；绑定前不推送 |
-| M7 `EmberKeeperAnimation` | `Initialize(阶段委托)` | 灯芯动画 | 委托为空时动画照常播放 |
+| M7 `EmberArtSet` / `EmberKeeperAnimation` | Prefab 引用、`ValidateReferences`、`Initialize(阶段委托)` | 世界与玩家外观装配、敌人模板注入 | 缺失必要资源或动画引用时报配置错误；委托为空时不推进动画 |
 | M8 `EmberAudio` | `Ensure().Play*` | 音乐与音效 | clip 缺失静默跳过 |
 
 ## 设计与数据流
@@ -97,19 +97,21 @@ Elapsed += dt  →  Vitals.Tick(dt)  →  input.Tick()
 
 ## Unity 装配
 
-主场景 `Assets/Scenes/Emberlight.unity` 的 `Emberlight Game` 对象挂载 `EmberGame`。两个序列化字段应绑定**场景中的 Prefab 实例组件**：
+主场景 `Assets/Scenes/Emberlight.unity` 的 `Emberlight Game` 对象挂载 `EmberGame`。视图字段绑定**场景中的 Prefab 实例组件**，美术字段绑定工程内的资源资产：
 
 | 字段 | 组件与资产 | 用途 |
 |------|------------|------|
 | `uiRoot` | `EmberUiRoot`，`Assets/UI/UIRoot.prefab` | 主菜单、开局选择、HUD、升级与设置面板的引用入口 |
 | `introRoot` | `EmberIntroView`，`Assets/UI/IntroRoot.prefab` | 加载页文字、进度条与继续提示的引用入口 |
+| `artSet` | `EmberArtSet`，`Assets/Art/HandPaintedSample/ArtSet.asset` | 本局玩家、敌人模板与庭院 Prefab；不需要把这些 Prefab 预放到主场景 |
 
 启动与清理顺序：
 
 1. `Start` 配置相机与音频，进入 Loading；字段未赋值时，查找场景已有实例（含未激活对象）。找不到任一根视图则抛出配置错误，不在运行时生成替代 UI。
 2. 隐藏 `uiRoot`，在 `Emberlight Game` 上添加 `EmberIntro` 控制器，并调用 `Begin(introRoot, prepared, enter)`。`Begin` 校验加载页引用；字体经 `EmberFonts.CreateChinese` 内的闸门校验或回落后，才显示加载页。
 3. 准备回调调用 `EmberMenuUi.Bind`，校验主 UI 引用、绑定字体和暂停回调，开始安全区监听，再创建 `EmberHudPresenter`。加载就绪后，继续输入隐藏加载页并由 `EmberMenuFlow` 显示主菜单。
-4. 开局由组合根在创建边框前调用 `LevelConfig.ApplyWorld`，战斗 `Begin` 内经 `TearDown` 统一重置旧战斗，不再由开局入口重复清理。返回营地清理本局世界与战斗，保留场景 UI 实例供复用；`OnDestroy` 解除安全区监听并恢复 `Time.timeScale`。
+4. 开局先校验 `artSet`，再创建本局世界并实例化庭院和玩家 Prefab，注入玩家动画的阶段委托。调用 `LevelConfig.ApplyWorld` 配置逻辑边界后，把敌人模板传入战斗 `Begin`；战斗内部经 `TearDown` 统一重置旧状态。环境布置和角色比例保存在 Prefab 中，不再由组合根绘制。
+5. 返回营地清理本局世界与战斗，保留场景 UI 实例供复用；`OnDestroy` 解除安全区监听并恢复 `Time.timeScale`。
 
 布局、静态图片与控件引用由 Prefab 维护；组合根负责绑定与生命周期协调，面板负责展示和交互。缺少必需控件引用时，`EmberUiRoot.ValidateReferences` / `EmberIntroView.ValidateReferences` 报错并提示 Editor 的 `Emberlight/UI/Connect UIRoot Runtime` 接线入口。
 

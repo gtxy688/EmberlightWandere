@@ -112,6 +112,11 @@ namespace Emberlight.Editor
             var provider = factories.GetSpriteEditorDataProviderFromObject(importer);
             if (provider == null) throw new InvalidOperationException("Sprite provider unavailable: " + path);
             provider.InitSpriteEditorDataProvider();
+            if (provider.spriteImportMode != SpriteImportMode.Multiple ||
+                !provider.HasDataProvider(typeof(ISpriteNameFileIdDataProvider)))
+                throw new InvalidOperationException("Importer does not support persistent sprite identities: " + path);
+            var identities = provider.GetDataProvider<ISpriteNameFileIdDataProvider>();
+            if (identities == null) throw new InvalidOperationException("Sprite identity provider unavailable: " + path);
             var old = provider.GetSpriteRects().FirstOrDefault(rect => rect.name == name);
             var rect = new SpriteRect
             {
@@ -121,7 +126,7 @@ namespace Emberlight.Editor
                 border = panel ? new Vector4(120, 70, 120, 70) : Vector4.zero
             };
             provider.SetSpriteRects(new[] { rect });
-            provider.GetDataProvider<ISpriteNameFileIdDataProvider>().SetNameFileIdPairs(
+            identities.SetNameFileIdPairs(
                 new[] { new SpriteNameFileIdPair(name, rect.spriteID) });
             provider.Apply();
             importer.SaveAndReimport();

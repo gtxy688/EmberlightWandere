@@ -39,6 +39,9 @@ namespace Emberlight.Tests
                 using (var capture = new ArtCapture(game.Run.Cam, ui.GetComponent<Canvas>()))
                 {
                     yield return RecordArtSample(capture, game, "art-sample-normal", false);
+                    // 密集战况使用真实的护盾词条，避免初始白板构筑提前阵亡打断录像。
+                    game.Progress.OfferChoices();
+                    Assert.That(game.Progress.Choose(new EmberOffer(RunProgress.StatShield, EmberRarity.Bronze)), Is.True);
                     PlaceArtSampleEnemies(roster, game, 28, true);
                     yield return RecordArtSample(capture, game, "art-sample-dense", true);
                     EmberKeeperMotion.Step(game.Run, Vector2.one, 100);
@@ -70,7 +73,8 @@ namespace Emberlight.Tests
             {
                 for (int frame = 0; frame < 90; frame++)
                 {
-                    Assert.That(game.Phase, Is.EqualTo(EmberRunPhase.Playing));
+                    Assert.That(game.Phase, Is.EqualTo(EmberRunPhase.Playing),
+                        name + ", frame=" + frame + ", health=" + game.Run.Health + ", shield=" + game.Progress.Shield);
                     float angle = frame / 15f * .7f;
                     var stick = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle) * .6f) * .4f;
                     EmberKeeperMotion.Step(game.Run, stick, Time.captureDeltaTime);

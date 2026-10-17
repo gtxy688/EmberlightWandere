@@ -152,7 +152,7 @@ Loading → Menu → SelectLength → SelectDifficulty → SelectSlots → Selec
 | `EmberKeeperVitals.Heal` / `PickHealingDrop` | 方法 | 回复量 | `EmberVitalOutcome` | 满血 `Heal` 返回 `Rejected`；满血拾取返回 `NoChange` 但仍算拾取 |
 | `IEmberCombatHost.EndRun(bool)` / `EmberMenuFlow.ShowMainMenu()` / `.BeginRun()` | 方法 | — | — | 流程入口 |
 | `EmberCombat.Tick(float)` | 方法 | dt | — | 战斗唯一推进点 |
-| `EmberCombat.Begin(..., LevelConfig)` / `TearDown()` | 方法 | 已准备的世界/玩家/相机、配置 | — | `Begin` 先统一清理旧状态再装配；`TearDown` 清理池、弹幕、武器与共享燃地。地图边界由调用方在创建世界边框前配置 |
+| `EmberCombat.Begin(..., LevelConfig, GameObject shadePrefab = null)` / `TearDown()` | 方法 | 已准备的世界/玩家/相机、配置、可选敌人模板 | — | `Begin` 先清理旧状态再装配，并把模板传入对象池；主场景必传美术集中的模板，独立调用未传时保留原有程序化外观。`TearDown` 清理池、弹幕、武器与共享燃地，逻辑地图边界由调用方预先配置 |
 | `EmberCombat.AdvanceAfterUpgrade()` | 方法 | — | — | 由组合根在选卡完成后调用（`ReturnToPlay`） |
 | `EmberCombat.Wave` / `WaveQuota` / `WaveSpawned` / `WaveKilled` / `WaveRemaining` / `WaveKillsRemaining` / `EnemyCount` / `Boss` / `BossAlive` | 属性 | — | `int` / `EmberEnemy` / `bool` | HUD 只读数据源；Boss 波 `WaveRemaining` 返回 0。波次量转发自 `EmberWaveDirector`；`EnemyCount` 读名册，`Boss` / `BossAlive` 读战斗根持有的 Boss 引用 |
 | `EmberEnemy` | 类 | — | 敌人实例 | 顶层类型；`Targetable` 是所有武器命中判定的统一门 |

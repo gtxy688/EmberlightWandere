@@ -104,7 +104,8 @@ EmberCombat 刷怪：RollKind(wave, rng) → kind
 
 ### 表现层
 
-- `EmberEnemySilhouette`（`MonoBehaviour`）：按 kind 复用式重着色/重塑，**池化敌人回池前必须恢复基准形态**。
+- `EmberEnemySilhouette`（`MonoBehaviour`）：借出时先恢复基准位置、缩放、旋转、颜色、Sprite 和显隐，再按 kind 应用外观。当前样板只有普通怪使用手绘整体 Sprite，特殊兵种仍使用既有部件与配饰；普通怪隐藏多余部件及角色装饰，保留地面阴影。
+- 普通怪与其他杂兵仍共用 `shade` 池，因此普通 → 特殊 → 普通必须正确恢复贴图和可见部件；恢复发生在 `Apply`，归还时只回收附属表现并停用节点。
 - `EmberEnemyVisual`：角色标记、攻击预警、词缀光环、风之尾迹，以及程序化躯干动画（普通浮动 / 快怪急促摇动 / 重怪缓慢起伏 / 烬虫快速挤压 / 烬胎呼吸 / 盾卫轻微倾斜 / 射手蓄力压缩与射后回弹 / 引线虫高频鼓动 / 重生收缩）。**每个敌人相位不同**。
 - 动画**只动外观子节点**，不变更根节点、血条、预警范围或碰撞。
 - 基础三类敌人（0/1/2）无词缀也接入动画；特殊敌人禁用基础轮廓装饰。
@@ -118,7 +119,7 @@ EmberCombat 刷怪：RollKind(wave, rng) → kind
 | `EnemyAffix` | 枚举 | — | `Burning` / `Wind` / `Rebirth` | 与 `LevelConfig` 概率配合 |
 | `EmberEnemyProjectiles` | 类 | — | 暗弹弹幕 | 容量见需求 §3.7；`Intercept` 可击毁 |
 | `EmberDrops` | 类 | `EmberPool` + `IEmberCombatHost` | 掉落生成与拾取 | 构造时注入契约（非反查）：**不持有 `EmberGame`**，只经 `IEmberCombatHost.Phase / NeedsHealing / PickHealingDrop` 工作 |
-| `EmberEnemySilhouette` | `MonoBehaviour` | kind | 外观 | 借出时应用、归还前还原 |
+| `EmberEnemySilhouette` | `MonoBehaviour` | kind、基础色 | 外观 | 每次 Apply 先恢复模板，再切换手绘普通怪或既有兵种轮廓；不改变行为、碰撞与血条 |
 | `EmberEnemyVisual` | 类 | 敌人实例 | 提示与动画 | 仅动外观子节点 |
 
 **具体数值不在此复制**，一律见 `../requirements.md` §3.4、§3.5、§4.4。
@@ -126,6 +127,7 @@ EmberCombat 刷怪：RollKind(wave, rng) → kind
 ## Unity 装配
 
 - 敌人 GameObject 由 `EmberPool` 借出（key `shade` / `boss`）；**每次借出都恢复基准姿态与颜色**，再应用类型装饰。
+- 主场景经 `EmberArtSet.ShadePrefab` 注入 `Assets/Art/HandPaintedSample/Prefabs/Shade.prefab`。它保存持久部件和普通怪 Sprite 引用；Prefab 中为中性部件模板，实际兵种外观由 `Apply` 选择。Boss 仍走原有独立创建路径。
 - `EmberEnemySilhouette` 是 `MonoBehaviour`，挂在池化敌人对象上；**必须容忍被复用**，不得在 `Awake` 里做一次性的类型假设。
 - 角色标识与预警随敌人销毁，**不附着到复用的躯体上**——这是曾经的缺陷来源。
 - `EmberEnemyVisual` 与行为策略为普通 C# 类，由 M3 构造与驱动。
@@ -134,4 +136,4 @@ EmberCombat 刷怪：RollKind(wave, rng) → kind
 ## 影响与回归范围
 
 - **直接影响模块**：M3（行为与弹幕宿主）、M1（数值来源）、M7（共享精灵与粒子）、M2（掉落计入 Score 与回血）。
-- **必须复验的契约**：池复用的形态还原、分裂数量与配额关系、盾卫正背面倍率、引线爆炸时机、暗弹拦截、词缀概率门控。
+- **必须复验的契约**：池复用的形态、Sprite 与显隐还原，分裂数量与配额关系、盾卫正背面倍率、引线爆炸时机、暗弹拦截、词缀概率门控。样板资源与跨兵种复用检查入口为 `Assets/Tests/EditMode/EmberArtSampleTests.cs`。
