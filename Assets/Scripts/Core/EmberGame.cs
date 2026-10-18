@@ -167,7 +167,14 @@ namespace Emberlight
             Run.Kills = 0;
             Run.Vitals.Reset();
             Instantiate(artSet.CourtyardPrefab, Run.World, false);
-            Run.Keeper = Instantiate(artSet.KeeperPrefab, Run.World, false).transform;
+            if (artSet.KeeperPrefab != null)
+                Run.Keeper = Instantiate(artSet.KeeperPrefab, Run.World, false).transform;
+            else
+            {
+                Run.Keeper = new GameObject("Keeper").transform;
+                Run.Keeper.SetParent(Run.World, false);
+                Run.Keeper.gameObject.AddComponent<EmberKeeperAnimation>();
+            }
             Run.Keeper.GetComponent<EmberKeeperAnimation>().Initialize(() => Phase);
 
             var level = Run.Level;

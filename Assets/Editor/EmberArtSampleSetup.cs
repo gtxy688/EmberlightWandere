@@ -47,8 +47,7 @@ namespace Emberlight.Editor
                 AssetDatabase.CreateAsset(set, SetPath);
             }
             var serialized = new SerializedObject(set);
-            Bind(serialized, "keeperPrefab", LoadPrefab("Keeper"));
-            Bind(serialized, "shadePrefab", LoadPrefab("Shade"));
+            // 角色引用为空表示使用主分支原版；重复装配不改动已有的角色选择。
             Bind(serialized, "courtyardPrefab", LoadPrefab("Courtyard"));
             serialized.ApplyModifiedPropertiesWithoutUndo();
             set.ValidateReferences();
@@ -66,6 +65,25 @@ namespace Emberlight.Editor
             var scene = EditorSceneManager.OpenScene(ScenePath);
             Connect(scene, AssetDatabase.LoadAssetAtPath<EmberArtSet>(SetPath));
             if (!EditorSceneManager.SaveScene(scene)) throw new InvalidOperationException("Could not save art references.");
+        }
+
+        [MenuItem("Emberlight/Art/Use Main Branch Characters")]
+        public static void UseMainBranchCharacters()
+        {
+            if (EditorApplication.isPlayingOrWillChangePlaymode)
+                throw new InvalidOperationException("Stop Play Mode before changing art references.");
+            if (!Application.isBatchMode && !EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
+            var set = AssetDatabase.LoadAssetAtPath<EmberArtSet>(SetPath);
+            if (set == null) throw new InvalidOperationException("Build the art sample first.");
+            Undo.RecordObject(set, "Use main branch characters");
+            var serialized = new SerializedObject(set);
+            Bind(serialized, "keeperPrefab", null);
+            Bind(serialized, "shadePrefab", null);
+            serialized.ApplyModifiedProperties();
+            set.ValidateReferences();
+            AssetDatabase.SaveAssets();
+            EditorSceneManager.OpenScene(ScenePath);
+            Debug.Log("ORIGINAL_CHARACTERS_READY: Original characters with current courtyard, HUD and Buff feedback.");
         }
 
         static void Connect(Scene scene, EmberArtSet set)

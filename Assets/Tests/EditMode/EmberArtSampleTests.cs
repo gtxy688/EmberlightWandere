@@ -8,13 +8,16 @@ namespace Emberlight.Tests
     public sealed class EmberArtSampleTests
     {
         // 要抓的是 Prefab 引用临时图片、遗漏外观或丢失工程内依赖，不能只检查 PNG 在磁盘上。
-        [TestCase("Keeper")]
-        [TestCase("Shade")]
-        [TestCase("Courtyard")]
-        public void SamplePrefab_HasPersistentSpritesAndNoMissingReferences(string name)
+        [TestCase("HandPaintedSample", "Keeper")]
+        [TestCase("HandPaintedSample", "KeeperWalk")]
+        [TestCase("HandPaintedSample", "Shade")]
+        [TestCase("HandPaintedSample", "Courtyard")]
+        [TestCase("CleanToonSample", "Keeper")]
+        [TestCase("CleanToonSample", "Shade")]
+        public void SamplePrefab_HasPersistentSpritesAndNoMissingReferences(string family, string name)
         {
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
-                "Assets/Art/HandPaintedSample/Prefabs/" + name + ".prefab");
+                "Assets/Art/" + family + "/Prefabs/" + name + ".prefab");
             Assert.That(prefab, Is.Not.Null, "The playable art sample prefab is missing.");
             var renderers = prefab.GetComponentsInChildren<SpriteRenderer>(true);
             Assert.That(renderers, Is.Not.Empty);
@@ -26,17 +29,19 @@ namespace Emberlight.Tests
             }
         }
 
-        [TestCase(1)]
-        [TestCase(2)]
-        [TestCase(4)]
-        [TestCase(5)]
-        [TestCase(6)]
-        [TestCase(7)]
-        [TestCase(8)]
-        public void SharedEnemyPool_NormalAndSpecialReuseRestoreTheirOwnAppearance(int specialKind)
+        [TestCase(1, "HandPaintedSample")]
+        [TestCase(2, "HandPaintedSample")]
+        [TestCase(4, "HandPaintedSample")]
+        [TestCase(5, "HandPaintedSample")]
+        [TestCase(6, "HandPaintedSample")]
+        [TestCase(7, "HandPaintedSample")]
+        [TestCase(8, "HandPaintedSample")]
+        [TestCase(4, "CleanToonSample")]
+        [TestCase(7, "CleanToonSample")]
+        public void SharedEnemyPool_NormalAndSpecialReuseRestoreTheirOwnAppearance(int specialKind, string family)
         {
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
-                "Assets/Art/HandPaintedSample/Prefabs/Shade.prefab");
+                "Assets/Art/" + family + "/Prefabs/Shade.prefab");
             var world = new GameObject("Art pool regression");
             try
             {

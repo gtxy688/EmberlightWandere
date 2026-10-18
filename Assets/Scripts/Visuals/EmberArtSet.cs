@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Emberlight
 {
-    /// <summary>场景使用的外观资源；只保存 Prefab 引用，不持有玩法数据。</summary>
+    /// <summary>场景外观资源；角色引用留空时使用原版表现，不持有玩法数据。</summary>
     [CreateAssetMenu(menuName = "Emberlight/Art set")]
     public sealed class EmberArtSet : ScriptableObject
     {
@@ -14,10 +14,12 @@ namespace Emberlight
 
         public void ValidateReferences()
         {
-            if (keeperPrefab == null || shadePrefab == null || courtyardPrefab == null ||
-                keeperPrefab.GetComponent<EmberKeeperAnimation>() == null ||
-                shadePrefab.GetComponent<EmberEnemySilhouette>() == null)
-                throw new InvalidOperationException("Art set requires configured keeper, shade and courtyard prefabs.");
+            if (courtyardPrefab == null)
+                throw new InvalidOperationException("Art set requires a courtyard prefab.");
+            if (keeperPrefab != null && keeperPrefab.GetComponent<EmberKeeperAnimation>() == null)
+                throw new InvalidOperationException("Keeper prefab requires its animation component.");
+            if (shadePrefab != null && shadePrefab.GetComponent<EmberEnemySilhouette>() == null)
+                throw new InvalidOperationException("Shade prefab requires its silhouette component.");
         }
     }
 }

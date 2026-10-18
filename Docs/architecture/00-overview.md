@@ -113,7 +113,12 @@ M2.RunFlowController ──► Host 契约 ──► M0  选卡规则不持有 E
 | HUD 推送点 / 安全区适配 / 摇杆输入 / 相机跟随 | M6 + M0 | `00-composition-root.md` → `06-ui-flow.md` |
 | 卡面排版 / EmberOfferPresentation / EmberUiFactory / 徽章 / 图标映射 / 滚动选卡 / 卡高 / 行步长 | M6 + M7 | `06-ui-flow.md` |
 | 简笔画素材 / 图集 / 程序化精灵 / 粒子 | M7 | `07-art-presentation.md` |
-| 手绘样板 / 美术替换 / EmberArtSet / KeeperPrefab / ShadePrefab / CourtyardPrefab / HandPaintedSample / 遗迹地面 / 场景装饰 / Build Hand Painted Sample | M7 + M5 | `07-art-presentation.md` → `05-enemy-system.md` |
+| 原版角色精修 / 衣褶 / 兜帽部件 / EmberCharacterArt / Bake Classic Character Parts | M7 + M5 | `07-art-presentation.md` → `05-enemy-system.md` |
+| A 方案 / 清爽卡通 / CleanToonSample / EmberCleanToonSetup / Use Clean Toon Characters | M7 + M5 | `07-art-presentation.md` → `05-enemy-system.md` |
+| 玩家两帧 / Idle / Move / IsMoving / flipX / Player_Idle / Player_Move / EmberPlayerSpriteSetup / Build Player Sprite Animations | M7 | `07-art-presentation.md` |
+| 手绘样板 / 美术替换 / 恢复原版角色 / Use Main Branch Characters / EmberArtSet / KeeperPrefab / ShadePrefab / CourtyardPrefab / HandPaintedSample / 遗迹地面 / 场景装饰 / Build Hand Painted Sample | M7 + M5 | `07-art-presentation.md` → `05-enemy-system.md` |
+| 玩家走路 / 行走动画 / 分件关节 / 提灯摆动 / 透明序列帧 / KeeperWalk / EmberKeeperRig / Export Keeper Walk Frames | M7 | `07-art-presentation.md` |
+| 2.5D / 3D 角色 / 低模 / 立体庭院 / 蒙皮 / 膝盖 / IK / SkinnedMeshRenderer / LowPolyCourtyard / EmberLowPolyGait / Open Low Poly Courtyard | M7 | `07-art-presentation.md` 的「低模 2.5D 独立小样」 |
 | 紧凑 HUD / 手绘边框 / HUD 九宫格 / EmberArtSampleHudSetup | M6 + M7 | `06-ui-flow.md` → `07-art-presentation.md` |
 | 掉落物美术 / 拾取物图标 / 药瓶 / 火种护符 / 风羽 / EmberPickupArt | M7 + M5 | `07-art-presentation.md` → `05-enemy-system.md` |
 | UIRoot / Prefab 图片丢失 / Editor 图片绑定 / Repair UIRoot Images | M7 + M6 | `07-art-presentation.md` → `06-ui-flow.md` |
@@ -152,7 +157,7 @@ M2.RunFlowController ──► Host 契约 ──► M0  选卡规则不持有 E
 | M3 | M0 | `IEmberCombatHost` 反向请求阶段、伤害入口、计分与收局 | 宿主未提供时战斗不推进 |
 | M4 | M8 | `ctx.PlaySound(EmberWeaponSound)`，由 M3 装配音频适配 | 无回调时只跳过音效 |
 | M4 | M0 | **无依赖**（经 `EmberWeaponContext`） | — |
-| M7 | M0 | 阶段委托；通过 `Initialize` 注入 | 委托为空时粒子不推进，灯芯动画仍可推进 |
+| M7 | M0 | 阶段委托；通过 `Initialize` 注入 | 委托为空时粒子与玩家动画均不推进 |
 | M8 | M7/Resources | `Resources.Load("Audio/...")` | **clip 缺失静默跳过**，只警告一次，不崩 |
 | M9 | 全部 | 仅在编辑器期改写 PlayerSettings 与资源导入设置 | 缺工具链或资源停止；自有签名另校验环境变量 |
 

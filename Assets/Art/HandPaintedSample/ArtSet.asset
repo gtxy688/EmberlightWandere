@@ -12,6 +12,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 401045881168b7043939440743a4cd42, type: 3}
   m_Name: ArtSet
   m_EditorClassIdentifier:
-  keeperPrefab: {fileID: 601607209355466142, guid: e86277bee8a213c4d9b1e245c1abf436, type: 3}
-  shadePrefab: {fileID: 7655588457997932600, guid: 3fd3f3a44eedc52449ce9874e2af64b0, type: 3}
+  keeperPrefab: {fileID: 3251991276377176732, guid: 392cf723cad897a41be0efe614ba554f, type: 3}
+  shadePrefab: {fileID: 1331187307716436358, guid: c4d6a7e0380ba4945bd1408f6b5809bd, type: 3}
   courtyardPrefab: {fileID: 2072982782418915822, guid: 1996c0f37b0dd7f4a8bb6c6a536cce09, type: 3}

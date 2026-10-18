@@ -51,7 +51,7 @@ namespace Emberlight
                 var seam=Accent(g,"Hot seam",0,-.10f,.15f,.28f,new Color(1f,.45f,.10f),6);seam.sprite=EmberArt.Flame;
                 var fuse=Accent(g,"Fuse",.09f,.52f,.06f,.28f,new Color(.78f,.53f,.23f),5);fuse.transform.localRotation=Quaternion.Euler(0,0,-22);
                 g=Role(3);
-                for(int i=-2;i<=2;i++)Accent(g,"Ragged mantle",i*.145f,-.26f,.22f,.35f+(.06f*(i%2)),new Color(.18f,.16f,.25f),3);
+                for(int i=-2;i<=2;i++)Accent(g,"Ragged mantle",i*.145f,-.26f,.22f,.35f+(.06f*(i%2)),new Color(.18f,.16f,.25f),2).sprite=EmberCharacterArt.Hem;
                 for(int i=-1;i<=1;i+=2)Accent(g,"Mantle shoulder",i*.33f,.08f,.26f,.31f,new Color(.27f,.24f,.36f),4);
             }
         }
@@ -73,8 +73,9 @@ namespace Emberlight
                 }
                 decoration=new GameObject("Silhouette").transform;decoration.SetParent(transform,false);
                 // 轮廓配饰按兵种复用，不在刷怪时重建。
-                for(int i=0;i<3;i++) EmberVisuals.Shape("Hem",decoration,new Vector2((i-1)*.18f,-.30f),new Vector2(.24f,.26f),Color.white,3);
-                for(int i=0;i<2;i++) EmberVisuals.Shape("Tail",decoration,new Vector2(-.15f-i*.10f,-.26f-i*.11f),new Vector2(.24f-i*.045f,.40f),Color.white,2);
+                // 衣摆藏在斗篷后层，避免部件上缘横切到衣褶表面。
+                for(int i=0;i<3;i++) EmberVisuals.Shape("Hem",decoration,new Vector2((i-1)*.18f,-.30f),new Vector2(.24f,.26f),Color.white,2).sprite=EmberCharacterArt.Hem;
+                for(int i=0;i<2;i++) EmberVisuals.Shape("Tail",decoration,new Vector2(-.15f-i*.10f,-.26f-i*.11f),new Vector2(.24f-i*.045f,.40f),Color.white,2).sprite=EmberCharacterArt.Hem;
                 for(int i=-1;i<=1;i+=2) EmberVisuals.Shape("Shoulder",decoration,new Vector2(i*.32f,.06f),new Vector2(.25f,.35f),Color.white,4);
                 BuildRoles();
             }

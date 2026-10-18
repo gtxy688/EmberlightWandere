@@ -104,8 +104,9 @@ EmberCombat 刷怪：RollKind(wave, rng) → kind
 
 ### 表现层
 
-- `EmberEnemySilhouette`（`MonoBehaviour`）：借出时先恢复基准位置、缩放、旋转、颜色、Sprite 和显隐，再按 kind 应用外观。当前样板只有普通怪使用手绘整体 Sprite，特殊兵种仍使用既有部件与配饰；普通怪隐藏多余部件及角色装饰，保留地面阴影。
+- `EmberEnemySilhouette`（`MonoBehaviour`）：借出时先恢复基准位置、缩放、旋转、颜色、Sprite 和显隐，再按 kind 应用外观。当前美术分支配置 A 清爽卡通模板：普通怪隐藏旧脸与配饰，显示新的灰紫红眼整体 Sprite；其他兵种恢复模板中性部件与原有兵种配饰。Boss 仍使用原版部件与共享灰度图集。模板留空时，全部敌人沿用原版表现。
 - 普通怪与其他杂兵仍共用 `shade` 池，因此普通 → 特殊 → 普通必须正确恢复贴图和可见部件；恢复发生在 `Apply`，归还时只回收附属表现并停用节点。
+- 衣摆和披风碎片放在斗篷后层，避免部件上缘覆盖主衣褶；不增加敌人渲染节点或独立材质。
 - `EmberEnemyVisual`：角色标记、攻击预警、词缀光环、风之尾迹，以及程序化躯干动画（普通浮动 / 快怪急促摇动 / 重怪缓慢起伏 / 烬虫快速挤压 / 烬胎呼吸 / 盾卫轻微倾斜 / 射手蓄力压缩与射后回弹 / 引线虫高频鼓动 / 重生收缩）。**每个敌人相位不同**。
 - 动画**只动外观子节点**，不变更根节点、血条、预警范围或碰撞。
 - 基础三类敌人（0/1/2）无词缀也接入动画；特殊敌人禁用基础轮廓装饰。
@@ -127,7 +128,7 @@ EmberCombat 刷怪：RollKind(wave, rng) → kind
 ## Unity 装配
 
 - 敌人 GameObject 由 `EmberPool` 借出（key `shade` / `boss`）；**每次借出都恢复基准姿态与颜色**，再应用类型装饰。
-- 主场景经 `EmberArtSet.ShadePrefab` 注入 `Assets/Art/HandPaintedSample/Prefabs/Shade.prefab`。它保存持久部件和普通怪 Sprite 引用；Prefab 中为中性部件模板，实际兵种外观由 `Apply` 选择。Boss 仍走原有独立创建路径。
+- 当前主场景的 `EmberArtSet.ShadePrefab` 绑定 `Assets/Art/CleanToonSample/Prefabs/Shade.prefab`，普通怪图像为该样板目录 Textures 下的 `shade-v1.png`。中性模板继续保留原有部件，实际兵种外观由 `Apply` 选择；原版与第一版手绘模板仍可切换。Boss 保留独立池键与原版层级，不受普通怪 Sprite 替换影响。
 - `EmberEnemySilhouette` 是 `MonoBehaviour`，挂在池化敌人对象上；**必须容忍被复用**，不得在 `Awake` 里做一次性的类型假设。
 - 角色标识与预警随敌人销毁，**不附着到复用的躯体上**——这是曾经的缺陷来源。
 - `EmberEnemyVisual` 与行为策略为普通 C# 类，由 M3 构造与驱动。
