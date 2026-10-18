@@ -48,7 +48,7 @@
 | 间隔修正 | 乘难度 `IntervalMultiplier`，下限 0.14 秒 |
 | 清波条件 | 本波配额刷完 **且** 场上敌人为 0 |
 | 同时存在敌人上限 | 150 |
-| 普通/遭遇杂兵出生 | 完整相机视口外的随机外沿带，且位于地图内；无合法区域时暂缓，不消耗配额 |
+| 普通/遭遇杂兵与 Boss 伴随兵出生 | 完整相机视口外的随机外沿带，且位于地图内；无合法区域时暂缓，不消耗配额或占用名额 |
 | 屏外预留边距 / 外沿带宽 / 地图内缩 | 1.2 / 2 / 0.8 世界单位（LevelConfig 配置） |
 
 Boss 与母体死亡点附近的分裂子体保留现有特殊落点；上述屏外规则不改变其出场机制。
@@ -64,6 +64,13 @@ Boss 与母体死亡点附近的分裂子体保留现有特殊落点；上述屏
 | 最终 Boss 血量 | 6000（25 波）/ 10000（50 波），再乘 `HealthMultiplier` |
 | 暗弹齐射 | 第 20 波起加入，带 1 秒预警；随阶段增加弹数与暗焰落点 |
 | 半血狂怒 | 保留 |
+| Boss 出场 | 3 秒预警后生成 Boss，并从屏外生成一批伴随兵；预警期不生成伴随兵 |
+| 伴随兵目标数 | 标准难度：阶段 Boss 18、最终 Boss 28，不含 Boss；乘 `CountMultiplier` 后取整，钳制在 `0..EnemyLimit−1` |
+| 伴随兵补位 | Boss 存活期间，每 1.5 游戏秒最多补 3 只至目标数；无合法屏外落点则等下一批；含 Boss 不超过全局敌人上限 |
+| 伴随兵构成 | 普通 / 快速 / 高血 = 70% / 20% / 10%；沿用当前波次血量、难度、词缀与掉落规则，不消耗普通波配额 |
+| Boss 死亡 | 剩余伴随兵直接退场，不额外计击杀、分数或掉落；取消尚未展开的分裂请求，清敌方弹幕。阶段 Boss 进入原选卡流程，最终 Boss 直接胜利，不要求清完余兵 |
+
+伴随兵数量和补位参数集中在 `LevelConfig.StageBossSupportCount`、`FinalBossSupportCount`、`BossSupportBatch`、`BossSupportInterval`；构成归 `BossSupportFastChance` / `BossSupportToughChance`，普通怪使用剩余概率。Boss 原有血量与招式保持上述规则。正在重生读条的伴随兵仍占名额，暂停与选卡冻结补位。
 
 ### 3.3 难度倍率
 
@@ -347,7 +354,7 @@ Buff 与 Debuff 统一使用 `BuffConfig`、`Buff`、`BuffManager`；配置归 `
 
 ### 手绘美术样板默认参数
 
-当前美术分支使用用户提供的提灯小法师参考图制作玩家：Idle、Move 各两帧，保持蓝绿兜帽、暖眼、铜提灯和短靴。任意方向移动共用 Move；水平朝向用 `SpriteRenderer.flipX`，纯上下移动和停止保留上次朝向，不制作独立四方向素材。新帧内已经包含脚步、衣摆与轻微摆灯，不再叠加整图漂浮、缩放或倾斜。普通怪继续使用 A「清爽卡通」静态图与既有动画。`EmberArtSet` 的角色 Prefab 引用与庭院引用保留；其他兵种与 Boss 继续使用原有剪影。石地、装饰、紧凑 HUD 边框及 Buff 展示保持当前方案。原版、旧静态玩家、第一版手绘整体、分件角色与低模场景保留作对比，不改变移动、碰撞、伤害、掉落或 Buff 规则。
+当前美术分支使用用户提供的提灯小法师参考图制作玩家：Idle、Move 各两帧，保持蓝绿兜帽、暖眼、铜提灯和短靴。任意方向移动共用 Move；水平朝向用 `SpriteRenderer.flipX`，纯上下移动和停止保留上次朝向，不制作独立四方向素材。新帧内已经包含脚步、衣摆与轻微摆灯，不再叠加整图漂浮、缩放或倾斜。全部敌人（含 Boss 与分裂子体）使用同风格的无脚悬浮皮肤，按兵种区分轮廓与配色，继续复用程序化浮动、压缩、倾斜与攻击预警，不制作敌人走路序列。`EmberArtSet` 的角色 Prefab 引用与庭院引用保留；石地、装饰、紧凑 HUD 边框及 Buff 展示保持当前方案。原版、旧静态玩家、第一版手绘整体、分件角色与低模场景保留作对比；美术不改变移动根、碰撞、伤害、掉落或 Buff 规则。
 
 | 参数 | 当前默认值 | 维护归属 |
 |---|---|---|
@@ -359,9 +366,13 @@ Buff 与 Debuff 统一使用 `BuffConfig`、`Buff`、`BuffManager`；配置归 `
 | 玩家动作播放 | Idle 5 FPS、Move 8 FPS，循环；`IsMoving` 布尔参数双向零时长转换，无 Exit Time；移动阈值 0.025、水平转向阈值 0.08 世界单位/秒，原图默认朝左 | 两段 AnimationClip 与 `EmberKeeperAnimation` 的序列化表现配置；只在 Playing 按实际位移推进，暂停和选卡冻结 |
 | 玩家帧离线归一 | alpha > 16 定义轮廓；可见高度统一为 384 像素，脚底基线 Y=48；上半身暖眼的横向中心对齐 X=224；只作等比采样、画布留白与拼图 | `EmberPlayerSpriteSetup.Export`；Move 取四格源稿的第 0、2 格相反落脚，不通过整体变换伪造步态 |
 | 玩家外观 | 保持首次装配前静态玩家的实际可见高度与脚底位置，白色乘色；保持原 Prefab GUID 与根节点变换 | `Assets/Art/CleanToonSample/Prefabs/Keeper.prefab`；重复装配保留已有外观位置、比例和动画人工编辑 |
-| 普通怪与旧玩家源图 | 各一张 1199×1312 RGBA PNG；单 Sprite、居中 pivot、PPU 100，上限 1024；无 mipmap、Bilinear、Clamp、非压缩，Android 同步 | `EmberCleanToonSetup.Import`；旧静态玩家备份为同目录的 KeeperStatic Prefab |
+| 对比用普通怪与旧玩家源图 | 各一张 1199×1312 RGBA PNG；单 Sprite、居中 pivot、PPU 100，上限 1024；无 mipmap、Bilinear、Clamp、非压缩，Android 同步 | `EmberCleanToonSetup.Import`；旧静态玩家备份为同目录的 KeeperStatic Prefab |
+| 无脚怪物皮肤导入 | 三张横排三角色原图（2172×724 RGBA）与独立盾图（1254×1254 RGBA）；按 alpha > 16 的透明列间隔切完整轮廓，忽略宽 < 8 的孤立噪点，四周留 3 源像素；Multiple、居中 pivot、PPU 100、FullRect，图集上限 2048、盾图 1024；无 mipmap、Bilinear、Clamp、非压缩，Android 同步 | `EmberEnemySkinSetup`；原 PNG 不重绘，切片身份保存在 .meta |
+| 无脚怪物外观 | Sprite 高度：普通与特殊怪基准 1.05、Boss 基准 0.95 世界单位，再乘原有兵种根倍率；局部位置 (0,0.12)，白色乘色 | Shade Prefab 的 skins 保存 kind / Sprite / height；`EmberEnemySilhouette.Apply` 隐藏旧脸与重复配饰，缺少对应皮肤时沿用旧外观 |
+| 怪物朝向与盾图 | 单帧水平位移绝对值 > 0.001 世界单位时翻转为运动方向；上下移动保留朝向；独立盾图高 0.91 世界单位，仍按盾卫朝向旋转 | `EmberEnemyVisual`；浮动仅动外观，不转动根节点或改变正面减伤判定 |
+| 怪物受击闪白 | 沿用 0.10 游戏秒命中计时；彩色皮肤 RGB 向白色混合 70%，透明度保持原样，重生时不闪白，到期与回池清零 | `EmberCombatDamage.HitFlashSeconds` / `EmberEnemyVisual.HitFlashAmount`；共享 EnemySkin 材质，经缓存 MaterialPropertyBlock 写每个 Renderer 的强度，不为每只怪物创建材质 |
 | A 玩家脚下柔光 | 宽 1.05、局部位置 (0.16,-0.42)，RGBA (1,0.51,0.13,0.12)；脉动沿用整体贴图路径 | 同 Prefab；保持低亮度，不额外叠加外围火光 |
-| A 普通怪外观 | 整张 Sprite 高 1.25 世界单位（含透明留白），局部位置 (0,0.12)，乘色 RGBA (0.82,0.82,0.88,1) | `EmberEnemySilhouette.Apply`；kind=0 使用新 Sprite，其他兵种恢复中性模板 |
+| 对比用 A 普通怪外观 | 整张 Sprite 高 1.25 世界单位（含透明留白），局部位置 (0,0.12)，乘色 RGBA (0.82,0.82,0.88,1) | `EmberEnemySilhouette.Apply`；缺少新皮肤映射时 kind=0 回落此路径 |
 | 原版角色精修图集 | 512×512 RGBA，斗篷 / 兜帽 / 衣摆 / 灯壳四格，各 256×256，PPU 256、居中 pivot；Bilinear、非压缩、无 mipmap，Android 同步 | `EmberCharacterArtBake` 导出与切片；四格均保持单位尺寸，不改变既有部件变换 |
 | 玩家领口 / 扣饰 | 领口位置 (0, 0.025)、尺寸 0.54×0.13、RGB (0.16,0.28,0.36)；铜扣位置 (0.025,-0.005)、尺寸 0.07×0.085、RGB (0.76,0.55,0.26) | `EmberKeeperAnimation.BuildOriginal`；随外观根浮动 |
 | 玩家眼睛高光 | 相对每只眼睛位置 (-0.12,0.18)、尺寸 0.24×0.24、RGB (1,0.96,0.76) | 同方法；继承眼睛与脸部变换 |
@@ -384,7 +395,7 @@ Buff 与 Debuff 统一使用 `BuffConfig`、`Buff`、`BuffManager`；配置归 `
 | 装饰 Sprite 高度 | 灯柱 1.6、碎墙 0.65、蜡烛 0.9 世界单位；庭院实例可独立缩放 | Lantern / Rubble / Candles Prefab |
 | 新贴图导入上限 | 石地与 HUD 4096，其余样板图 1024；关闭 mipmap、Bilinear、非压缩，Android 同步覆写 | `EmberArtSampleSetup.Import`；保留独立源 PNG |
 
-环境使用静态 Prefab 布置；石地为 Tiled，装饰使用透明 Sprite，未增加实时光照系统。每局实例化庭院和已选角色模板；玩家通过已保存的 Controller 与 Clip 切换持久 Sprite，不在运行时重绘、切图或生成新材质。敌人替换路径只改变普通怪 Sprite，其他兵种与 Boss 保留原有部件与动画；原版回退路径仍可使用灰度部件图集。HUD 与 Buff 控件继续复用当前 UIRoot，不回退其文字、布局和图片。素材的清晰度与两帧动画观感以实际游戏视图判断。
+环境使用静态 Prefab 布置；石地为 Tiled，装饰使用透明 Sprite，未增加实时光照系统。每局实例化庭院和已选角色模板；玩家通过已保存的 Controller 与 Clip 切换持久 Sprite，不在运行时重绘、切图或生成新材质。敌人按 kind 选择完整皮肤；功能性护盾、预警与词缀效果保留，整体皮肤不再创建重复的旧分层配饰；原版回退路径仍可使用灰度部件图集。HUD 与 Buff 控件继续复用当前 UIRoot，不回退其文字、布局和图片。素材的清晰度与动画观感以实际游戏视图判断。
 
 
 ### 低模 2.5D 独立美术小样

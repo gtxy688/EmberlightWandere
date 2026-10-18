@@ -67,7 +67,7 @@ namespace Emberlight.Tests
                 Assert.That(special, Is.SameAs(first));
                 silhouette.Apply(specialKind, Color.cyan);
                 Assert.That(body.sprite, Is.Not.SameAs(normalSprite), "The special enemy kept the normal enemy's artwork.");
-                Assert.That(special.Find("Face").gameObject.activeSelf, Is.True);
+                Assert.That(special.Find("Face").gameObject.activeSelf, Is.EqualTo(family != "CleanToonSample"));
 
                 pool.Release("shade", special.gameObject);
                 var normal = pool.RentEnemy("shade", world.transform, Color.gray);

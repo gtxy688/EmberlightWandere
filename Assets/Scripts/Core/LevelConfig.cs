@@ -22,6 +22,9 @@ namespace Emberlight
         public float BossHp = 6000f;
         public int BossWave = 25;
         public int EnemyLimit = 150;
+        public int StageBossSupportCount = 18, FinalBossSupportCount = 28, BossSupportBatch = 3;
+        public float BossSupportInterval = 1.5f;
+        public float BossSupportFastChance = .20f, BossSupportToughChance = .10f;
         public EmberDifficulty Difficulty { get; private set; } = EmberDifficulty.Standard;
         public float HealthMultiplier { get; private set; } = 1f;
         public float DamageMultiplier { get; private set; } = 1f;
@@ -129,6 +132,21 @@ namespace Emberlight
         public float BossHpForWave(int wave)
         {
             return wave == BossWave ? BossHp : (1600f + wave * 100f) * HealthMultiplier;
+        }
+
+        /// <summary>Boss 伴随兵目标数，不含 Boss 本身；沿用难度数量倍率并为 Boss 预留一个名额。</summary>
+        public int BossSupportTargetForWave(int wave)
+        {
+            if (!IsBossWave(wave)) return 0;
+            int count = wave == BossWave ? FinalBossSupportCount : StageBossSupportCount;
+            return Mathf.Clamp(Mathf.RoundToInt(count * CountMultiplier), 0, Mathf.Max(0, EnemyLimit - 1));
+        }
+
+        /// <summary>伴随兵只使用基础三类，让 Boss 招式与预警保持清晰。</summary>
+        public int RollBossSupportKind(System.Random random)
+        {
+            double roll = random.NextDouble();
+            return roll < BossSupportToughChance ? 2 : roll < BossSupportToughChance + BossSupportFastChance ? 1 : 0;
         }
 
         public int BossTier(int wave)

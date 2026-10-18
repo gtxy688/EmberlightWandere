@@ -92,8 +92,10 @@ namespace Emberlight
                 // 引线虫（kind 6）不带词缀：它自己会炸。
                 if (kind != 6 && (forceAffix || random.NextDouble() < config.AffixChance(wave)))
                     added.affix = (EnemyAffix)(1 + random.Next(3));
-                added.visual = new EmberEnemyVisual(added, world);
             }
+
+            if (!boss || silhouette.UsesWholeBodySkin)
+                added.visual = new EmberEnemyVisual(added, world);
 
             added.bar = new EmberEnemyBar(view, boss);
             if (boss) added.ai = new EmberBoss(host, view, world, config.BossTier(wave), bossVolley);

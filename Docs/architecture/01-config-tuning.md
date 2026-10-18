@@ -38,6 +38,7 @@ EmberCombat 每帧 / 每波查询同一 config 实例：
    QuotaForWave(wave) → SpawnInterval(wave) → RollKind(wave, rng)
    → TrashHp(wave, kind) → AffixChance(wave) → EnemySpeed(kind)
    IsBossWave / IsEliteWave / BossHpForWave / BossTier / WaveName
+   BossSupportTargetForWave / RollBossSupportKind → M3 执行 Boss 伴随兵补位
    PicksAfterWave(wave) → 交给 M2 决定发牌
 ```
 
@@ -68,6 +69,10 @@ EmberCombat 每帧 / 每波查询同一 config 实例：
 
 - `wave < 1 || wave >= BossWave` → 0（最终波直接结算）
 - 否则 `(wave <= 10 || wave % 2 == 0 ? 1 : 0) + (IsBossWave ? 1 : 0)`
+
+### Boss 伴随兵
+
+`BossSupportTargetForWave` 仅在 Boss 波返回目标数，区分阶段与最终配置，应用 `CountMultiplier` 并为 Boss 预留全局容量；非 Boss 波返回零。`RollBossSupportKind` 只抽基础追击兵种，独立于普通刷怪表。初次伴随兵和后续补位由 M3 执行，间隔与批量均查配置，数值见需求 §3.2。
 
 ### 刷怪权重表
 
@@ -101,6 +106,7 @@ EmberCombat 每帧 / 每波查询同一 config 实例：
 | `RollKind` | 实例方法 | `int wave, Random` | `int kind` | 权重和不足时回落 kind 0 |
 | `AffixChance` | 实例方法 | `int wave` | `float` | 第 3 波前为 0；增长段与最终结果分别钳制，公式见需求 §3.5 |
 | `BossHpForWave` / `BossTier` | 实例方法 | `int wave` | `float` / `int` | 最终波用 `BossHp`；Tier 钳制 1–5 |
+| `BossSupportTargetForWave` / `RollBossSupportKind` | 实例方法 | 波次 / 随机源 | 伴随兵目标 / 基础兵种 kind | 目标含难度数量倍率与全局容量钳制，不含 Boss；非 Boss 波为零 |
 | `WaveName` | 实例方法 | `int wave` | `string` | 覆盖最终/Boss/精英/前 5 波/四种后期主题 |
 | `ApplyWorld` | 实例方法 | — | — | 唯一副作用：写 `EmberWorld.Limit` |
 | `GameSpeed` 倍速 API | 静态 | 档位 | 设置 `Time.timeScale` + 写 Prefs | 需在场景切换后保持 |
@@ -121,3 +127,4 @@ EmberCombat 每帧 / 每波查询同一 config 实例：
 - `SpawnScreenPadding` / `SpawnBandWidth` / `SpawnMapInset` 控制普通与遭遇杂兵的屏外外沿带和地图内缩，完整权威值见 requirements §3.1；只影响落点，不改变配额、间隔、Boss 与分裂规则。回归覆盖地图边缘、不同视口比例、无合法区域和配额重试。
 - **直接影响模块**：M3（消费全部数值）、M2（消费 `PicksAfterWave`）、M6（显示 `DifficultyName` / `WaveName`）、M5（消费敌人血量/速度/词缀概率）。
 - **必须复验的契约**：难度倍率表、`QuotaForWave` 与 `SpawnInterval` 的钳制、`PicksAfterWave` 的三种分支、`IsBossWave` / `IsEliteWave` 的互斥性。
+- Boss 伴随兵调参需复验难度缩放、为 Boss 预留容量、预警期不刷兵、补位不消耗普通配额与 Boss 死亡后停止补位，检查入口为 `Assets/Tests/EditMode/EmberBossSupportTests.cs`。

@@ -167,7 +167,11 @@ python Tools/atlas_glyph_check.py
 
 `Emberlight/Art/Bake Classic Character Parts` 调用 `EmberCharacterArtBake.Bake`：由代码原生的二维贝塞尔轮廓、衣褶和灰度明暗生成新 PNG，用边缘距离作抗锯齿，再经 Sprite Editor 数据接口保存切片。重复烘制保留切片身份；修改画法后重烘即可，运行时不逐像素绘制，不新增角色材质。源资产为 `Assets/Resources/Art/Characters/classic-character-parts.png` 及 `.meta`；没有改动既有四张图集。
 
-`Emberlight/Art/Use Clean Toon Characters` 调用 `EmberCleanToonSetup.Build`：导入 `Assets/Art/CleanToonSample/Textures/keeper-v1.png` 与 `shade-v1.png` 为持久单 Sprite，首次从既有中性模板创建新 Prefab，再只更新当前 `ArtSet.asset` 的两个角色引用。原 PNG、旧角色模板、庭院、UI 和 Buff 资产均不改写；重复执行保留已有新 Prefab 的手动编辑。普通敌人继续走 `EmberEnemySilhouette.Apply` 的整体图替换分支，其他兵种与 Boss 不换造型。导入与外观数值统一见需求 §7，来源见 [美术样板说明](../reference/hand-painted-art.md)。
+`Emberlight/Art/Use Clean Toon Characters` 调用 `EmberCleanToonSetup.Build`：导入旧单 Sprite，首次从既有中性模板创建新 Prefab，再更新当前 `ArtSet.asset` 的角色引用。重复执行保留已有玩家动画与怪物皮肤映射，庭院、UI 和 Buff 资产不改写。当前玩家序列和全部兵种皮肤分别由下述工具维护；导入与外观数值统一见需求 §7，来源见 [美术样板说明](../reference/hand-painted-art.md)。
+
+`Emberlight/Art/Build Enemy Skins` 调用 `EmberEnemySkinSetup.Build`：从 `Assets/Art/CleanToonSample/Enemies` 导入三张横排皮肤图和独立盾图，通过真正透明的列间隔找到完整角色范围，避免不等宽原稿被机械均分裁断；Sprite Editor 数据接口保存切片和命名身份，不重绘源 PNG。原位补齐 Shade Prefab 的 kind / Sprite / height 与盾引用，重复执行保留已有映射和高度。全部敌人与 Boss 使用无脚悬浮皮肤，复用 M5 的浮动与攻击提示；缺少皮肤的旧模板保持回落路径。
+
+同目录的 `EnemySkin.shader` 与持久 `EnemySkin.mat` 保留 Sprite 的透明度、乘色与 flipX，额外支持彩图受击混白。Editor 只在原默认材质时接入，已有支持该属性的材质保留；不兼容的自定义材质报错，不静默覆盖。运行时复用共享材质，经每个视图缓存的 MaterialPropertyBlock 更新强度，不实例化每怪材质。
 
 `Emberlight/Art/Build Player Sprite Animations` 调用 `EmberPlayerSpriteSetup.Build`：从工程内 `Player/Source` 的生成原稿离线导出两组独立 PNG 与 Sheet；Move 只取两次相反的落脚姿势。归一过程只等比采样、定位和拼图，不通过整体变换伪造动作。Sheet 由 Sprite Editor 数据接口保存切片及命名身份，单帧 PNG 供外部使用。首次装配按旧玩家有效 alpha 范围保留可见高度和脚底位置，原位更新 Keeper Prefab，先另存 KeeperStatic 供对比；不修改 ArtSet 或正式场景。重复执行保留切片身份、已有 PNG、Clip、Controller 和 Prefab 外观布局。运行帧引用 Sheet PNG，单帧是导出副本，修改单帧不会自动同步 Sheet；日常调整运行画面编辑 Sheet，节奏编辑 Clip，阈值与默认朝向编辑 Prefab。
 
@@ -192,14 +196,14 @@ python Tools/atlas_glyph_check.py
 
 #### 手绘场景样板
 
-- `Assets/Art/HandPaintedSample/ArtSet.asset` 保存必需的庭院与可选的玩家、敌人模板。当前两个角色模板仍在 CleanToonSample 目录，玩家已绑定两帧 Animator，普通怪保留 A 外观；庭院、UI 和 Buff 展示保留。角色模板留空仍恢复原版，非空时检查对应表现组件，缺少庭院仍报配置错误。
-- `Courtyard.prefab` 保存 Tiled 石地、灯柱、碎墙、蜡烛与原有边界装饰。环境不增加碰撞和寻路规则；地面铺到逻辑活动范围之外，避免相机到边界时露空。当前为小规模样板，其他兵种、地图边界和全套菜单没有批量换风格。
+- `Assets/Art/HandPaintedSample/ArtSet.asset` 保存必需的庭院与可选的玩家、敌人模板。当前两个角色模板仍在 CleanToonSample 目录，玩家绑定两帧 Animator，敌人模板覆盖全部 kind 的无脚皮肤；庭院、UI 和 Buff 展示保留。角色模板留空仍恢复原版，非空时检查对应表现组件，缺少庭院仍报配置错误。
+- `Courtyard.prefab` 保存 Tiled 石地、灯柱、碎墙、蜡烛与原有边界装饰。环境不增加碰撞和寻路规则；地面铺到逻辑活动范围之外，避免相机到边界时露空。地图边界和全套菜单没有批量换风格。
 - 角色、敌人和装饰 PNG 为独立素材，HUD 图片不包含文字、数值和图标。来源与生成约束见 [手绘样板素材](../reference/hand-painted-art.md)。原有 `wanderer-sheet` 仍提供徽记与弹体等共享素材。
 - 粒子与对象池重新租用时恢复子特效，避免隐藏子对象影响后续表现。
 
 `Emberlight/Art/Build Hand Painted Sample` 通过 Unity Sprite Editor 数据接口配置切片、导入设置和持久 Sprite，创建缺失的样板 Prefab 并绑定庭院。重复执行保留角色模板的当前选择（包括留空）、切片身份、已存在的 Prefab 和手动 HUD 布局；修改日常排版或环境位置直接编辑 Prefab。`BuildProject` 是批处理入口，会显式打开并保存主场景；普通 Build 菜单只对当前已打开的主场景标记改动，不切换其他场景。
 
-`EmberArtSampleSetup.UseMainBranchCharacters` 通过 Editor API 清空两个角色模板并保存美术集，再打开正式主场景；不会调用 HUD 配置或更改 Buff 控件。`EmberArtSampleCapture` 当前针对两帧玩家与 A 普通怪，在真实 PlayMode 中开局、移动、施加 Buff 并录制普通和密集战况；录屏保存在 `Library/TestRun` 的 player-two-normal、player-two-dense 文件及 PNG 近景，不作为运行依赖。
+`EmberArtSampleSetup.UseMainBranchCharacters` 通过 Editor API 清空两个角色模板并保存美术集，再打开正式主场景；不会调用 HUD 配置或更改 Buff 控件。`EmberArtSampleCapture` 在真实 PlayMode 中开局、移动、施加 Buff 并录制普通和密集战况；`EmberBossSwarmSmokeTests` 另布置兵种对照图、阶段与最终 Boss 群战，检查退场和结算。图片与视频输出到 `Library/TestRun`，不作为运行依赖。
 
 导入工具保留源 PNG；手绘 HUD 仅按有效 alpha 定义切片范围和九宫格边框，不裁改图片。Unity 按导入上限决定实际纹理分辨率。石地使用可重复纹理，其余使用 Clamp，均关闭 mipmap。贴图上限与外观默认值见需求 §7。
 
@@ -236,7 +240,7 @@ IntroRoot 同样使用持久图片：背景、徽标与进度条沿用原取图�
 
 ## Unity 装配
 
-- 资源根：`Assets/Resources/Art/{UI,Cards,World,Baked}`、`Assets/Resources/Fonts`；当前玩家帧、Sheet、两段 Clip、Controller 与生成原稿在 `Assets/Art/CleanToonSample/Player`，Prefab 和普通怪原图在同级目录。第一版手绘样板、拆件图、AnimationClip 和透明行走帧在 `Assets/Art/HandPaintedSample`。
+- 资源根：`Assets/Resources/Art/{UI,Cards,World,Baked}`、`Assets/Resources/Fonts`；当前玩家帧、Sheet、两段 Clip、Controller 与生成原稿在 `Assets/Art/CleanToonSample/Player`，怪物皮肤与盾图在同级 Enemies，角色模板在 Prefabs。第一版手绘样板、拆件图、AnimationClip 和透明行走帧在 `Assets/Art/HandPaintedSample`。
 - 4 个 `AssetPostprocessor`（`EmberCardFrameImporter` / `EmberCardIconImporter` / `EmberUiArtImporter` / `EmberWorldArtImporter`）在导入时维持 Sprite / Multiple 设置。**切片通过 Sprite Editor 编辑并保存在 `.meta`；导入器不负责重建切片。**
 - Android 压缩覆写位于 `.meta` 平台块（`overridden: 1` + `textureCompression: 0`），涉及三张 doodle 图集。
 - `EmberKeeperAnimation` 与 `EmberEffects` 为 `MonoBehaviour`，`EmberArtSet` 为资源资产，其余取图服务为静态类。阶段门控由组合根通过 `Initialize` 注入委托，没有任何 `FindObjectOfType` 反查。
@@ -246,3 +250,5 @@ IntroRoot 同样使用持久图片：背景、徽标与进度条沿用原取图�
 - **直接影响模块**：M6（UI 精灵）、M5（共享剪影服务）、M4（弹体外观）、M3（粒子反馈）。
 - **必须复验的契约**：预烘字体的 `ValidateBaked` 闸门（删掉它 = 资产坏了整个 UI 挂掉）、主 UI 与加载页对已校验字体的绑定、粒子上限、图集三级回退链、`AssetPostprocessor` 切片设置、字形预热覆盖（回落路径）。
 - **玩家序列帧契约**：持久 Sprite / Clip / Controller 引用、重新装配身份稳定、帧内真实交替落脚、固定脚底和显示大小、Idle / Move 切换、水平翻转与上下共用、暂停/选卡冻结，以及原有分件与原版回退。主观步态、两帧切换观感与背景可读性需在游戏中判断。
+- **怪物皮肤契约**：透明切片完整、全部 kind 映射有效、重复导入身份稳定、池复用恢复 Sprite 与翻转、功能盾和预警仍可读；Boss 无重复冠饰，保留原招式。美术不接管碰撞和数值规则。
+- 彩图材质还需运行 `Assets/Tests/PlayMode/EmberEnemyRenderingTests.cs` 的实际像素检查，确认原贴图、透明边缘、闪白与翻转，而不能只断言属性存在或材质引用有效。

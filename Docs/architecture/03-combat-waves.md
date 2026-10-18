@@ -24,7 +24,7 @@
 
 | 被依赖模块 | 只使用的公开契约 | 用途 | 缺失时的行为 |
 |------------|------------------|------|--------------|
-| M1 | `LevelConfig.QuotaForWave / SpawnInterval / RollKind / TrashHp / AffixChance / EnemySpeed / IsBossWave / IsEliteWave / BossHpForWave / BossTier / WaveName / PicksAfterWave` | 全部波次与数值决策 | `Begin` 有 `LevelConfig` 重载；无配置时用 `Default` |
+| M1 | `LevelConfig.QuotaForWave / SpawnInterval / RollKind / TrashHp / AffixChance / EnemySpeed / IsBossWave / IsEliteWave / BossHpForWave / BossTier / BossSupportTargetForWave / RollBossSupportKind / WaveName / PicksAfterWave` | 全部波次与数值决策 | `Begin` 有 `LevelConfig` 重载；无配置时用 `Default` |
 | M0 | `IEmberCombatHost`：`Phase` / `Elapsed` / `Progress` / `HurtReady` / `NeedsHealing` / `HurtPlayer` / `PickHealingDrop` / `PlayBossBurst` / `RegisterKill` / `OnWaveCleared` / `EndRun` | 阶段门控、玩家伤害、计分与收局 | 宿主由组合根提供；**不需要是 `EmberGame`** |
 | M2 | `IEmberCombatHost.Progress`（`RunProgress`） | 注入武器 context 与结算伤害加成 | `Progress` 为 null 时须容忍（回营地后） |
 | M4 | `EmberWeapon.Tick(dt, ctx)`、`Reset()` | 每帧驱动全部武器 | 武器 `OwnsWeapon` 自我门控，未拥有则不动作 |
@@ -44,7 +44,8 @@ EmberGame.Update()                       ← 组合根只负责顺序（见 00-c
         │     ├─ 刷怪：waveSpawned < QuotaForWave(wave) && EnemyCount < EnemyLimit
         │     │     └─ host.TrySpawnRolledTrash() → roster.Spawn(...)，成功才消耗配额
         │     │           └─ RollKind(wave, rng) → TrashHp(wave, kind) → AffixChance(wave)
-        │     ├─ Boss 预警倒计时结束 → host.SpawnBoss()
+        │     ├─ Boss 预警倒计时结束 → host.SpawnBoss() + TrySpawnBossSupport() 初始伴随兵
+        │     │     └─ Boss 在场时按配置定时补缺，不消耗普通配额，受目标与全局容量双重限制
         │     └─ 遭遇事件：waveSpawned 达本波 50% 配额时触发一次 → host.TrySpawnTrashAt(...)
         ├─ healingDrops.Tick(dt, player)
         ├─ enemyProjectiles.Move(dt)
@@ -58,7 +59,7 @@ EmberGame.Update()                       ← 组合根只负责顺序（见 00-c
               └─ EmberCombatDamage.ResolveDeaths(ctx) → Outcome
                     ├─ 重生接管 → 行为 OnDeath → 掉落 → roster.Release → 记分
                     ├─ outcome.Kills  → waves.NoteKill() × N
-                    ├─ outcome.BossDefeated → waves.NoteBossDefeated()
+                    ├─ outcome.BossDefeated → 取消待分裂请求 / 回收余兵 → waves.NoteBossDefeated()
                     └─ 否则 waves.CheckWaveCleared()
                           └─ host.OnWaveCleared(wave)          ← IEmberCombatHost
                                 └─ RunFlowController.OnWaveCleared   （M2，规则见 02-run-progression.md）
@@ -114,6 +115,8 @@ Loading → Menu → SelectLength → SelectDifficulty → SelectSlots → Selec
 - **半血狂怒**：低于半血后加快节奏并增加爆发区域。
 - 暗弹**可被玩家火球 / 穿透箭拦截击毁**（`ctx.Intercept`）。
 - 击败最终 Boss = 通关。
+- Boss 出场时生成伴随兵，之后按 `BossSupportInterval` / `BossSupportBatch` 分批补足 `BossSupportTargetForWave`，构成来自 `RollBossSupportKind`，数值见需求 §3.2。`Host.TrySpawnBossSupport` 经名册走普通屏外落点，不使用屏内生成特例；落点失败留待下一批，重生中的敌人仍占名额。
+- Boss 阵亡后先取消 `pendingBroods` 并回收余兵，再通知波次结束；退场不走死亡奖励入口，不额外加击杀、分数或掉落。阶段选卡与最终胜利沿用原流程，不等待余兵清空。
 
 ### 伤害与受伤
 
@@ -131,9 +134,13 @@ Loading → Menu → SelectLength → SelectDifficulty → SelectSlots → Selec
 - 重生 / 引线未结束时**不允许**提前进入选卡；
 - 分裂子体补入 HUD 总量但**不消耗**常规刷怪配额。
 
+Boss 波例外：Boss 死亡优先结束本波，未展开的分裂请求作废；普通波仍按上述顺序先补子体再判清波。
+
 ### 对象池（`EmberPool`）
 
 按字符串 key 复用：`fire`（玩家弹体）/ `burn`（燃地）/ `warn`（预警）/ `shade` / `boss` / `dark-bolt`（暗弹）/ `healing-drop`。归还时必须还原姿态与角色标识，避免附着到复用的躯体上。
+
+敌人模板包含 Boss 皮肤时，`boss` 池也从同一 Prefab 建立视图，池键仍独立；没有 Boss 皮肤则沿用程序化 Boss。整体皮肤的 Boss 不再叠加旧冠饰与提灯，但保留原招式状态机。
 
 ## 对外契约
 
@@ -157,6 +164,7 @@ Loading → Menu → SelectLength → SelectDifficulty → SelectSlots → Selec
 | `EmberCombat.Wave` / `WaveQuota` / `WaveSpawned` / `WaveKilled` / `WaveRemaining` / `WaveKillsRemaining` / `EnemyCount` / `Boss` / `BossAlive` | 属性 | — | `int` / `EmberEnemy` / `bool` | HUD 只读数据源；Boss 波 `WaveRemaining` 返回 0。波次量转发自 `EmberWaveDirector`；`EnemyCount` 读名册，`Boss` / `BossAlive` 读战斗根持有的 Boss 引用 |
 | `EmberEnemy` | 类 | — | 敌人实例 | 顶层类型；`Targetable` 是所有武器命中判定的统一门 |
 | `EmberWaveDirector` | 类 | `Host` 契约 | 波次只读量 | 不造敌人：需要刷怪时回调 `Host`。**不含伤害逻辑** |
+| `EmberWaveDirector.Host.TrySpawnBossSupport` | 方法 | — | 是否成功 | 经 M1 抽伴随兵种类、M3 名册执行屏外生成；失败不占目标名额、不消耗普通配额 |
 | `EmberEnemyRoster` | 类 | 池、配置、世界、玩家、随机源、显式相机 | `EmberEnemy` 或 null | 杂兵保证屏外且在地图内；无法落点时返回 null，只有成功才借出节点 |
 | `EmberSpawnPlacement.TryFind` | 静态方法 | 相机视口/地图区域、随机源、请求落点 | 成功标记与位置 | 从视口外沿带和地图交集取点，无合法区不回落到屏内；数值归 M1 |
 | `EmberCombatDamage.Apply` / `.ResolveDeaths` | 静态方法 | `Context` + 目标下标 | `Outcome` | **不改波次、不造新敌人**；击杀数与 Boss 阵亡经 `Outcome` 回报 |
@@ -197,6 +205,7 @@ Loading → Menu → SelectLength → SelectDifficulty → SelectSlots → Selec
 - **直接影响模块**：M4（经 context）、M5（行为与表现）、M6（HUD/流程）、M7（粒子与池）、M8（音效触发点）。
 - **必须复验的契约**：`OnWaveCleared` 的发牌时机、`SelectUpgrade` 防伪、`HurtPlayer` 的倍率与护盾顺序、死亡→分裂→清波的处理顺序、暗弹拦截。
 - 屏外落点改动需复验完整视口/地图交集、遭遇请求点迁移和生成失败后的配额重试；Boss 与分裂特殊落点不纳入普通杂兵落点规则。
+- Boss 群战需复验首次伴随兵、定时补缺、容量限制、退场无额外奖励、取消分裂和阶段/最终结算，覆盖入口为 `Assets/Tests/EditMode/EmberBossSupportTests.cs` 与 `Assets/Tests/PlayMode/EmberBossSwarmSmokeTests.cs`。
 
 ## 性能定位标记（2026-09-16）
 

@@ -83,6 +83,7 @@ namespace Emberlight.Tests
             public int EnemyCount => 0;
             public Vector2 PlayerPosition => Vector2.zero;
             public bool TrySpawnRolledTrash() => CanSpawn;
+            public bool TrySpawnBossSupport() => CanSpawn;
             public bool TrySpawnTrashAt(int kind, Vector2 position, bool forceAffix) => CanSpawn;
             public void SpawnBoss() { }
             public void ClearProjectiles() { }

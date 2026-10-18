@@ -3,16 +3,44 @@ namespace Emberlight
 {
     public sealed class EmberEnemySilhouette : MonoBehaviour
     {
+        [System.Serializable]
+        struct Skin
+        {
+            public int kind;
+            public Sprite sprite;
+            public float height;
+        }
+
         [SerializeField] Sprite ordinarySprite;
         [SerializeField] SpriteRenderer ordinaryBody;
+        [SerializeField] Skin[] skins;
+        [SerializeField] Sprite directionalShieldSprite;
         Transform[] parts;
         Sprite[] sprites;
-        bool[] active;
+        bool[] active, flipped;
         Vector3[] positions, scales;
         Quaternion[] rotations;
         Color[] colors;
         Transform decoration;
+        MaterialPropertyBlock skinProperties;
+        static readonly int MainTextureId = Shader.PropertyToID("_MainTex");
+        static readonly int HitFlashId = Shader.PropertyToID("_HitFlash");
         readonly Transform[] roles = new Transform[9];
+        public bool UsesWholeBodySkin { get; private set; }
+        public SpriteRenderer WholeBody => UsesWholeBodySkin ? ordinaryBody : null;
+        public Sprite DirectionalShieldSprite => directionalShieldSprite;
+
+        public bool HasSkinFor(int kind) => ordinaryBody != null && TrySkin(kind, out _);
+
+        bool TrySkin(int kind, out Skin result)
+        {
+            if (skins != null)
+                for (int i = 0; i < skins.Length; i++)
+                    if (skins[i].kind == kind && skins[i].sprite != null && skins[i].height > 0)
+                    { result = skins[i]; return true; }
+            result = default;
+            return false;
+        }
         Transform Role(int kind)
         {
             var g=new GameObject("Role silhouette " + kind).transform;g.SetParent(decoration,false);roles[kind]=g;return g;
@@ -63,35 +91,59 @@ namespace Emberlight
             {
                 int count=transform.childCount;
                 parts=new Transform[count];positions=new Vector3[count];scales=new Vector3[count];rotations=new Quaternion[count];colors=new Color[count];
-                sprites=new Sprite[count];active=new bool[count];
+                sprites=new Sprite[count];active=new bool[count];flipped=new bool[count];
                 for(int i=0;i<count;i++)
                 {
                     parts[i]=transform.GetChild(i);positions[i]=parts[i].localPosition;
                     scales[i]=parts[i].localScale;rotations[i]=parts[i].localRotation;
                     active[i]=parts[i].gameObject.activeSelf;
-                    var renderer=parts[i].GetComponent<SpriteRenderer>();if(renderer!=null){colors[i]=renderer.color;sprites[i]=renderer.sprite;}
+                    var renderer=parts[i].GetComponent<SpriteRenderer>();if(renderer!=null){colors[i]=renderer.color;sprites[i]=renderer.sprite;flipped[i]=renderer.flipX;}
                 }
-                decoration=new GameObject("Silhouette").transform;decoration.SetParent(transform,false);
-                // 轮廓配饰按兵种复用，不在刷怪时重建。
-                // 衣摆藏在斗篷后层，避免部件上缘横切到衣褶表面。
-                for(int i=0;i<3;i++) EmberVisuals.Shape("Hem",decoration,new Vector2((i-1)*.18f,-.30f),new Vector2(.24f,.26f),Color.white,2).sprite=EmberCharacterArt.Hem;
-                for(int i=0;i<2;i++) EmberVisuals.Shape("Tail",decoration,new Vector2(-.15f-i*.10f,-.26f-i*.11f),new Vector2(.24f-i*.045f,.40f),Color.white,2).sprite=EmberCharacterArt.Hem;
-                for(int i=-1;i<=1;i+=2) EmberVisuals.Shape("Shoulder",decoration,new Vector2(i*.32f,.06f),new Vector2(.25f,.35f),Color.white,4);
-                BuildRoles();
             }
+        }
+
+        void EnsureDecoration()
+        {
+            if (decoration != null) return;
+            decoration=new GameObject("Silhouette").transform;decoration.SetParent(transform,false);
+            // 仅旧样板需要这些分层配饰；整体皮肤不创建隐藏的重复部件。
+            for(int i=0;i<3;i++) EmberVisuals.Shape("Hem",decoration,new Vector2((i-1)*.18f,-.30f),new Vector2(.24f,.26f),Color.white,2).sprite=EmberCharacterArt.Hem;
+            for(int i=0;i<2;i++) EmberVisuals.Shape("Tail",decoration,new Vector2(-.15f-i*.10f,-.26f-i*.11f),new Vector2(.24f-i*.045f,.40f),Color.white,2).sprite=EmberCharacterArt.Hem;
+            for(int i=-1;i<=1;i+=2) EmberVisuals.Shape("Shoulder",decoration,new Vector2(i*.32f,.06f),new Vector2(.25f,.35f),Color.white,4);
+            BuildRoles();
         }
         public void Apply(int kind,Color body)
         {
             if(parts==null)Capture();
+            UsesWholeBodySkin = false;
             for(int i=0;i<parts.Length;i++)
             {
                 var p=parts[i];p.localPosition=positions[i];p.localScale=scales[i];p.localRotation=rotations[i];
                 p.gameObject.SetActive(active[i]);
-                var renderer=p.GetComponent<SpriteRenderer>();if(renderer!=null){renderer.color=colors[i];renderer.sprite=sprites[i];}
+                var renderer=p.GetComponent<SpriteRenderer>();if(renderer!=null){renderer.color=colors[i];renderer.sprite=sprites[i];renderer.flipX=flipped[i];}
                 if(renderer!=null && p.name=="Cloak")renderer.color=body;
                 if(renderer!=null && p.name=="Hood")renderer.color=body*1.2f;
             }
-            // 普通怪使用手绘整体；其他兵种保留原有轮廓，复用时恢复 Sprite 与显隐。
+            if (ordinaryBody != null && TrySkin(kind, out var skin))
+            {
+                foreach (var part in parts)
+                    if (part.GetComponent<SpriteRenderer>() != null && part != ordinaryBody.transform && part.name != "Shadow")
+                        part.gameObject.SetActive(false);
+                ordinaryBody.sprite = skin.sprite;
+                ordinaryBody.color = Color.white;
+                // 只重置命中参数并绑定本次皮肤；清空整个块会丢失 Sprite 的纹理绑定。
+                if (skinProperties == null) skinProperties = new MaterialPropertyBlock();
+                ordinaryBody.GetPropertyBlock(skinProperties);
+                skinProperties.SetTexture(MainTextureId, skin.sprite.texture);
+                skinProperties.SetFloat(HitFlashId, 0);
+                ordinaryBody.SetPropertyBlock(skinProperties);
+                ordinaryBody.transform.localPosition = new Vector3(0, .12f, 0);
+                ordinaryBody.transform.localScale = Vector3.one * (skin.height / skin.sprite.bounds.size.y);
+                if (decoration != null) decoration.gameObject.SetActive(false);
+                UsesWholeBodySkin = true;
+                return;
+            }
+            // 未绑定皮肤的旧样板继续使用原有轮廓，复用时恢复 Sprite 与显隐。
             if(kind==0 && ordinarySprite!=null && ordinaryBody!=null)
             {
                 foreach(var p in parts)
@@ -100,9 +152,10 @@ namespace Emberlight
                 ordinaryBody.color=new Color(.82f,.82f,.88f);
                 ordinaryBody.transform.localPosition=new Vector3(0,.12f,0);
                 ordinaryBody.transform.localScale=Vector3.one*(1.25f/ordinarySprite.bounds.size.y);
-                decoration.gameObject.SetActive(false);
+                if (decoration != null) decoration.gameObject.SetActive(false);
                 return;
             }
+            EnsureDecoration();
             decoration.gameObject.SetActive(true);
             for(int i=3;i<roles.Length;i++)if(roles[i]!=null)roles[i].gameObject.SetActive(kind==i);
             for(int i=0;i<7;i++)

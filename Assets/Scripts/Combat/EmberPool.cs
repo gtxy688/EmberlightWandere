@@ -13,12 +13,15 @@ namespace Emberlight
         readonly Dictionary<string, Stack<GameObject>> stacks = new Dictionary<string, Stack<GameObject>>();
         Transform holder;
         GameObject shadePrefab;
+        bool bossUsesTemplate;
         int maxPerKey = 64;
 
         public void Bind(Transform runWorld, int maxPerKey = 64, GameObject shadePrefab = null)
         {
             Clear(destroy: true);
             this.shadePrefab = shadePrefab;
+            var silhouette = shadePrefab != null ? shadePrefab.GetComponent<EmberEnemySilhouette>() : null;
+            bossUsesTemplate = silhouette != null && silhouette.HasSkinFor(3);
             this.maxPerKey = maxPerKey < 8 ? 8 : maxPerKey;
             if (runWorld == null) return;
             var go = new GameObject("EmberPool");
@@ -111,7 +114,7 @@ namespace Emberlight
             using (RentEnemyMarker.Auto())
             {
                 bool boss = key == "boss";
-                var go = Rent(key, parent, p => !boss && shadePrefab != null
+                var go = Rent(key, parent, p => shadePrefab != null && (!boss || bossUsesTemplate)
                     ? UnityEngine.Object.Instantiate(shadePrefab, p, false)
                     : EmberVisuals.Character(boss ? "Nightwarden" : "Shade", p, body).gameObject);
                 go.transform.SetParent(parent, false);

@@ -52,6 +52,35 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   ordinarySprite: {fileID: 21300000, guid: 19e15cc38177e694aa2c345bdc72e230, type: 3}
   ordinaryBody: {fileID: 249857269874121824}
+  skins:
+  - kind: 0
+    sprite: {fileID: 1558143350, guid: cde630b17676cc543994ca6b7fc393dc, type: 3}
+    height: 1.05
+  - kind: 1
+    sprite: {fileID: 43898863, guid: cde630b17676cc543994ca6b7fc393dc, type: 3}
+    height: 1.05
+  - kind: 2
+    sprite: {fileID: 452803963, guid: cde630b17676cc543994ca6b7fc393dc, type: 3}
+    height: 1.05
+  - kind: 4
+    sprite: {fileID: -2022338597, guid: 733788f96c1bce14ba87279585ba7833, type: 3}
+    height: 1.05
+  - kind: 5
+    sprite: {fileID: -1062075380, guid: 733788f96c1bce14ba87279585ba7833, type: 3}
+    height: 1.05
+  - kind: 6
+    sprite: {fileID: -299265632, guid: 733788f96c1bce14ba87279585ba7833, type: 3}
+    height: 1.05
+  - kind: 7
+    sprite: {fileID: 405813222, guid: 87e291f925d0d134fbc209d9aeb61dc9, type: 3}
+    height: 1.05
+  - kind: 8
+    sprite: {fileID: -2104339979, guid: 87e291f925d0d134fbc209d9aeb61dc9, type: 3}
+    height: 1.05
+  - kind: 3
+    sprite: {fileID: 1295861016, guid: 87e291f925d0d134fbc209d9aeb61dc9, type: 3}
+    height: 0.95
+  directionalShieldSprite: {fileID: 1714079972, guid: 0d1873a3b8ff02e4c8c2649ea9cb8466, type: 3}
 --- !u!1 &2897535223277785909
 GameObject:
   m_ObjectHideFlags: 0
@@ -272,7 +301,7 @@ SpriteRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 10754, guid: 0000000000000000f000000000000000, type: 0}
+  - {fileID: 2100000, guid: 19310b0af7de170439bf8309d68b022c, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0

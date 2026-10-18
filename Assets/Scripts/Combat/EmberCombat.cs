@@ -73,6 +73,11 @@ namespace Emberlight
             return roster.Spawn(false, Wave, host, FireBossVolley) != null;
         }
 
+        bool EmberWaveDirector.Host.TrySpawnBossSupport()
+        {
+            return roster.Spawn(false, Wave, host, FireBossVolley, config.RollBossSupportKind(random)) != null;
+        }
+
         bool EmberWaveDirector.Host.TrySpawnTrashAt(int kind, Vector2 position, bool forceAffix)
         {
             return roster.Spawn(false, Wave, host, FireBossVolley, kind, position, forceAffix) != null;
@@ -356,14 +361,17 @@ namespace Emberlight
                 waves.NoteKill();
                 host.RegisterKill();
             }
-            SpawnPendingBroods();
             if (outcome.BossDefeated)
             {
                 bossEnemy = null;
+                // Boss 是本波目标；余兵退场不生成掉落、不补记击杀，也不把母体再展开成子体。
+                pendingBroods.Clear();
+                roster.Clear(destroyViews: false);
                 waves.NoteBossDefeated();
                 return;
             }
 
+            SpawnPendingBroods();
             waves.CheckWaveCleared();
         }
 

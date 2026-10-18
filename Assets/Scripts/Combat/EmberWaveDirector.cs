@@ -29,6 +29,9 @@ namespace Emberlight
             /// <summary>按波次 roll 一个屏外杂兵；false 表示当前没有合法落点，不消耗配额。</summary>
             bool TrySpawnRolledTrash();
 
+            /// <summary>按 Boss 伴随兵构成生成一个屏外杂兵；失败不占用名额。</summary>
+            bool TrySpawnBossSupport();
+
             /// <summary>请求遭遇落点，名册仍保证屏外；false 不消耗配额。</summary>
             bool TrySpawnTrashAt(int kind, Vector2 position, bool forceAffix);
 
@@ -60,6 +63,7 @@ namespace Emberlight
         bool eventTriggered;
         float encounterTimer;
         float bossWarning;
+        float bossSupportTimer;
         string encounterText = "";
 
         public EmberWaveDirector(Host host, LevelConfig config, System.Random random)
@@ -105,6 +109,7 @@ namespace Emberlight
             wave = 1;
             bossSpawned = false;
             bossWarning = 0f;
+            bossSupportTimer = 0f;
             awaitingUpgrade = false;
             eventTriggered = false;
             encounterTimer = 0f;
@@ -127,6 +132,7 @@ namespace Emberlight
             eventTriggered = false;
             encounterTimer = 0f;
             bossWarning = 0f;
+            bossSupportTimer = 0f;
             awaitingUpgrade = false;
             waveSpawned = 0;
             waveKilled = 0;
@@ -159,6 +165,7 @@ namespace Emberlight
         /// <summary>推进刷怪节奏、Boss 预警与遭遇事件。伤害与表现不在这里。</summary>
         public void Tick(float dt)
         {
+            if (dt <= 0 || awaitingUpgrade) return;
             // 常规刷怪：Boss 波、待选卡、配额刷完或到达同屏上限时停手
             if (!awaitingUpgrade && !bossSpawned && wave < config.BossWave &&
                 waveSpawned < waveQuota && host.EnemyCount < config.EnemyLimit)
@@ -181,10 +188,32 @@ namespace Emberlight
                 {
                     bossWarning = 0f;
                     host.SpawnBoss();
+                    SpawnBossSupports(config.BossSupportTargetForWave(wave));
+                    bossSupportTimer = config.BossSupportInterval;
+                    return;
+                }
+            }
+
+            if (bossSpawned && bossWarning <= 0)
+            {
+                bossSupportTimer -= dt;
+                if (bossSupportTimer <= 0)
+                {
+                    SpawnBossSupports(config.BossSupportBatch);
+                    bossSupportTimer = config.BossSupportInterval;
                 }
             }
 
             TryEncounter();
+        }
+
+        void SpawnBossSupports(int batch)
+        {
+            int missing = config.BossSupportTargetForWave(wave) - Mathf.Max(0, host.EnemyCount - 1);
+            int available = Mathf.Max(0, config.EnemyLimit - host.EnemyCount);
+            int count = Mathf.Min(batch, Mathf.Min(missing, available));
+            for (int i = 0; i < count; i++)
+                if (!host.TrySpawnBossSupport()) break;
         }
 
         /// <summary>本波刷到一半时放一次遭遇事件（精英小队或围杀圈）。</summary>

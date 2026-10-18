@@ -49,7 +49,7 @@ namespace Emberlight.Tests
                 Assert.That(enemy.transform.Find("Face").gameObject.activeSelf, Is.False,
                     "The ordinary enemy must not draw a second face over the illustrated sprite.");
                 Assert.That(UnityEditor.AssetDatabase.GetAssetPath(enemy.transform.Find("Cloak").GetComponent<SpriteRenderer>().sprite),
-                    Is.EqualTo("Assets/Art/CleanToonSample/Textures/shade-v1.png"));
+                    Is.EqualTo("Assets/Art/CleanToonSample/Enemies/enemy-core.png"));
             }
             int oldRate = Application.targetFrameRate;
             float oldCaptureDelta = Time.captureDeltaTime;

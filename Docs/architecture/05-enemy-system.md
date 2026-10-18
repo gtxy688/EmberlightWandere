@@ -1,6 +1,6 @@
 # M5 敌人系统
 
-> 相关需求：`../requirements.md` §3.1、§3.4、§3.5、§4.4（回血掉落）
+> 相关需求：`../requirements.md` §3.1–3.5、§4.4（回血掉落）、§7（皮肤与表现默认值）
 > 代码：`Assets/Scripts/Combat/Enemies/`（4 个文件）+ `Assets/Scripts/Combat/EmberDrops.cs`
 
 ## 职责边界
@@ -27,7 +27,7 @@
 ```text
 EmberCombat 刷怪：RollKind(wave, rng) → kind
    └─ 从 EmberPool 借出敌人 GameObject
-        ├─ EmberEnemySilhouette.Apply(kind)   恢复基准姿态 → 应用类型装饰
+        ├─ EmberEnemySilhouette.Apply(kind)   恢复基准姿态 → 按 kind 选完整皮肤，缺少映射才用旧装饰
         ├─ new EmberEnemyVisual(enemy, world)       挂角色标记 / 预警 / 词缀光环
         └─ 按 kind 选择 IEnemyBehavior：
              0 普通 → ChaseBehavior
@@ -104,12 +104,13 @@ EmberCombat 刷怪：RollKind(wave, rng) → kind
 
 ### 表现层
 
-- `EmberEnemySilhouette`（`MonoBehaviour`）：借出时先恢复基准位置、缩放、旋转、颜色、Sprite 和显隐，再按 kind 应用外观。当前美术分支配置 A 清爽卡通模板：普通怪隐藏旧脸与配饰，显示新的灰紫红眼整体 Sprite；其他兵种恢复模板中性部件与原有兵种配饰。Boss 仍使用原版部件与共享灰度图集。模板留空时，全部敌人沿用原版表现。
-- 普通怪与其他杂兵仍共用 `shade` 池，因此普通 → 特殊 → 普通必须正确恢复贴图和可见部件；恢复发生在 `Apply`，归还时只回收附属表现并停用节点。
-- 衣摆和披风碎片放在斗篷后层，避免部件上缘覆盖主衣褶；不增加敌人渲染节点或独立材质。
+- `EmberEnemySilhouette`（`MonoBehaviour`）：借出时先恢复基准位置、缩放、旋转、颜色、Sprite、flipX 和显隐，再按 kind 应用序列化的完整皮肤。当前模板覆盖普通、快速、高血、射手、母体、子体、盾卫、引线虫和 Boss，均为无脚悬浮造型；隐藏旧脸和重复装饰，只保留主体与脚下影子。缺少对应皮肤时沿用旧外观，旧分层装饰只在回落路径首次使用时创建。
+- 杂兵共用 `shade` 池，Boss 保留独立 `boss` 池；普通 → 特殊 → 普通必须恢复贴图、翻转和可见部件。恢复发生在 `Apply`，归还时回收附属表现并停用节点。皮肤按 bounds 归一高度后继续使用原有兵种根倍率，不改碰撞。
+- 原图默认朝左，整体皮肤按实际水平位移 flipX，上下移动保留朝向。盾卫使用独立盾图随 `enemy.facing` 转动；射手法杖与母体卵囊已画入皮肤，不再重建第二份配饰。攻击预警、引线圈、迟缓弹和词缀效果仍由原逻辑驱动。
+- 彩图受击由共享 EnemySkin 材质对采样后的 RGB 混白，避免白色乘色再向白色插值无变化；`EmberEnemyVisual` 缓存 MaterialPropertyBlock，仅在强度变化时更新。到期、重生与回收清零，`Apply` 定向清命中参数并显式绑定当前皮肤纹理，不能清空整个块而丢失 `_MainTex`；旧模板继续原乘色反馈。
 - `EmberEnemyVisual`：角色标记、攻击预警、词缀光环、风之尾迹，以及程序化躯干动画（普通浮动 / 快怪急促摇动 / 重怪缓慢起伏 / 烬虫快速挤压 / 烬胎呼吸 / 盾卫轻微倾斜 / 射手蓄力压缩与射后回弹 / 引线虫高频鼓动 / 重生收缩）。**每个敌人相位不同**。
 - 动画**只动外观子节点**，不变更根节点、血条、预警范围或碰撞。
-- 基础三类敌人（0/1/2）无词缀也接入动画；特殊敌人禁用基础轮廓装饰。
+- 全部已配置皮肤的敌人（含 Boss）复用躯干动画，不新增走路序列帧或每怪 Animator。无词缀时隐藏角色色块，避免盖住皮肤。
 
 ## 对外契约
 
@@ -120,7 +121,7 @@ EmberCombat 刷怪：RollKind(wave, rng) → kind
 | `EnemyAffix` | 枚举 | — | `Burning` / `Wind` / `Rebirth` | 与 `LevelConfig` 概率配合 |
 | `EmberEnemyProjectiles` | 类 | — | 暗弹弹幕 | 容量见需求 §3.7；`Intercept` 可击毁 |
 | `EmberDrops` | 类 | `EmberPool` + `IEmberCombatHost` | 掉落生成与拾取 | 构造时注入契约（非反查）：**不持有 `EmberGame`**，只经 `IEmberCombatHost.Phase / NeedsHealing / PickHealingDrop` 工作 |
-| `EmberEnemySilhouette` | `MonoBehaviour` | kind、基础色 | 外观 | 每次 Apply 先恢复模板，再切换手绘普通怪或既有兵种轮廓；不改变行为、碰撞与血条 |
+| `EmberEnemySilhouette` | `MonoBehaviour` | kind、基础色 | `UsesWholeBodySkin` / `WholeBody` / 外观 | `HasSkinFor` 供池选择模板；每次 Apply 恢复模板与翻转后按 kind 选皮肤，缺映射用旧外观；不改变行为、碰撞与血条 |
 | `EmberEnemyVisual` | 类 | 敌人实例 | 提示与动画 | 仅动外观子节点 |
 
 **具体数值不在此复制**，一律见 `../requirements.md` §3.4、§3.5、§4.4。
@@ -128,7 +129,7 @@ EmberCombat 刷怪：RollKind(wave, rng) → kind
 ## Unity 装配
 
 - 敌人 GameObject 由 `EmberPool` 借出（key `shade` / `boss`）；**每次借出都恢复基准姿态与颜色**，再应用类型装饰。
-- 当前主场景的 `EmberArtSet.ShadePrefab` 绑定 `Assets/Art/CleanToonSample/Prefabs/Shade.prefab`，普通怪图像为该样板目录 Textures 下的 `shade-v1.png`。中性模板继续保留原有部件，实际兵种外观由 `Apply` 选择；原版与第一版手绘模板仍可切换。Boss 保留独立池键与原版层级，不受普通怪 Sprite 替换影响。
+- 当前主场景的 `EmberArtSet.ShadePrefab` 绑定 `Assets/Art/CleanToonSample/Prefabs/Shade.prefab`，其 skins 数组保存 kind / Sprite / height，`directionalShieldSprite` 保存独立盾图。资源在同级 Enemies 目录，经 `Emberlight/Art/Build Enemy Skins` 导入切片并补齐映射，重复执行保留已有映射、高度与盾引用。Boss 也从该模板借出，但池键独立；其他旧模板继续可用。
 - `EmberEnemySilhouette` 是 `MonoBehaviour`，挂在池化敌人对象上；**必须容忍被复用**，不得在 `Awake` 里做一次性的类型假设。
 - 角色标识与预警随敌人销毁，**不附着到复用的躯体上**——这是曾经的缺陷来源。
 - `EmberEnemyVisual` 与行为策略为普通 C# 类，由 M3 构造与驱动。
@@ -137,4 +138,4 @@ EmberCombat 刷怪：RollKind(wave, rng) → kind
 ## 影响与回归范围
 
 - **直接影响模块**：M3（行为与弹幕宿主）、M1（数值来源）、M7（共享精灵与粒子）、M2（掉落计入 Score 与回血）。
-- **必须复验的契约**：池复用的形态、Sprite 与显隐还原，分裂数量与配额关系、盾卫正背面倍率、引线爆炸时机、暗弹拦截、词缀概率门控。样板资源与跨兵种复用检查入口为 `Assets/Tests/EditMode/EmberArtSampleTests.cs`。
+- **必须复验的契约**：池复用的形态、Sprite、flipX 与显隐还原，皮肤持久引用与旧模板回落，分裂数量与配额关系、盾卫正背面倍率、引线爆炸时机、暗弹拦截、词缀概率门控。检查入口为 `Assets/Tests/EditMode/EmberArtSampleTests.cs`、`Assets/Tests/EditMode/EmberEnemySkinTests.cs`；主场景群战见 `Assets/Tests/PlayMode/EmberBossSwarmSmokeTests.cs`。

@@ -14,6 +14,8 @@ namespace Emberlight
         public EmberBoss(IEmberCombatHost owner,Transform root,Transform arena,int tier=1,System.Action<Vector2,int> volley=null)
         {
             host=owner;body=root;world=arena;this.tier=tier;this.volley=volley;
+            var silhouette = root.GetComponent<EmberEnemySilhouette>();
+            if (silhouette != null && silhouette.UsesWholeBodySkin) return;
             adornment=new GameObject("Boss adornment").transform;adornment.SetParent(root,false);root=adornment;
             for(int i=-1;i<=1;i++)
             {

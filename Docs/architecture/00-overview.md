@@ -98,6 +98,7 @@ M2.RunFlowController ──► Host 契约 ──► M0  选卡规则不持有 E
 | Buff / Debuff / BuffConfig / BuffManager / 增伤 / 疾行 / 迟缓 / 减速 / 效果刷新与到期 | M10 | `10-buff-system.md` |
 | 波次 / 清波 / 精英挑战 / 遭遇事件 / 阶段 Boss / Profiler 标记 / 刷怪尖峰 / 屏外刷怪 / EmberSpawnPlacement | M3 | `03-combat-waves.md` |
 | 暗弹 / 齐射 / 半血狂怒 / Boss 招式 | M3 | `03-combat-waves.md` |
+| Boss 群战 / Boss 伴随兵 / 小兵补位 / BossSupportTargetForWave / BossSupportInterval | M3 + M1 | `03-combat-waves.md` → `01-config-tuning.md` |
 | 受伤 / 无敌帧 / 护盾吸收顺序 / 生命纯逻辑 | M0 | `00-composition-root.md` |
 | 自动攻击 / 自动选敌 / 武器 Tick | M4 | `04-weapon-system.md` → `03-combat-waves.md` |
 | 火球 / 环火 / 燃地 / 穿透火矢 / 回旋烬蝶 / 天降火雨 | M4 | `04-weapon-system.md` |
@@ -107,6 +108,7 @@ M2.RunFlowController ──► Host 契约 ──► M0  选卡规则不持有 E
 | 敌人行为 / 射手 / 烬胎分裂 / 铁灯卫 / 引线虫 | M5 | `05-enemy-system.md` |
 | 灼热 / 疾风 / 重生词缀 | M5 | `05-enemy-system.md` |
 | 敌人动画 / 剪影 / 角色标记 / 预警圈 | M5 + M7 | `05-enemy-system.md` |
+| 无脚 / 悬浮 / 怪物皮肤 / EnemySkinSetup / Build Enemy Skins / 独立盾图 | M5 + M7 | `05-enemy-system.md` → `07-art-presentation.md` |
 | 主菜单 / 开局流程 / 选难度 / 选槽位 / 选武器 | M6 | `06-ui-flow.md` |
 | HUD / 文字刷新缓存 / 血条 / 波次横幅 / 暂停 / 设置页 / 音量滑条 / UI 复用 / 旧 UI 创建清理 / UIRoot 运行时引用 / Connect UIRoot Runtime | M6 + M0 | `06-ui-flow.md` → `00-composition-root.md` |
 | Buff 拾取提示 / 效果说明 / 持续时间提示 / Buff 倒计时 / 图标计时环 / 角色浮字 / EmberBuffHud / EmberBuffPresentation | M6 + M10 | `06-ui-flow.md` → `10-buff-system.md` |
@@ -133,7 +135,7 @@ M2.RunFlowController ──► Host 契约 ──► M0  选卡规则不持有 E
 | 数值口径 / 参数归属 / 表现默认值 / 产品行为 / 单局规则边界 / 不做什么 | 需求 | `../requirements.md` |
 | 工程源码交付 / 打包工程 / 导入验证 | M9 | `09-build-platform.md` → `../../README.md` |
 | 测试运行 / run-tests / PlayMode 冒烟 | 开发工具 | `../../README.md` |
-| 样板录屏 / 美术截图 / EmberArtSampleCapture | 开发工具 | `../实现说明.md` 的「开发检查入口」 |
+| 样板录屏 / 美术截图 / EmberArtSampleCapture / EmberBossSwarmSmokeTests / 怪物渲染检查 | 开发工具 | `../实现说明.md` 的「自动化自检与打包交付」 |
 | UI 复用检查工具 / RuntimeUiChecks | 开发工具 | `../../Tools/UiReuse/README.md` |
 | 离线编译校验 / 不启动 Unity 验证改动 | 工具 | `../../Tools/compile-check.ps1` |
 | 设计取舍说明 / 阅卷入口 | 交付 | `../技术分析.md` → `../../README.md` |

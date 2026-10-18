@@ -9,6 +9,11 @@ namespace Emberlight
         readonly SpriteRenderer tell, aura, core, wake;
         readonly Transform embers;
         readonly EmberEnemy enemy;
+        readonly SpriteRenderer skinBody;
+        readonly MaterialPropertyBlock skinProperties;
+        static readonly int HitFlashId = Shader.PropertyToID("_HitFlash");
+        const float HitFlashAmount = .7f;
+        float previousFlash = -1;
         readonly Transform[] bodyParts;
         readonly Vector3[] restPositions, restScales;
         readonly Quaternion[] restRotations;
@@ -22,6 +27,14 @@ namespace Emberlight
             using (VisualMarker.Auto())
             {
                 this.enemy = enemy;
+                var silhouette = enemy.view.GetComponent<EmberEnemySilhouette>();
+                bool illustrated = silhouette != null && silhouette.UsesWholeBodySkin;
+                skinBody = illustrated ? silhouette.WholeBody : null;
+                if (skinBody != null)
+                {
+                    skinProperties = new MaterialPropertyBlock();
+                    skinBody.GetPropertyBlock(skinProperties);
+                }
                 var parts = new System.Collections.Generic.List<Transform>();
                 foreach (Transform part in enemy.view)
                     if (part.name == "Cloak" || part.name == "Hood" || part.name == "Face" || part.name == "Eye" || part.name == "Silhouette") parts.Add(part);
@@ -52,13 +65,17 @@ namespace Emberlight
                 switch (enemy.kind)
                 {
                     case 4:
-                        Shape("Candle staff", new Vector2(.42f, .1f), new Vector2(.09f, .9f), new Color(.46f, .26f, .59f), 11).sprite = EmberArt.Panel;
-                        var flame = Shape("Violet flame", new Vector2(.42f, .58f), new Vector2(.24f, .35f), new Color(.85f, .5f, 1), 12);
-                        flame.sprite = EmberArt.Flame;
+                        if (!illustrated)
+                        {
+                            Shape("Candle staff", new Vector2(.42f, .1f), new Vector2(.09f, .9f), new Color(.46f, .26f, .59f), 11).sprite = EmberArt.Panel;
+                            var flame = Shape("Violet flame", new Vector2(.42f, .58f), new Vector2(.24f, .35f), new Color(.85f, .5f, 1), 12);
+                            flame.sprite = EmberArt.Flame;
+                        }
                         core.color = new Color(.85f, .5f, 1);
                         break;
                     case 5:
-                        for (int i = -1; i <= 1; i++) Shape("Brood egg", new Vector2(i * .26f, -.12f), new Vector2(.25f, .33f), new Color(.7f, .85f, .3f), 12);
+                        if (!illustrated)
+                            for (int i = -1; i <= 1; i++) Shape("Brood egg", new Vector2(i * .26f, -.12f), new Vector2(.25f, .33f), new Color(.7f, .85f, .3f), 12);
                         core.color = new Color(.8f, 1f, .35f);
                         break;
                     case 6:
@@ -70,10 +87,19 @@ namespace Emberlight
                         shield = new GameObject("Directional shield").transform;
                         shield.SetParent(root, false);
                         var shieldBody = EmberVisuals.Shape("Solid shield", shield, new Vector2(.58f,0),new Vector2(.24f,.91f),new Color(.37f,.58f,.66f),13);
-                        shieldBody.sprite=EmberArt.Panel;
-                        var rim=EmberVisuals.Shape("Shield rim",shield,new Vector2(.65f,0),new Vector2(.065f,.78f),new Color(.69f,.84f,.87f),14);
-                        rim.sprite=EmberArt.Panel;
-                        EmberVisuals.Shape("Shield boss",shield,new Vector2(.58f,0),new Vector2(.15f,.18f),new Color(.78f,.87f,.86f),15);
+                        if (illustrated && silhouette.DirectionalShieldSprite != null)
+                        {
+                            shieldBody.sprite = silhouette.DirectionalShieldSprite;
+                            shieldBody.color = Color.white;
+                            shieldBody.transform.localScale = Vector3.one * (.91f / shieldBody.sprite.bounds.size.y);
+                        }
+                        else
+                        {
+                            shieldBody.sprite=EmberArt.Panel;
+                            var rim=EmberVisuals.Shape("Shield rim",shield,new Vector2(.65f,0),new Vector2(.065f,.78f),new Color(.69f,.84f,.87f),14);
+                            rim.sprite=EmberArt.Panel;
+                            EmberVisuals.Shape("Shield boss",shield,new Vector2(.58f,0),new Vector2(.15f,.18f),new Color(.78f,.87f,.86f),15);
+                        }
                         core.color = new Color(.7f, .92f, 1f);
                         break;
                     case 8:
@@ -83,6 +109,7 @@ namespace Emberlight
                         break;
                     default: core.gameObject.SetActive(enemy.affix != EnemyAffix.None); break;
                 }
+                if (illustrated && enemy.affix == EnemyAffix.None) core.gameObject.SetActive(false);
                 if (enemy.affix == EnemyAffix.Rebirth) core.color = new Color(.86f, .94f, 1f);
                 if (enemy.affix == EnemyAffix.Burning)
                 {
@@ -103,6 +130,7 @@ namespace Emberlight
         public void Tick(float time, LevelConfig config)
         {
             AnimateBody(time);
+            SetHitFlash(enemy.flash > 0 && enemy.reviveTimer <= 0 ? HitFlashAmount : 0);
             root.position = enemy.view.position;
             if (embers != null) embers.localRotation = Quaternion.Euler(0, 0, time * 80f);
             if (shield != null) shield.localRotation = Quaternion.Euler(0, 0, enemy.facing);
@@ -153,6 +181,7 @@ namespace Emberlight
         {
             float dt=previousTime<0?0:Mathf.Clamp(time-previousTime,0,.1f);
             Vector3 delta=enemy.view.position-previousPosition;
+            if (skinBody != null && Mathf.Abs(delta.x) > .001f) skinBody.flipX = delta.x > 0;
             previousTime=time;previousPosition=enemy.view.position;
             float speed=dt>.0001f?delta.magnitude/dt:0;
             locomotion=Mathf.Lerp(locomotion,Mathf.Clamp01(speed/2f),1f-Mathf.Exp(-dt*10f));
@@ -179,12 +208,21 @@ namespace Emberlight
 
         public void Clear()
         {
+            SetHitFlash(0);
             // 敌人回池前必须恢复中性姿态。
             for(int i=0;i<bodyParts.Length;i++)
                 if(bodyParts[i]!=null){bodyParts[i].localPosition=restPositions[i];bodyParts[i].localScale=restScales[i];bodyParts[i].localRotation=restRotations[i];}
             if (root == null) return;
             root.gameObject.SetActive(false);
             Object.Destroy(root.gameObject);
+        }
+
+        void SetHitFlash(float amount)
+        {
+            if (skinBody == null || amount == previousFlash) return;
+            skinProperties.SetFloat(HitFlashId, amount);
+            skinBody.SetPropertyBlock(skinProperties);
+            previousFlash = amount;
         }
     }
 }
