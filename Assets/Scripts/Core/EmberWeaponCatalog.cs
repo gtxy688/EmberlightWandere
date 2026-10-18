@@ -59,12 +59,12 @@ namespace Emberlight
         // 顺序也是开局界面的显示顺序；所有身份映射均由这张表生成。
         static readonly Definition[] definitions =
         {
-            new Definition(Basic, MetaBasic, ExclBasic, "火球", "自动发射火球\n攻击最近的敌人"),
-            new Definition(Orbit, MetaOrbit, ExclOrbit, "环火", "火球环绕身边\n灼烧靠近的敌人"),
-            new Definition(Trail, MetaTrail, ExclTrail, "燃地", "沿途留下火焰\n持续灼烧踏入的敌人"),
-            new Definition(Pierce, MetaPierce, ExclPierce, "穿透火矢", "停下脚步发射火矢\n贯穿直线上的敌人"),
-            new Definition(Boom, MetaBoom, ExclBoom, "回旋烬蝶", "掷出回旋火蝴蝶\n往返均可命中敌人"),
-            new Definition(Meteor, MetaMeteor, ExclMeteor, "天降火雨", "标记目标区域\n召唤火雨轰击敌人")
+            new Definition(Basic, MetaBasic, ExclBasic, "火球", "自动发射火球\n锁定最近的可见敌人"),
+            new Definition(Orbit, MetaOrbit, ExclOrbit, "环火", "火球环绕身边\n持续灼烧接触到的敌人"),
+            new Definition(Trail, MetaTrail, ExclTrail, "燃地", "沿途留下火焰\n持续伤害踏入火区的敌人"),
+            new Definition(Pierce, MetaPierce, ExclPierce, "穿透火矢", "停下脚步发射火矢\n贯穿前方敌人，移动时停火"),
+            new Definition(Boom, MetaBoom, ExclBoom, "回旋烬蝶", "掷出回旋火蝴蝶\n飞出与返回均可命中敌人"),
+            new Definition(Meteor, MetaMeteor, ExclMeteor, "天降火雨", "标记目标区域\n短暂预警后轰击范围内敌人")
         };
         /// <summary>兼容数组调用方，但不暴露可修改的内部名册。</summary>
         public static int[] Roster

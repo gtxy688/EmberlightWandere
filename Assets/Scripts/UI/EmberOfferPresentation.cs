@@ -19,11 +19,11 @@ namespace Emberlight
             {
                 string weaponName = EmberWeaponCatalog.Find(offer.WeaponId).Name;
                 title = weaponName + "·" + title;
-                description = id == RunProgress.StatAtk ? "只提高「" + weaponName + "」的伤害" : "只提高「" + weaponName + "」的攻击速度";
+                description = id == RunProgress.StatAtk
+                    ? "提高「" + weaponName + "」造成的伤害\n不强化其他武器的直接伤害"
+                    : AttackSpeedDescription(offer.WeaponId, weaponName);
             }
 
-            if (id == RunProgress.StatShield)
-                description = "立即获得护盾，受伤优先消耗\n可叠加，仅本局有效";
             return new EmberOfferPresentation
             {
                 Title = title,
@@ -33,28 +33,43 @@ namespace Emberlight
             };
         }
 
+        static string AttackSpeedDescription(int weaponId, string weaponName)
+        {
+            if (weaponId == EmberWeaponCatalog.Orbit)
+                return "提高环火的旋转速度\n仅强化环火，不改变接触伤害";
+            if (weaponId == EmberWeaponCatalog.Trail)
+                return "缩短燃地的铺设间隔\n不提高单块火焰的每秒伤害";
+            if (weaponId == EmberWeaponCatalog.Pierce)
+                return "缩短火矢的射击间隔\n移动时仍需停下才能射击";
+            return "缩短「" + weaponName + "」的攻击间隔\n仅强化对应武器";
+        }
+
+        static string Number(float value) => value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+        static string Percent(float value) => Mathf.RoundToInt(value * 100).ToString("+0;-0;+0", System.Globalization.CultureInfo.InvariantCulture) + "%";
+        static string BonusPreview(string label, float current, float added) => label + " " + Percent(current) + " → " + Percent(current + added);
+
         public static string Preview(int id, EmberRarity rarity, RunProgress progress, int weaponId = -1)
         {
             switch (id)
             {
                 case RunProgress.StatShield:
-                    return "护盾 +" + EmberRarityUtil.ShieldAmount(rarity).ToString("0") + " · 当前 " + progress.Shield.ToString("0");
+                    return "护盾 " + Number(progress.Shield) + " → " + Number(progress.Shield + EmberRarityUtil.ShieldAmount(rarity));
                 case RunProgress.StatAtk:
                 {
                     int wid = weaponId >= 0 ? weaponId : progress.CoreWeaponId;
-                    return "\u653b\u51fb\u0020\u002b" + Mathf.RoundToInt(EmberRarityUtil.GenericAtkAs(rarity) * 100) + "%  (\u5408\u8ba1 +" + Mathf.RoundToInt(progress.WeaponMagnitude(wid) * 100) + "%)";
+                    return BonusPreview("攻击加成", progress.WeaponMagnitude(wid), EmberRarityUtil.GenericAtkAs(rarity));
                 }
 
                 case RunProgress.StatAs:
                 {
                     int wid = weaponId >= 0 ? weaponId : progress.CoreWeaponId;
-                    return "\u653b\u901f\u0020\u002b" + Mathf.RoundToInt(EmberRarityUtil.GenericAttackSpeed(rarity) * 100) + "%  (\u5408\u8ba1 +" + Mathf.RoundToInt(progress.WeaponAttackSpeed(wid) * 100) + "%)";
+                    return BonusPreview("攻速加成", progress.WeaponAttackSpeed(wid), EmberRarityUtil.GenericAttackSpeed(rarity));
                 }
 
                 case RunProgress.StatLuck:
-                    return "\u5e78\u8fd0\u0020\u002b" + EmberRarityUtil.GenericLuck(rarity) + "  (\u5f53\u524d " + Mathf.RoundToInt(progress.Luck) + "/" + RunProgress.MaxLuck + ")";
+                    return "幸运 " + Number(progress.Luck) + " → " + Number(Mathf.Min(RunProgress.MaxLuck, progress.Luck + EmberRarityUtil.GenericLuck(rarity))) + " · 上限 " + RunProgress.MaxLuck;
                 case RunProgress.StatAmp:
-                    return "\u589e\u5e45\u0020\u002b" + Mathf.RoundToInt(EmberRarityUtil.GenericAmp(rarity) * 100) + "%  (\u5408\u8ba1 +" + Mathf.RoundToInt(progress.DamageAmp * 100) + "%)";
+                    return BonusPreview("伤害增幅", progress.DamageAmp, EmberRarityUtil.GenericAmp(rarity));
                 case RunProgress.WeaponBasic:
                 case RunProgress.WeaponOrbit:
                 case RunProgress.WeaponTrail:
@@ -65,27 +80,30 @@ namespace Emberlight
                 case RunProgress.MetaBasic:
                     return "体积×" + EmberWeaponTuning.Basic.WildfireSize.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + " · 伤害×" + EmberWeaponTuning.Basic.WildfireDamage.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + " · 命中燃地";
                 case RunProgress.MetaOrbit:
-                    return "半径 " + EmberWeaponTuning.Orbit.CoronaRadius.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + " · DPS " + EmberWeaponTuning.Orbit.CoronaDps.ToString("0") + " · 灼烧拖尾";
+                    return "半径 " + Number(EmberWeaponTuning.Orbit.CoronaRadius) + " · 基础 " + Number(EmberWeaponTuning.Orbit.CoronaDps) + " 伤害/秒";
                 case RunProgress.MetaTrail:
-                    return "\u8eab\u5468\u6301\u7eed\u706b\u5708";
+                    return "火圈半径 " + Number(EmberWeaponTuning.Trail.RingRadius) + " · 持续范围伤害";
                 case RunProgress.MetaPierce:
-                    return "\u547d\u4e2d\u5206\u88c2\u5c0f\u706b\u77e2";
+                    return "分裂火矢伤害 " + Number(EmberWeaponTuning.Pierce.SplitDamage * 100) + "%";
                 case RunProgress.MetaBoom:
-                    return "\u989d\u5916\u4e00\u4e2a\u6765\u56de";
+                    return "额外往返 +" + EmberWeaponTuning.Boom.ExtraTrips;
                 case RunProgress.MetaMeteor:
-                    return "\u5708\u66f4\u5927\u0020\u00b7\u0020\u4f24\u66f4\u9ad8";
+                    return "半径 " + Number(EmberWeaponTuning.Meteor.Radius) + " → " + Number(EmberWeaponTuning.Meteor.SkyfireRadius) + " · 伤害×" + Number(EmberWeaponTuning.Meteor.SkyfireDamage);
                 case RunProgress.ExclBasic:
                     return "火球数 +" + EmberWeaponTuning.Basic.ExtraShots;
                 case RunProgress.ExclOrbit:
                     return "环绕 +" + EmberWeaponTuning.Orbit.ExtraOrbs;
                 case RunProgress.ExclTrail:
-                    return "\u62d6\u5c3e\u66f4\u957f\u66f4\u70eb";
+                {
+                    float speed = 1 + progress.WeaponAttackSpeed(EmberWeaponCatalog.Trail);
+                    return "铺火间隔 " + Number(EmberWeaponTuning.Trail.Interval / speed) + " → " + Number(EmberWeaponTuning.Trail.ExtendedInterval / speed) + " 秒";
+                }
                 case RunProgress.ExclPierce:
                     return "穿透目标 +" + EmberWeaponTuning.Pierce.ExtraTargets;
                 case RunProgress.ExclBoom:
-                    return "\u5f80\u8fd4\u5404\u591a\u4e00\u6bb5";
+                    return "去程、回程均增加命中机会";
                 case RunProgress.ExclMeteor:
-                    return "\u843d\u70b9\u0020\u002b1";
+                    return "火雨落点 +" + EmberWeaponTuning.Meteor.ExtraImpacts;
                 default:
                     return "";
             }

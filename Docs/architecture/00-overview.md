@@ -98,6 +98,7 @@ M2.RunFlowController ──► Host 契约 ──► M0  选卡规则不持有 E
 | Buff / Debuff / BuffConfig / BuffManager / 增伤 / 疾行 / 迟缓 / 减速 / 效果刷新与到期 | M10 | `10-buff-system.md` |
 | 波次 / 清波 / 精英挑战 / 遭遇事件 / 阶段 Boss / Profiler 标记 / 刷怪尖峰 / 屏外刷怪 / EmberSpawnPlacement | M3 | `03-combat-waves.md` |
 | 暗弹 / 齐射 / 半血狂怒 / Boss 招式 | M3 | `03-combat-waves.md` |
+| Boss 负面 Buff / Boss 迟缓 / 冲锋减速 / 爆发减速 | M3 + M10 | `03-combat-waves.md` → `10-buff-system.md` |
 | Boss 群战 / Boss 伴随兵 / 小兵补位 / BossSupportTargetForWave / BossSupportInterval | M3 + M1 | `03-combat-waves.md` → `01-config-tuning.md` |
 | 受伤 / 无敌帧 / 护盾吸收顺序 / 生命纯逻辑 | M0 | `00-composition-root.md` |
 | 自动攻击 / 自动选敌 / 武器 Tick | M4 | `04-weapon-system.md` → `03-combat-waves.md` |
@@ -114,6 +115,7 @@ M2.RunFlowController ──► Host 契约 ──► M0  选卡规则不持有 E
 | Buff 拾取提示 / 效果说明 / 持续时间提示 / Buff 倒计时 / 图标计时环 / 角色浮字 / EmberBuffHud / EmberBuffPresentation | M6 + M10 | `06-ui-flow.md` → `10-buff-system.md` |
 | HUD 推送点 / 安全区适配 / 摇杆输入 / 相机跟随 | M6 + M0 | `00-composition-root.md` → `06-ui-flow.md` |
 | 卡面排版 / EmberOfferPresentation / EmberUiFactory / 徽章 / 图标映射 / 滚动选卡 / 卡高 / 行步长 | M6 + M7 | `06-ui-flow.md` |
+| 卡牌描述 / 卡片说明 / 选择前后预览 / 攻速说明 / 延烧文案 | M6 + M2 | `06-ui-flow.md` → `02-run-progression.md` |
 | 简笔画素材 / 图集 / 程序化精灵 / 粒子 | M7 | `07-art-presentation.md` |
 | 原版角色精修 / 衣褶 / 兜帽部件 / EmberCharacterArt / Bake Classic Character Parts | M7 + M5 | `07-art-presentation.md` → `05-enemy-system.md` |
 | A 方案 / 清爽卡通 / CleanToonSample / EmberCleanToonSetup / Use Clean Toon Characters | M7 + M5 | `07-art-presentation.md` → `05-enemy-system.md` |

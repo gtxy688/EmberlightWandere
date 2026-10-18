@@ -367,6 +367,7 @@ namespace Emberlight
                 // Boss 是本波目标；余兵退场不生成掉落、不补记击杀，也不把母体再展开成子体。
                 pendingBroods.Clear();
                 roster.Clear(destroyViews: false);
+                host.Buffs?.Remove(EmberBuffCatalog.Slow.Id);
                 waves.NoteBossDefeated();
                 return;
             }

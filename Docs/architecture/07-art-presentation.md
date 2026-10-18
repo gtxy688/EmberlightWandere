@@ -103,6 +103,7 @@ Buff HUD 复用持久的火种、风羽 Sprite；迟缓使用 `Assets/Resources/
 - 重跑命令（批处理）：
   `Unity.exe -batchmode -quit -projectPath <proj> -executeMethod Emberlight.Editor.EmberFontBake.Bake`
   只读自检：`-executeMethod Emberlight.Editor.EmberFontBake.CheckRuntimeLoad`
+- 单独烘制会重新创建字体与材质子资源，其 fileID 可能改变。随后须执行 `Emberlight/UI/Connect UIRoot Runtime`（批处理入口 `Emberlight.Editor.EmberUiPrefabSetup.Connect`），重新保存 UIRoot 与 IntroRoot 的字体引用；不能只检查字体资产自身。`Update Buff HUD` 已包含重烘和两个 Prefab 的同步装配，可一并完成。
 - ⚠️ 批处理必须**在沙箱外**运行，且**项目不能被编辑器打开**（否则 `HandleProjectAlreadyOpenInAnotherInstance` 直接 crash）。Unity 授权客户端与编辑器通过命名管道通信，沙箱拦截会导致 `exit 199`（`IPC channel to LicensingClient doesn't exist`），此时烘制根本不会执行。
 
 ### 字形预热

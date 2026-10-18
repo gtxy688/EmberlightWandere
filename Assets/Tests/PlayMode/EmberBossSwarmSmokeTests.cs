@@ -99,6 +99,9 @@ namespace Emberlight.Tests
             broods.Add(Vector2.zero);
             int kills = game.Run.Kills;
             int score = game.Progress.Score;
+            game.TryAddBuff(EmberBuffCatalog.Power);
+            game.TryAddBuff(EmberBuffCatalog.Haste);
+            game.TryAddBuff(EmberBuffCatalog.Slow);
             combat.Boss.hp = 0;
             combat.Boss.dead = true;
             yield return WaitFor(() => game.Phase != EmberRunPhase.Playing, 2, "Boss death did not leave combat");
@@ -107,6 +110,9 @@ namespace Emberlight.Tests
             Assert.That(broods, Is.Empty);
             Assert.That(game.Run.Kills, Is.EqualTo(kills + 1), "Retired supports are not kills.");
             Assert.That(game.Progress.Score, Is.EqualTo(score + 30), "Retired supports must not create extra score.");
+            Assert.That(game.Buffs.Active.Any(b => b.Config == EmberBuffCatalog.Slow), Is.False, "Boss defeat removes Slow before the next phase.");
+            Assert.That(game.Buffs.Active.Any(b => b.Config == EmberBuffCatalog.Power), Is.True);
+            Assert.That(game.Buffs.Active.Any(b => b.Config == EmberBuffCatalog.Haste), Is.True);
             CheckTextMeshes(ui);
         }
 

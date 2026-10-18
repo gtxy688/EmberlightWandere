@@ -62,12 +62,12 @@ namespace Emberlight
             else if(State==AttackState.Dash)
             {
                 body.position=EmberWorld.Clamp((Vector2)body.position+direction*dt*8,.8f);
-                if(Vector2.Distance(body.position,player)<1.2f)host.HurtPlayer(22);
+                if(Vector2.Distance(body.position,player)<1.2f)HitPlayerWithSlow(22);
                 if(timer<=0){State=AttackState.Recovery;timer=1.5f;}
             }
             else if(State==AttackState.EruptionWarning&&timer<=0)
             {
-                foreach(var r in warnings){if(Vector2.Distance(r.transform.position,player)<1.2f)host.HurtPlayer(25);host.PlayBossBurst(r.transform.position);}
+                foreach(var r in warnings){if(Vector2.Distance(r.transform.position,player)<1.2f)HitPlayerWithSlow(25);host.PlayBossBurst(r.transform.position);}
                 Clear();State=AttackState.Recovery;timer=1.5f;
             }
             else if(State==AttackState.VolleyWarning&&timer<=0)
@@ -75,6 +75,15 @@ namespace Emberlight
             else if(State==AttackState.Recovery&&timer<=0){State=AttackState.Pursuit;timer=enraged?1.2f:2;}
         }
         public void Dispose(){Clear();if(adornment!=null){adornment.gameObject.SetActive(false);Object.Destroy(adornment.gameObject);}}
+        void HitPlayerWithSlow(float damage)
+        {
+            if (host.Phase != EmberRunPhase.Playing) return;
+            bool canApply = host.HurtReady;
+            host.HurtPlayer(damage);
+            // 命中前判断无敌帧；护盾吸收仍算命中，致死后不再施加效果。
+            if (canApply && host.Phase == EmberRunPhase.Playing)
+                host.TryAddBuff(EmberBuffCatalog.Slow);
+        }
         public void Clear(){foreach(var r in warnings)if(r!=null)Object.Destroy(r.gameObject);warnings.Clear();}
     }
 }

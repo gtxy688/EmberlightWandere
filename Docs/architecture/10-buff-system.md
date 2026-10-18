@@ -18,6 +18,7 @@
 ```text
 敌人最终死亡 → EmberDrops → 拾取 → IEmberCombatHost.TryAddBuff
 射手技能命中 → EmberEnemyProjectiles → IEmberCombatHost.TryAddBuff
+Boss 冲锋 / 爆发命中 → EmberBoss → IEmberCombatHost.TryAddBuff
                                       ↓
                                Run.Buffs.Add
                                       ↓
@@ -35,6 +36,7 @@ Playing 帧 → Tick → 到期移除 → 汇总移速 / 伤害倍率
 - 组合根在输入阶段检查后、玩家移动前推进 Buff；拾取与技能命中后新获得的效果供后续调用读取，移速最迟下一帧生效。
 - 伤害倍率集中在实际命中入口应用，武器无需分别判断增伤 Buff；已有弹体也按命中时的 Buff 结算。
 - 迟缓弹先记录命中前的无敌帧许可，再扣血和请求施加；死亡后的请求由宿主拒绝。弹体回池清除 Buff 元数据，普通弹不会继承迟缓。
+- Boss 的冲锋与爆发也复用共享 Slow：命中前记录许可、伤害后确认阶段，不因护盾吸收免疫；没有额外的速度计算。Boss 死亡由 M3 按 Id 移除迟缓，正面 Buff 继续按原规则存留。
 
 ## 对外契约
 

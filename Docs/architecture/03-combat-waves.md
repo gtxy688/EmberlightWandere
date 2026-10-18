@@ -113,10 +113,12 @@ Loading → Menu → SelectLength → SelectDifficulty → SelectSlots → Selec
 
 - **暗弹齐射**：开启波次和预警参数见需求 §3.2；随 `BossTier` 增加弹数与暗焰落点。
 - **半血狂怒**：低于半血后加快节奏并增加爆发区域。
+- **迟缓命中**：所有档位的冲锋与暗焰爆发经同一方法结算，先记录命中前 `HurtReady`，再调用宿主伤害；仍在 Playing 且原本可受伤时请求共享 Slow。预警、躲避、无敌帧和致死后均不施加，护盾吸收不豁免。普通接触与齐射沿用原伤害路径。
 - 暗弹**可被玩家火球 / 穿透箭拦截击毁**（`ctx.Intercept`）。
 - 击败最终 Boss = 通关。
 - Boss 出场时生成伴随兵，之后按 `BossSupportInterval` / `BossSupportBatch` 分批补足 `BossSupportTargetForWave`，构成来自 `RollBossSupportKind`，数值见需求 §3.2。`Host.TrySpawnBossSupport` 经名册走普通屏外落点，不使用屏内生成特例；落点失败留待下一批，重生中的敌人仍占名额。
 - Boss 阵亡后先取消 `pendingBroods` 并回收余兵，再通知波次结束；退场不走死亡奖励入口，不额外加击杀、分数或掉落。阶段选卡与最终胜利沿用原流程，不等待余兵清空。
+- 同一死亡分支从玩家 BuffManager 移除共享 Slow，保留正面 Buff；计时与叠加规则继续由 M10 负责，Boss 不直接修改玩家速度。
 
 ### 伤害与受伤
 
@@ -206,6 +208,7 @@ Boss 波例外：Boss 死亡优先结束本波，未展开的分裂请求作废�
 - **必须复验的契约**：`OnWaveCleared` 的发牌时机、`SelectUpgrade` 防伪、`HurtPlayer` 的倍率与护盾顺序、死亡→分裂→清波的处理顺序、暗弹拦截。
 - 屏外落点改动需复验完整视口/地图交集、遭遇请求点迁移和生成失败后的配额重试；Boss 与分裂特殊落点不纳入普通杂兵落点规则。
 - Boss 群战需复验首次伴随兵、定时补缺、容量限制、退场无额外奖励、取消分裂和阶段/最终结算，覆盖入口为 `Assets/Tests/EditMode/EmberBossSupportTests.cs` 与 `Assets/Tests/PlayMode/EmberBossSwarmSmokeTests.cs`。
+- Boss 负面 Buff 需复验各档位命中、预警期/躲避/无敌帧/致死不施加、刷新不叠层、护盾命中与 Boss 死亡清理，入口为 `Assets/Tests/PlayMode/EmberBossDebuffTests.cs` 与 `Assets/Tests/PlayMode/EmberBossBuffAndCardSmokeTests.cs`。
 
 ## 性能定位标记（2026-09-16）
 
