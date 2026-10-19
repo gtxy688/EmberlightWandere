@@ -11,6 +11,7 @@ namespace Emberlight
     public sealed class EmberPool
     {
         readonly Dictionary<string, Stack<GameObject>> stacks = new Dictionary<string, Stack<GameObject>>();
+        readonly List<SpriteRenderer> enemyParts = new List<SpriteRenderer>(16);
         Transform holder;
         GameObject shadePrefab;
         bool bossUsesTemplate;
@@ -53,6 +54,14 @@ namespace Emberlight
 
         public GameObject Rent(string key, Transform parent, Func<Transform, GameObject> create)
         {
+            var cached = Take(key, parent);
+            if (cached != null) return cached;
+            using (CreateMarker.Auto())
+                return create(parent);
+        }
+
+        GameObject Take(string key, Transform parent)
+        {
             Stack<GameObject> stack;
             if (stacks.TryGetValue(key, out stack))
             {
@@ -68,13 +77,17 @@ namespace Emberlight
                     }
                 }
             }
-            using (CreateMarker.Auto())
-                return create(parent);
+            return null;
         }
 
         public SpriteRenderer RentFire(Transform parent, Vector2 position, float size, int order = 8)
         {
-            var go = Rent("fire", parent, p => EmberArt.Fire(p, position, size, order).gameObject);
+            var go = Take("fire", parent);
+            if (go == null)
+            {
+                using (CreateMarker.Auto())
+                    go = EmberArt.Fire(parent, position, size, order).gameObject;
+            }
             var r = go.GetComponent<SpriteRenderer>();
             go.transform.SetParent(parent, false);
             go.transform.localPosition = position;
@@ -92,7 +105,12 @@ namespace Emberlight
 
         public SpriteRenderer RentShape(string key, Transform parent, Vector2 position, Vector2 scale, Color color, int order)
         {
-            var go = Rent(key, parent, p => EmberVisuals.Shape(key, p, position, scale, color, order).gameObject);
+            var go = Take(key, parent);
+            if (go == null)
+            {
+                using (CreateMarker.Auto())
+                    go = EmberVisuals.Shape(key, parent, position, scale, color, order).gameObject;
+            }
             var r = go.GetComponent<SpriteRenderer>();
             go.transform.SetParent(parent, false);
             go.transform.localPosition = position;
@@ -113,20 +131,27 @@ namespace Emberlight
         {
             using (RentEnemyMarker.Auto())
             {
-                bool boss = key == "boss";
-                var go = Rent(key, parent, p => shadePrefab != null && (!boss || bossUsesTemplate)
-                    ? UnityEngine.Object.Instantiate(shadePrefab, p, false)
-                    : EmberVisuals.Character(boss ? "Nightwarden" : "Shade", p, body).gameObject);
+                var go = Take(key, parent);
+                if (go == null)
+                {
+                    bool boss = key == "boss";
+                    using (CreateMarker.Auto())
+                        go = shadePrefab != null && (!boss || bossUsesTemplate)
+                            ? UnityEngine.Object.Instantiate(shadePrefab, parent, false)
+                            : EmberVisuals.Character(boss ? "Nightwarden" : "Shade", parent, body).gameObject;
+                }
                 go.transform.SetParent(parent, false);
                 go.transform.rotation = Quaternion.identity;
                 // Recolor cloak/hood if present (children Shape nodes).
-                var parts = go.GetComponentsInChildren<SpriteRenderer>(true);
-                for (int i = 0; i < parts.Length; i++)
+                go.GetComponentsInChildren(true, enemyParts);
+                for (int i = 0; i < enemyParts.Count; i++)
                 {
-                    var n = parts[i].name;
-                    if (n == "Cloak") parts[i].color = body;
-                    else if (n == "Hood") parts[i].color = body * 1.2f;
+                    var part = enemyParts[i];
+                    var n = part.name;
+                    if (n == "Cloak") part.color = body;
+                    else if (n == "Hood") part.color = body * 1.2f;
                 }
+                enemyParts.Clear();
                 go.SetActive(true);
                 return go.transform;
             }
