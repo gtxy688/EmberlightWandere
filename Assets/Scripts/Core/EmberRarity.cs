@@ -19,22 +19,19 @@ namespace Emberlight
     }
 
     /// <summary>
-    /// 品质（稀有度）规则：幸运 → 权重 → 品质，以及各品质对应的通用词条数值。
-    /// **零 `UnityEngine` 引用**，与 <see cref="RunProgress"/> / <see cref="EmberChoicePool"/> 同层。
-    /// 权威数值见 `Docs/requirements.md` §4.4 / §4.5。
+    /// 幸运权重、品质与通用升级增量；数值归 Docs/requirements.md §4.4 / §4.5。
     /// </summary>
     public static class EmberRarityUtil
     {
         /// <summary>
-        /// 品质名，下标即 <see cref="EmberRarity"/>。这四串字是该名称的唯一出处，
-        /// <see cref="EmberFonts"/> 也读它们做字形预热。
+        /// 品质名与字形来源，下标对应 <see cref="EmberRarity"/>。
         /// </summary>
         public static readonly string[] AllNames =
         {
-            "\u9752\u94dc",  // 青铜
-            "\u767d\u94f6",  // 白银
-            "\u9ec4\u91d1",  // 黄金
-            "\u94bb\u77f3",  // 钻石
+            "青铜",
+            "白银",
+            "黄金",
+            "钻石",
         };
 
         public static string Name(EmberRarity rarity)
@@ -44,9 +41,7 @@ namespace Emberlight
         }
 
         /// <summary>
-        /// 品质配色，用纯 `float[3]`（RGB, 0–1）表达而非 `UnityEngine.Color`，
-        /// 这样本文件与依赖它的构筑逻辑都能脱离 Unity 单测。UI 侧用
-        /// <see cref="EmberRarityTint.ToColor"/> 转换。
+        /// RGB 配色不依赖 UnityEngine；界面通过 <see cref="EmberRarityTint.ToColor"/> 转换。
         /// </summary>
         public static float[] Tint(EmberRarity rarity)
         {

@@ -3,24 +3,17 @@ using System;
 namespace Emberlight
 {
     /// <summary>
-    /// 灯芯（玩家）的生命结算：当前生命、无敌帧、受伤、回血、掉落拾取。
-    /// 伤害链路只依赖本类与 <see cref="RunProgress"/>，不持有场景句柄，也不创建音频对象。
-    ///
-    /// 行为口径（不得静默变动）：
-    /// - 难度倍率在 <see cref="Hurt"/> 内**统一乘一次**，覆盖接触/射手/爆炸/灼热/Boss；
-    /// - 受伤后无敌帧 <see cref="HurtCooldown"/> 秒；
-    /// - 护盾先乘难度倍率、再扣护盾，溢出部分扣生命（<see cref="RunProgress.AbsorbDamage"/>）；
-    /// - 怪物治疗掉落**任意血量**都可拾取，溢出部分丢弃。
+    /// 结算玩家生命、护盾吸收、无敌帧与治疗；不持有场景或音频对象。
+    /// 返回结算结果，由宿主决定呈现与收局动作。
     /// </summary>
     public sealed class EmberKeeperVitals
     {
-        /// <summary>每次难度下每局初始生命，见 `requirements.md` §3.3。</summary>
+        /// <summary>各难度共用的初始生命，见 requirements.md §3.3。</summary>
         public const float BaseMaxHealth = 100f;
         /// <summary>受伤后的无敌帧时长（秒）。</summary>
         public const float HurtCooldown = .65f;
         readonly Func<RunProgress> progress;
         readonly Func<float> damageMultiplier;
-        /// <summary>当前生命。</summary>
         public float Health { get; private set; }
         /// <summary>无敌帧剩余秒数；&gt; 0 时免疫后续伤害。</summary>
         public float HurtTimer { get; private set; }
@@ -55,7 +48,6 @@ namespace Emberlight
             }
         }
 
-        /// <summary>无敌帧是否已结束。</summary>
         public bool HurtReady
         {
             get
@@ -71,7 +63,6 @@ namespace Emberlight
             HurtTimer = 0f;
         }
 
-        /// <summary>按帧推进无敌帧倒计时。</summary>
         public void Tick(float dt)
         {
             HurtTimer -= dt;
@@ -83,7 +74,7 @@ namespace Emberlight
             return Health <= 0f;
         }
 
-        /// <summary>纯函数：治疗量钳制，供 UI 预览与测试复用。</summary>
+        /// <summary>治疗量非负，溢出生命上限的部分丢弃。</summary>
         public static float HealedHealth(float current, float maximum, float amount)
         {
             return Math.Min(maximum, current + Math.Max(0, amount));

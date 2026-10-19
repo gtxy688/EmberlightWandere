@@ -65,19 +65,19 @@ namespace Emberlight.Tests
         [TestCase(EmberWeaponCatalog.ExclPierce)]
         public void ExclusivePreview_ShowsOneAdditionalUnit(int id)
         {
-            Assert.That(EmberUpgradePanel.Preview(id, EmberRarity.Gold, new RunProgress()), Does.Contain("+1"));
+            Assert.That(EmberOfferPresentation.Preview(id, EmberRarity.Gold, new RunProgress()), Does.Contain("+1"));
         }
 
         [Test]
         public void WildfirePreview_DistinguishesSizeFromDamage()
         {
-            Assert.That(EmberUpgradePanel.Preview(EmberWeaponCatalog.MetaBasic, EmberRarity.Gold, new RunProgress()), Does.Contain("1.25"));
+            Assert.That(EmberOfferPresentation.Preview(EmberWeaponCatalog.MetaBasic, EmberRarity.Gold, new RunProgress()), Does.Contain("1.25"));
         }
 
         [Test]
         public void CoronaPreview_MatchesActualBaseDps()
         {
-            Assert.That(EmberUpgradePanel.Preview(EmberWeaponCatalog.MetaOrbit, EmberRarity.Gold, new RunProgress()),
+            Assert.That(EmberOfferPresentation.Preview(EmberWeaponCatalog.MetaOrbit, EmberRarity.Gold, new RunProgress()),
                 Does.Contain("基础 75 伤害/秒"));
         }
     }

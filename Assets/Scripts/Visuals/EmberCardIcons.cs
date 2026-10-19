@@ -8,8 +8,7 @@ namespace Emberlight
         static readonly Sprite[] icons = new Sprite[24];
         static Texture2D atlas;
         static bool reportedSlice;
-        // 子精灵命名同 Sprite Editor 的写法 "<atlas>_<index>"，自左上起行主序，index == cell。
-        // 切片本身在 .meta 里、由 EmberCardIconImporter 应用，这套命名是二者的契约。
+        // .meta 保存切片；命名为 <atlas>_<index>，自左上起行主序，index == cell。
         const string Stem = "doodle-icons";
 
         public static Sprite ForOffer(int id)
@@ -46,13 +45,10 @@ namespace Emberlight
             return Cell(cell);
         }
 
-        public static Sprite Healing { get { return Cell(23); } }
-
         static Sprite Cell(int cell)
         {
             if (icons[cell] != null) return icons[cell];
-            // 图集仍按 Texture2D 加载：下面的回落需要它，而且这条路径上纹理无论如何都得常驻，
-            // 换成取 Sprite 也会把同一张纹理拉进来。
+            // 子 Sprite 缺失时仍需用原纹理回落切图。
             if (atlas == null) atlas = Resources.Load<Texture2D>("Art/Cards/" + Stem);
             if (atlas != null)
             {

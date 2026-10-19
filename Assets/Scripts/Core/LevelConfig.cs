@@ -201,7 +201,7 @@ namespace Emberlight
             return 0;
         }
 
-        /// <summary>词缀概率：第 3 波起 12%，第 5 波起 18% 并每波 +0.3%，封顶 50%，再乘难度倍率。</summary>
+        /// <summary>增长段先封顶，再乘难度倍率，最后钳制最终概率；参数见需求 §3.5。</summary>
         public float AffixChance(int wave)
         {
             return Mathf.Min(.5f, (wave < 3 ? 0 : wave >= 5 ? .18f + Mathf.Min(.12f, (wave - 5) * .003f) : .12f) * AffixMultiplier);

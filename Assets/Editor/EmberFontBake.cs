@@ -6,20 +6,8 @@ using UnityEngine.TextCore.LowLevel;
 namespace Emberlight.Editor
 {
     /// <summary>
-    /// 预烘中文 TMP 图集写入 Resources，避免加载页启动时用 16 MB otf 现场烘 2048x2048 SDF。
-    /// 三条硬约束：
-    /// 1. 禁止多图集：2048x2048 / 90 px / 9 px padding 装不下全部字形，TMP 会开第二张图集并把字体指向
-    ///    空槽，随后 TMP 解引用 atlasTextures[atlasIndex] 抛 NullReferenceException。预检固定
-    ///    enableMultiAtlasSupport: false 并逐档降采样点，写盘前由 ApplySingleAtlas 兜住该不变量。
-    /// 2. 写入顺序：先 AddObjectToAsset 贴图与材质、最后写字体资产；CreateAsset 按当时的对象图序列化，
-    ///    顺序反了盘上的图集就没有像素数据。
-    /// 3. 必须真渲染校验：畸形图集只在绘制时才报错，故要从盘上重新加载并真画一遍（VerifyReloaded），
-    ///    只数字形数不算验证；多图集关闭时装不下的字根本不会入表，另需 CoversEveryCharacter 查覆盖率。
-    /// 另外 TryAddCharacters 的 includeFontFeatures 必须为 false，否则会引入本字体不需要的可选特性。
-    ///
-    /// 资产是可加的：EmberFonts.CreateChinese 只在 ValidateBaked 通过后采用，否则回落运行时动态烘制。
-    /// Menu: Emberlight/Bake Chinese font atlas
-    /// Verify: -executeMethod Emberlight.Editor.EmberFontBake.CheckRuntimeLoad
+    /// 烘制单图集中文 TMP 字体，写盘后重载并检查字形覆盖与网格生成。
+    /// 运行时仍须通过 EmberFonts.ValidateBaked，失败则回落动态图集。
     /// </summary>
     public static class EmberFontBake
     {
@@ -339,11 +327,7 @@ namespace Emberlight.Editor
         }
 
         /// <summary>
-        /// 只读的端到端检查，可命令行执行：
-        ///   Unity.exe -batchmode -quit -executeMethod Emberlight.Editor.EmberFontBake.CheckRuntimeLoad
-        ///
-        /// 回答烘制本身回答不了的问题（它只写资产、不消费资产）：EmberFonts 是否接受
-        /// Resources.Load 真正返回的对象？刻意不渲染任何东西，因此可无头运行。
+        /// 只读检查 Resources 加载的字体是否通过运行时闸门；支持无头批处理。
         /// </summary>
         public static void CheckRuntimeLoad()
         {

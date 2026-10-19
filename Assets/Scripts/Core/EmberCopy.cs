@@ -13,9 +13,7 @@ namespace Emberlight
         public const string RosterTitle = "挑选起始武器";
         public const string RosterSummary = "点选一把武器后点击确认开战 · 上下滑动查看全部";
         public static readonly string[] SlotChoices = { "1 把武器", "2 把武器（推荐）", "3 把武器", "4 把武器", "5 把武器" };
-        // 玩家可见文案一律写成常量，不要内联字面量：EmberFonts 只能扫描到"可达"的字符串，
-        // 内联文案会漏出烘制范围，字在游戏里渲染成空心方框。新增文案放这里（或对应面板的常量），
-        // 并接进 EmberFonts.MenuGlyphSet，否则不会进图集。
+        // 共享文案接入 EmberFonts 的字形来源；编译后用 atlas_glyph_check.py 检查内联文案缺口。
         public const string MenuTitle = "\u70ec\u706f\u884c\u8005";
         public const string MenuTagline = "25\u6ce2\u6807\u51c6\u5f81\u7a0b\u00b7\u002050\u6ce2\u6f2b\u957f\u5f81\u7a0b\n" + "\u81ea\u7531\u9009\u62e9\u96be\u5ea6\uff0c\u6bcf\u5c40\u4ece\u76f8\u540c\u7684\u57fa\u7840\u5c5e\u6027\u51fa\u53d1\u3002\n" + "\u6ce2\u6b21\u5956\u52b1\u9009\u5361\uff0c\u51fb\u8d25\u6700\u7ec8\u5b88\u536b\u3002";
         public static readonly string[] MenuChoices =

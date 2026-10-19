@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Emberlight
 {
-    /// <summary>回旋镖。专属 \u56de\u9a6c 增加往返中段命中；蜕变 \u6298\u8fd4\u4e0d\u5c3d 增加一次往返。</summary>
+    /// <summary>往返命中分别计数的回旋烬蝶；质变增加往返次数。</summary>
     public sealed class EmberBoomerangWeapon : EmberWeapon
     {
         sealed class Butterfly

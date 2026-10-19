@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Emberlight
 {
-    /// <summary>陨石。专属多 1 次落点；蜕变 \u5929\u706b 范围与伤害提升。</summary>
+    /// <summary>锁定落点并在预警结束后结算范围伤害。</summary>
     public sealed class EmberMeteorWeapon : EmberWeapon
     {
         sealed class Strike

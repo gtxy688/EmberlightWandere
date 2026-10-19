@@ -7,7 +7,7 @@ using UnityEngine.UI;
 
 namespace Emberlight.Editor
 {
-    /// <summary>A 方案的 Prefab 迁移。只在首次迁移布置控件，之后保留手动布局。</summary>
+    /// <summary>首次装配 Buff HUD；重复执行保留人工布局。</summary>
     public static class EmberBuffHudSetup
     {
         public const string SlowArtPath = "Assets/Resources/Art/Buffs/buff-slow.png";

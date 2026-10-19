@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Emberlight
 {
-    /// <summary>环绕球。专属多 1 球；蜕变 \u65e5\u5195 提升半径/转速/每秒伤害并拖燃迹。</summary>
+    /// <summary>环绕火球结算接触伤害；质变后沿轨迹留下共享燃地。</summary>
     public sealed class EmberOrbitWeapon : EmberWeapon
     {
         readonly List<SpriteRenderer> orbs = new List<SpriteRenderer>();

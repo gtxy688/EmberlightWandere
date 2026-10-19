@@ -127,7 +127,7 @@ namespace Emberlight
             }
             for (int i = labels.Length; i < menuButtons.Count; i++) menuButtons[i].gameObject.SetActive(false);
             hintDismissed = onHintDismissed;
-            // 一次性发现提示：位于选项按钮（到 .16 为止）下方，自身就是关闭控件，不额外占版面。
+            // 提示本身可点击关闭。
             if (string.IsNullOrEmpty(hint))
             {
                 HideHint();

@@ -4,13 +4,7 @@ using UnityEngine;
 namespace Emberlight
 {
     /// <summary>
-    /// 战斗根（M3）：本局战斗的装配点与每帧顺序。
-    ///
-    /// 只做四件事——拥有武器实例、装配各战斗单元、驱动每帧顺序、把单元之间的回调接起来。
-    /// 具体规则分别属于：波次推进 <see cref="EmberWaveDirector"/>、敌人实例化与回收
-    /// <see cref="EmberEnemyRoster"/>、伤害与死亡结算 <see cref="EmberCombatDamage"/>、
-    /// 敌方弹幕 <see cref="EmberEnemyProjectiles"/>、治疗掉落 <see cref="EmberDrops"/>。
-    /// 对宿主的依赖只有 <see cref="IEmberCombatHost"/>，不认识 `EmberGame`。
+    /// 装配战斗单元、持有武器并驱动每帧顺序；通过 <see cref="IEmberCombatHost"/> 对接宿主。
     /// </summary>
     public sealed class EmberCombat : EmberWaveDirector.Host
     {
@@ -101,11 +95,6 @@ namespace Emberlight
         void EmberWaveDirector.Host.OnFinalBossDefeated()
         {
             host.EndRun(true);
-        }
-
-        public void Begin(Transform runWorld, Transform keeper, Camera camera, EmberEffects fx)
-        {
-            Begin(runWorld, keeper, camera, fx, LevelConfig.Default);
         }
 
         public void Begin(Transform runWorld, Transform keeper, Camera camera, EmberEffects fx, LevelConfig levelConfig, GameObject shadePrefab = null)
@@ -336,11 +325,6 @@ namespace Emberlight
             hasLastPlayerPos = true;
             weaponCtx.Progress = progress;
             weaponCtx.Elapsed = host.Elapsed;
-            weaponCtx.Player = player;
-            weaponCtx.World = world;
-            weaponCtx.Cam = cam;
-            weaponCtx.Effects = effects;
-            weaponCtx.Pool = pool;
             for (int w = 0; w < weapons.Count; w++)
             {
                 if (host.Phase != EmberRunPhase.Playing)
@@ -399,7 +383,6 @@ namespace Emberlight
         void SetEnemyContext(EmberEnemy e)
         {
             enemyCtx.Enemy = e;
-            enemyCtx.Config = config;
             enemyCtx.SpeedMultiplier = e.affix == EnemyAffix.Wind && e.age % config.WindPeriod < config.WindDuration ? config.WindSpeedMultiplier : 1f;
         }
 
@@ -428,10 +411,5 @@ namespace Emberlight
                 effects.Nova(point, 1.2f);
         }
 
-        /// <summary>遭遇事件的环形落点：以玩家为心，保证不与玩家重叠。</summary>
-        public static Vector2 SafeEncounterPosition(Vector2 player, Vector2 direction)
-        {
-            return EmberWaveDirector.SafeEncounterPosition(player, direction);
-        }
     }
 }

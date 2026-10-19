@@ -3,11 +3,7 @@ using UnityEngine;
 namespace Emberlight
 {
     /// <summary>
-    /// 玩家可选的游戏速度，1x–5x，直接实现为 Time.timeScale：所有已按 Time.deltaTime 驱动的系统
-    /// （局内计时、波次、敌人移动、武器节奏、粒子、灯芯动画）自动跟随，无需逐个改动。
-    /// 不该加速的部分已经写在 unscaled 时间上：EmberAudio 的节流、EmberCardMotion 的面板淡入、
-    /// 设置页点击试听与开场序列都用 Time.unscaledTime / unscaledDeltaTime，故 5x 下界面与音效稳定。
-    /// 速度是玩家偏好，跨局保留，收局或中途退出都不重置。
+    /// 用 Time.timeScale 应用玩家倍速并跨局保存；界面动画与音频节流使用 unscaled 时间。
     /// </summary>
     public static class GameSpeed
     {

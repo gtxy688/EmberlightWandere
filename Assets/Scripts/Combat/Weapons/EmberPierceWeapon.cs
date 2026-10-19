@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Emberlight
 {
-    /// <summary>穿刺狙击。专属提升穿透上限；蜕变 \u7a7f\u6768 命中后分裂。</summary>
+    /// <summary>静止时发射穿透火矢；质变后命中生成分裂箭，分裂箭不再分裂。</summary>
     public sealed class EmberPierceWeapon : EmberWeapon
     {
         sealed class Arrow
@@ -99,7 +99,6 @@ namespace Emberlight
                 dir = ((Vector2)target.view.position - origin).normalized;
             }
 
-            int count = isSplit ? 1 : (1 + ctx.Progress.WeaponCount(RunProgress.WeaponPierce));
             float dmg = EmberWeaponTuning.Pierce.Damage * ctx.Progress.DamageMul * (1f + ctx.Progress.WeaponMagnitude(RunProgress.WeaponPierce)) * (isSplit ? EmberWeaponTuning.Pierce.SplitDamage : 1f);
             int limit = ctx.Progress.PierceLimit;
             if (limit < 1)
@@ -108,14 +107,10 @@ namespace Emberlight
             float speed = isSplit ? EmberWeaponTuning.Pierce.SplitSpeed : EmberWeaponTuning.Pierce.Speed;
             if (!isSplit)
                 ctx.PlaySound?.Invoke(EmberWeaponSound.PierceArrow);
-            for (int i = 0; i < count; i++)
-            {
-                Vector2 v = Quaternion.Euler(0, 0, (i - (count - 1) * .5f) * 12f) * dir;
-                var r = ctx.Pool != null ? ctx.Pool.RentFire(ctx.World, origin, size) : EmberArt.Fire(ctx.World, origin, size);
-                EmberWorldArt.Projectile(r, 11, isSplit ? .25f : .40f, isSplit ? .48f : .80f);
-                r.transform.rotation = Quaternion.Euler(0, 0, Mathf.Atan2(v.y, v.x) * Mathf.Rad2Deg - 90);
-                arrows.Add(new Arrow { view = r, velocity = v * speed, life = isSplit ? EmberWeaponTuning.Pierce.SplitLifetime : EmberWeaponTuning.Pierce.Lifetime, damage = dmg, hitsLeft = isSplit ? 1 : limit, isSplit = isSplit });
-            }
+            var r = ctx.Pool != null ? ctx.Pool.RentFire(ctx.World, origin, size) : EmberArt.Fire(ctx.World, origin, size);
+            EmberWorldArt.Projectile(r, 11, isSplit ? .25f : .40f, isSplit ? .48f : .80f);
+            r.transform.rotation = Quaternion.Euler(0, 0, Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg - 90);
+            arrows.Add(new Arrow { view = r, velocity = dir * speed, life = isSplit ? EmberWeaponTuning.Pierce.SplitLifetime : EmberWeaponTuning.Pierce.Lifetime, damage = dmg, hitsLeft = isSplit ? 1 : limit, isSplit = isSplit });
         }
     }
 }

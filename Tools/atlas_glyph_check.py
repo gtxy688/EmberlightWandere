@@ -1,17 +1,8 @@
 #!/usr/bin/env python3
-"""Report which characters appear in Assembly-CSharp.dll string literals but are absent
-from the pre-baked TMP atlas.
+"""Check Emberlight.Runtime.dll string literals against the baked TMP atlas.
 
-Why this exists
----------------
-The atlas only contains what EmberFonts.AllGlyphs asks for, and AllGlyphs is assembled from
-specific arrays and named constants. Any player-facing string that is still an inline literal
-inside a method body is invisible to both reflection and array-walking -- which is how
-休闲适合轻松构筑 shipped as hollow boxes.
-
-Rather than keeping a hand-written list of "sources to remember", this reads the compiled
-assembly's #US (user strings) metadata heap, so every string literal in the game is covered,
-wherever it lives in the source.
+The compiled #US heap includes inline literals that EmberFonts.AllGlyphs may omit.
+TMP's underline and ellipsis characters are checked separately.
 
 Usage:  python Tools/atlas_glyph_check.py [dll] [sdf-asset]
 Exit code is 1 when characters are missing, so it can gate a bake.
@@ -30,9 +21,7 @@ except Exception:
     pass
 
 ROOT = Path(__file__).resolve().parent.parent
-# 2026-10-03: the game code moved into its own assembly (`Emberlight.Runtime.asmdef`),
-# so `Assembly-CSharp.dll` no longer contains the player-facing string literals.
-# Scanning it would silently report "coverage complete" on an empty set.
+# Game strings live in the custom Runtime assembly, not Assembly-CSharp.
 DLL = ROOT / "Library" / "ScriptAssemblies" / "Emberlight.Runtime.dll"
 # Fall back to the legacy location if the asmdef has not been imported yet.
 DLL_LEGACY = ROOT / "Library" / "ScriptAssemblies" / "Assembly-CSharp.dll"
@@ -72,7 +61,7 @@ def user_strings(path):
         raise ValueError("CLI header RVA is not inside any section")
 
     cli = rva_to_offset(cli_rva)
-    md_rva, md_size = struct.unpack_from("<II", data, cli + 8)
+    md_rva, _ = struct.unpack_from("<II", data, cli + 8)
     md = rva_to_offset(md_rva)
     if data[md:md + 4] != b"BSJB":
         raise ValueError("metadata root signature missing")
@@ -125,7 +114,6 @@ def atlas_characters(path):
     glyph it resolves to. Reading the text avoids loading 8 MB of binary texture data.
     """
     text = path.read_text(encoding="utf-8", errors="replace")
-    m = re.search(r"m_Unicode: (\d+)\n\s+m_GlyphIndex:", text)
     found = set()
     for hit in re.finditer(r"m_Unicode: (\d+)", text):
         code = int(hit.group(1))

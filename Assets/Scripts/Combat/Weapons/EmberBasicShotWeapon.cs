@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace Emberlight
 {
-    /// <summary>火球。专属 ExclBasic 多 1 发；蜕变 MetaBasic \u71ce\u539f：体积 ×1.5、伤害 ×1.25、命中留燃地。</summary>
+    /// <summary>自动锁定最近的可见敌人发射火球；质变后命中留下共享燃地。</summary>
     public sealed class EmberBasicShotWeapon : EmberWeapon
     {
         sealed class Shot
@@ -39,17 +39,8 @@ namespace Emberlight
                 s.life -= dt;
                 Vector2 previous = s.view.transform.position;
                 s.view.transform.position += (Vector3)(s.velocity * dt);
-                if (!ctx.Visible(s.view.transform.position))
-                {
-                    if (ctx.Pool != null)
-                        ctx.Pool.Release("fire", s.view);
-                    else
-                        Object.Destroy(s.view.gameObject);
-                    shots.RemoveAt(i);
-                    continue;
-                }
-
-                if (ctx.Intercept != null && ctx.Intercept(previous, s.view.transform.position, .18f))
+                if (!ctx.Visible(s.view.transform.position) ||
+                    (ctx.Intercept != null && ctx.Intercept(previous, s.view.transform.position, .18f)))
                 {
                     if (ctx.Pool != null)
                         ctx.Pool.Release("fire", s.view);

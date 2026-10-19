@@ -3,15 +3,8 @@ using UnityEngine;
 namespace Emberlight
 {
     /// <summary>
-    /// 伤害应用与死亡结算（M3）。纯静态：每次调用都靠 <see cref="Context"/> 拿齐所需引用，
-    /// 因此没有隐藏状态，也不会和刷怪/波次逻辑互相污染。
-    ///
-    /// **本类不改波次、不造新敌人**：击杀数、Boss 阵亡、分裂落点都通过 <see cref="Outcome"/>
-    /// 回报，由战斗根交给 <see cref="EmberWaveDirector"/> 与 <see cref="EmberEnemyRoster"/> 处理。
-    ///
-    /// 保持的行为口径（`requirements.md` §3.4 / §3.5 / §5）：铁灯卫正面减伤；命中须可见；
-    /// 受击闪白 0.10 秒且有击退；重生词缀读条后以 40% 生命复活一次（Boss 不重生）；
-    /// 计分 Boss 30 / 词缀怪 3 / 普通 1 / 分裂子体 0；子体在全部武器 Tick 之后才生成。
+    /// 通过 Context 结算伤害与死亡；击杀、Boss 结果和分裂请求交回战斗根处理。
+    /// 子体须等全部武器 Tick 结束后生成，避免本帧遍历被新增敌人打断。
     /// </summary>
     public static class EmberCombatDamage
     {
@@ -138,6 +131,7 @@ namespace Emberlight
                 if (ctx.Effects != null) ctx.Effects.Impact(e.view.position, true);
                 if (ctx.Drops != null)
                     ctx.Drops.OnDeath(e.view.position, e.kind, e.affix, ctx.Random);
+                // 与行为回调共同形成两批子体；当前确认保留此数量，不能单独删掉一路。
                 if (e.kind == 5 && ctx.NoteSplitPoint != null) ctx.NoteSplitPoint(e.view.position);
 
                 roster.Release(e);

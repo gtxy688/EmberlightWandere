@@ -106,17 +106,6 @@ namespace Emberlight
         /// <summary>开一局：从第 1 波开始。</summary>
         public void Begin()
         {
-            wave = 1;
-            bossSpawned = false;
-            bossWarning = 0f;
-            bossSupportTimer = 0f;
-            awaitingUpgrade = false;
-            eventTriggered = false;
-            encounterTimer = 0f;
-            extraSpawned = 0;
-            waveSpawned = 0;
-            waveKilled = 0;
-            host.ClearProjectiles();
             StartWave(1);
         }
 
@@ -167,7 +156,7 @@ namespace Emberlight
         {
             if (dt <= 0 || awaitingUpgrade) return;
             // 常规刷怪：Boss 波、待选卡、配额刷完或到达同屏上限时停手
-            if (!awaitingUpgrade && !bossSpawned && wave < config.BossWave &&
+            if (!bossSpawned && wave < config.BossWave &&
                 waveSpawned < waveQuota && host.EnemyCount < config.EnemyLimit)
             {
                 spawnTimer -= dt;

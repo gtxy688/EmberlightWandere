@@ -4,9 +4,7 @@ using UnityEngine;
 namespace Emberlight
 {
     /// <summary>
-    /// 敌人名册（M3）：拥有敌方实例列表，负责"怎么造一个敌人"与回收；
-    /// "什么时候该造"归 <see cref="EmberWaveDirector"/>。
-    /// 血量与词缀概率全部查 `LevelConfig`，不在这里写数值（`requirements.md` §3.4 / §3.5）。
+    /// 创建、持有与回收敌人，数值读取 LevelConfig；刷怪时机归 <see cref="EmberWaveDirector"/>。
     /// </summary>
     public sealed class EmberEnemyRoster
     {
@@ -89,7 +87,7 @@ namespace Emberlight
                 added.behavior = CreateBehavior(kind);
                 Vector2 delta = (Vector2)player.position - p;
                 added.facing = Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg;
-                // 引线虫（kind 6）不带词缀：它自己会炸。
+                // 分裂子体不带词缀。
                 if (kind != 6 && (forceAffix || random.NextDouble() < config.AffixChance(wave)))
                     added.affix = (EnemyAffix)(1 + random.Next(3));
             }

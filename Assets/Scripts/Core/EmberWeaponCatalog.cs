@@ -66,15 +66,6 @@ namespace Emberlight
             new Definition(Boom, MetaBoom, ExclBoom, "回旋烬蝶", "掷出回旋火蝴蝶\n飞出与返回均可命中敌人"),
             new Definition(Meteor, MetaMeteor, ExclMeteor, "天降火雨", "标记目标区域\n短暂预警后轰击范围内敌人")
         };
-        /// <summary>兼容数组调用方，但不暴露可修改的内部名册。</summary>
-        public static int[] Roster
-        {
-            get
-            {
-                return RosterCopy();
-            }
-        }
-
         /// <summary>名册长度（= 武器总数）。</summary>
         public static int RosterCount
         {

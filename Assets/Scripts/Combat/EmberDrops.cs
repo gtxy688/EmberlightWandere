@@ -11,7 +11,6 @@ namespace Emberlight
             public SpriteRenderer View;
             public float Life;
             public BuffConfig Buff;
-            public Color Color;
             public string PoolKey => Buff == null ? "healing-drop" : "buff-drop";
         }
 
@@ -44,8 +43,7 @@ namespace Emberlight
         {
             if (drops.Count >= Capacity) Remove(0);
             var drop = new Drop { Buff = buff, Life = config.HealDropLifetime };
-            drop.Color = Color.white;
-            drop.View = pool.RentShape(drop.PoolKey, world, position, Vector2.one, drop.Color, 12);
+            drop.View = pool.RentShape(drop.PoolKey, world, position, Vector2.one, Color.white, 12);
             var kind = buff == null ? EmberPickupArt.Kind.Healing : buff == EmberBuffCatalog.Power ? EmberPickupArt.Kind.Power : EmberPickupArt.Kind.Haste;
             drop.View.sprite = EmberPickupArt.Get(kind);
             drop.View.transform.localScale = Vector3.one * (.62f / drop.View.sprite.bounds.size.x);
@@ -64,7 +62,7 @@ namespace Emberlight
                 if (drop.Life <= 0) { Remove(i); continue; }
                 float pulse = 1f + .08f * Mathf.Sin(drop.Life * 5f);
                 drop.View.transform.localScale = Vector3.one * (.62f * pulse / drop.View.sprite.bounds.size.x);
-                var color = drop.Color;
+                var color = Color.white;
                 color.a = drop.Life < 5f ? .55f + .45f * Mathf.Sin(drop.Life * 10f) : 1f;
                 drop.View.color = color;
                 float attract = host.NeedsHealing ? 2.2f : 1.5f;

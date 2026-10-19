@@ -27,7 +27,6 @@ namespace Emberlight
         [SerializeField] AudioClip hit;
         [SerializeField] AudioClip hurt;
         [SerializeField] AudioClip pickupHeal;
-        [SerializeField] AudioClip cardOpen;
         [SerializeField] AudioClip cardPick;
         [SerializeField] AudioClip meteorImpact;
 
@@ -170,7 +169,6 @@ namespace Emberlight
             if (hit == null) hit = LoadClip("Audio/Sfx/hit");
             if (hurt == null) hurt = LoadClip("Audio/Sfx/hurt");
             if (pickupHeal == null) pickupHeal = LoadClip("Audio/Sfx/pickup_heal");
-            if (cardOpen == null) cardOpen = LoadClip("Audio/Sfx/card_open");
             if (cardPick == null) cardPick = LoadClip("Audio/Sfx/card_pick");
             if (meteorImpact == null) meteorImpact = LoadClip("Audio/Sfx/meteor_impact");
             if (weaponFireball == null) weaponFireball = LoadWeaponClip("weapon_fireball");
@@ -220,30 +218,13 @@ namespace Emberlight
             PlayMusic(combatLoop);
         }
 
-        public void PlaySfx(AudioClip clip, float startTime = 0f, float gain = 1f)
+        public void PlaySfx(AudioClip clip, float gain = 1f)
         {
             if (sfx == null) Bootstrap();
             EnsureListener();
             if (clip == null) return;
             sfx.spatialBlend = 0f;
-            startTime = Mathf.Clamp(startTime, 0f, Mathf.Max(0f, clip.length - 0.02f));
-            if (startTime <= 0.001f)
-            {
-                sfx.PlayOneShot(clip, Mathf.Clamp01(gain));
-                return;
-            }
-            // PlayOneShot 无法跳转起点，另起一次性 2D 源，让起音对齐事件帧。
-            var go = new GameObject("EmberSfxOneShot");
-            var src = go.AddComponent<AudioSource>();
-            src.playOnAwake = false;
-            src.loop = false;
-            src.spatialBlend = 0f;
-            src.ignoreListenerPause = true;
-            src.clip = clip;
-            src.volume = sfxVolume * Mathf.Clamp01(gain);
-            src.time = startTime;
-            src.Play();
-            Object.Destroy(go, clip.length - startTime + 0.05f);
+            sfx.PlayOneShot(clip, Mathf.Clamp01(gain));
         }
 
         public void PlayUiClick()
@@ -297,7 +278,7 @@ namespace Emberlight
             PlaySfx(hit);
         }
 
-        /// <summary>陨石落地（Kenney lowFrequency_explosion）；多点位连续落地共用同一节流。</summary>
+        /// <summary>火雨落地音；多个落点共用同一节流。</summary>
         public void PlayMeteorImpact()
         {
             if (Time.unscaledTime < nextMeteorImpactTime) return;
@@ -306,7 +287,7 @@ namespace Emberlight
             if (weaponMeteor != null)
             {
                 // 落地音从采样 0 起播，与伤害同帧。
-                PlaySfx(weaponMeteor, 0f, .75f);
+                PlaySfx(weaponMeteor, .75f);
                 return;
             }
             if (meteorImpact == null) meteorImpact = LoadClip("Audio/Sfx/meteor_impact");
@@ -321,7 +302,7 @@ namespace Emberlight
             if (Time.unscaledTime < nextWeaponShotTime) return;
             nextWeaponShotTime = Time.unscaledTime + FireHitMinInterval;
             if (weaponFireball == null) weaponFireball = LoadWeaponClip("weapon_fireball");
-            if (weaponFireball != null) { PlaySfx(weaponFireball, 0f, .45f); return; }
+            if (weaponFireball != null) { PlaySfx(weaponFireball, .45f); return; }
             PlayFire();
         }
 
@@ -331,7 +312,7 @@ namespace Emberlight
             nextWeaponArrowTime = Time.unscaledTime + FireHitMinInterval;
             if (weaponPierceArrow == null) weaponPierceArrow = LoadWeaponClip("weapon_pierce_arrow");
             // 短促发射音与弹丸生成同帧起播。
-            if (weaponPierceArrow != null) { PlaySfx(weaponPierceArrow, 0f, .55f); return; }
+            if (weaponPierceArrow != null) { PlaySfx(weaponPierceArrow, .55f); return; }
             PlayFire();
         }
 
@@ -340,7 +321,7 @@ namespace Emberlight
             if (Time.unscaledTime < nextWeaponBoomTime) return;
             nextWeaponBoomTime = Time.unscaledTime + FireHitMinInterval;
             if (weaponBoomerang == null) weaponBoomerang = LoadWeaponClip("weapon_boomerang");
-            if (weaponBoomerang != null) { PlaySfx(weaponBoomerang, 0f, .45f); return; }
+            if (weaponBoomerang != null) { PlaySfx(weaponBoomerang, .45f); return; }
             PlayFire();
         }
 
@@ -350,7 +331,7 @@ namespace Emberlight
             if (Time.unscaledTime < nextWeaponOrbitTime) return;
             nextWeaponOrbitTime = Time.unscaledTime + 0.35f;
             if (weaponOrbitIgnite == null) weaponOrbitIgnite = LoadWeaponClip("weapon_orbit_ignite");
-            if (weaponOrbitIgnite != null) { PlaySfx(weaponOrbitIgnite, 0f, .28f); return; }
+            if (weaponOrbitIgnite != null) { PlaySfx(weaponOrbitIgnite, .28f); return; }
             PlayFire();
         }
 
@@ -360,7 +341,7 @@ namespace Emberlight
             if (Time.unscaledTime < nextWeaponBurnTime) return;
             nextWeaponBurnTime = Time.unscaledTime + .7f;
             if (weaponBurnGround == null) weaponBurnGround = LoadWeaponClip("weapon_burn_ground");
-            if (weaponBurnGround != null) { PlaySfx(weaponBurnGround, 0f, .35f); return; }
+            if (weaponBurnGround != null) { PlaySfx(weaponBurnGround, .35f); return; }
             PlayFire();
         }
     }

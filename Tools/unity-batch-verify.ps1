@@ -144,10 +144,6 @@ if ($rebuilt) {
 
 Write-Host 'UNITY COMPILE OK - project imported with no C# errors.' -ForegroundColor Green
 Write-Host ''
-Write-Host 'Still to do by hand (cannot be automated):'
-Write-Host '  R1  Enter Play: loading -> menu -> four setup steps -> combat -> card -> pause -> result -> camp'
-Write-Host '  R2  Take repeated contact damage: ~0.65s i-frames, no chain-kill'
-Write-Host '  R5  Pick a new weapon: exactly one compensation card, no chain'
-Write-Host '  R8  Drag lower half of screen: joystick follows; Esc pauses'
-Write-Host '  See Docs/architecture/00-composition-root-test.md'
+Write-Host 'This script verifies import and compilation only.'
+Write-Host 'See README.md for automated tests and in-game checks of presentation and feel.'
 exit 0

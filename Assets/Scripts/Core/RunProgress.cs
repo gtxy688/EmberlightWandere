@@ -4,9 +4,8 @@ using System.Collections.Generic;
 namespace Emberlight
 {
     /// <summary>
-    /// 单局构筑状态（M2）：槽位、已拥有武器、通用属性、幸运/增幅、专属/质变、免费刷新。
-    /// 只负责"构筑状态怎么变"；候选怎么拼见 <see cref="EmberChoicePool"/>，Id 空间见
-    /// <see cref="EmberWeaponCatalog"/>。**零 `UnityEngine` 引用**，可脱离 Unity 单测。
+    /// 单局构筑与升级结算；候选生成归 <see cref="EmberChoicePool"/>，身份定义归
+    /// <see cref="EmberWeaponCatalog"/>。不依赖 UnityEngine。
     /// </summary>
     public sealed class RunProgress
     {
@@ -81,7 +80,6 @@ namespace Emberlight
         readonly HashSet<int> ownedWeapons = new HashSet<int>();
         readonly HashSet<int> metamorphs = new HashSet<int>();
         readonly HashSet<int> exclusives = new HashSet<int>();
-        readonly Dictionary<int, int> weaponCount = new Dictionary<int, int>();
         readonly Dictionary<int, float> weaponMagnitude = new Dictionary<int, float>();
         readonly Dictionary<int, float> weaponAttackSpeed = new Dictionary<int, float>();
 
@@ -95,12 +93,6 @@ namespace Emberlight
         public bool OwnsWeapon(int id) { return ownedWeapons.Contains(id); }
         public bool HasMetamorph(int id) { return metamorphs.Contains(id); }
         public bool HasExclusive(int id) { return exclusives.Contains(id); }
-
-        public int WeaponCount(int id)
-        {
-            int v;
-            return weaponCount.TryGetValue(id, out v) ? v : 0;
-        }
 
         public float WeaponMagnitude(int id)
         {
@@ -132,13 +124,7 @@ namespace Emberlight
             weaponAttackSpeed[id] = v + amount;
         }
 
-        /// <summary>武器名册副本（顺序即开局选武器界面的显示顺序）。</summary>
-        public static int[] FullRoster()
-        {
-            return EmberWeaponCatalog.RosterCopy();
-        }
-
-        /// <summary>开一局：用名册内的武器填 <paramref name="slots"/> 个槽位，至少给 1 把。</summary>
+        /// <summary>重置本局；有效起始武器不超过槽位数，空集回落为火球。正式菜单只传一把。</summary>
         public void ConfigureRun(int[] slotWeapons, int slots)
         {
             if (slots < 1)
@@ -149,7 +135,6 @@ namespace Emberlight
             ownedWeapons.Clear();
             metamorphs.Clear();
             exclusives.Clear();
-            weaponCount.Clear();
             weaponMagnitude.Clear();
             weaponAttackSpeed.Clear();
             ExtraShots = 0;
@@ -191,14 +176,6 @@ namespace Emberlight
             }
         }
 
-        /// <summary>兼容旧入口：单把起始武器 + N 个槽位。</summary>
-        public void ConfigureRun(int coreWeaponId, int slots)
-        {
-            if (!IsRosterWeapon(coreWeaponId))
-                coreWeaponId = WeaponBasic;
-            ConfigureRun(new[] { coreWeaponId }, slots);
-        }
-
         /// <summary>是否为占槽武器（10–19 名册内）。判定归 <see cref="EmberWeaponCatalog"/>。</summary>
         static bool IsRosterWeapon(int id)
         {
@@ -212,13 +189,6 @@ namespace Emberlight
                 Orbits = 1;
             if (id == WeaponTrail && TrailPower < 0.20f)
                 TrailPower = 0.20f;
-            if (id == WeaponPierce)
-            {
-                int cur;
-                weaponCount.TryGetValue(WeaponPierce, out cur);
-                if (cur < 1)
-                    weaponCount[WeaponPierce] = 0; // 起手 1 支箭（1+0）
-            }
         }
 
         public void AddScore(int amount)
@@ -257,8 +227,7 @@ namespace Emberlight
         static int WeaponForExcl(int exclId) { return EmberWeaponCatalog.WeaponForExcl(exclId); }
 
         /// <summary>
-        /// 生成候选并进入待选状态。抽卡规则与随机数消耗顺序全在 <see cref="EmberChoicePool.Build"/>，
-        /// **不要在这里重建第二套抽卡逻辑**，否则同一随机种子的牌局会变。
+        /// 生成候选并进入待选状态；随机数消耗顺序由 <see cref="EmberChoicePool.Build"/> 统一维护。
         /// </summary>
         public EmberOffer[] Choices(Random random)
         {
@@ -430,10 +399,5 @@ namespace Emberlight
             }
         }
 
-        /// <summary>UI API：候选张数公式 `3 + 空位数`，转发到 <see cref="EmberChoicePool.ExpectedCount"/>。</summary>
-        public int OfferCountExpected()
-        {
-            return EmberChoicePool.ExpectedCount(this);
-        }
     }
 }

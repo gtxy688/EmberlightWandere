@@ -17,13 +17,12 @@ namespace Emberlight.Tests
             return new RunProgress(new[] { weapon }, slots);
         }
 
-        // ── 开局（A1–A4）─────────────────────────────────────────────────────────────────
+        // ── 开局─────────────────────────────────────────────────────────────────
 
         [Test]
         public void ConfigureRun_WithASingleStarterWeapon_LeavesTheRestOfTheSlotsEmpty()
         {
-            // v3 硬口径：开局恒为 1 把，禁止一次填满 N 槽。
-            // 界面（EmberMenuFlow.OnRosterChosen）只会传 1 把，这条覆盖真实调用契约。
+            // 正式菜单只提交一把起始武器。
             var p = new RunProgress();
             p.ConfigureRun(new[] { EmberWeaponCatalog.Basic }, 5);
 
@@ -34,15 +33,11 @@ namespace Emberlight.Tests
         [Test]
         public void ConfigureRun_WithSeveralInputWeapons_GrantsMoreThanOne()
         {
-            // 记录真实行为：ConfigureRun 用 `granted < slots` 当上限，因此传入 k 把就会给 k 把
-            // （k ≤ slots）。当前 UI 流程走不到（只传 1 把），但**它并不是"只给第一把"的守卫**。
-            // 一旦有人从别处传多把进来，就会绕过"开局恒为 1 把"的口径。
-            // 属待裁定事项，见 02-run-progression.md。
+            // 数组 API 允许在容量内授予多把；菜单的单选约束不由此 API 执行。
             var p = new RunProgress();
             p.ConfigureRun(new[] { EmberWeaponCatalog.Basic, EmberWeaponCatalog.Orbit }, 3);
 
-            Assert.That(p.OwnedWeaponCount, Is.EqualTo(2),
-                "若此断言失败，说明 ConfigureRun 已加上'只取第一把'的守卫——那是更好的行为，请同步更新本测试与文档");
+            Assert.That(p.OwnedWeaponCount, Is.EqualTo(2));
         }
 
         [Test]
@@ -91,11 +86,16 @@ namespace Emberlight.Tests
         {
             var p = NewRun(slots: 3);
             p.OfferChoices();
-            p.Choose(new EmberOffer(EmberWeaponCatalog.StatLuck, EmberRarity.Diamond));
-            p.Choose(new EmberOffer(EmberWeaponCatalog.StatAmp, EmberRarity.Diamond));
-            p.Choose(new EmberOffer(EmberWeaponCatalog.StatShield, EmberRarity.Gold));
+            Assert.That(p.Choose(new EmberOffer(EmberWeaponCatalog.StatLuck, EmberRarity.Diamond)), Is.True);
+            p.OfferChoices();
+            Assert.That(p.Choose(new EmberOffer(EmberWeaponCatalog.StatAmp, EmberRarity.Diamond)), Is.True);
+            p.OfferChoices();
+            Assert.That(p.Choose(new EmberOffer(EmberWeaponCatalog.StatShield, EmberRarity.Gold)), Is.True);
             p.AddScore(50);
             Assert.That(p.Luck, Is.GreaterThan(0f), "前置条件：本局已积累属性");
+            Assert.That(p.DamageAmp, Is.GreaterThan(0f));
+            Assert.That(p.Shield, Is.GreaterThan(0f));
+            Assert.That(p.ShieldCapacity, Is.GreaterThan(0f));
 
             p.ConfigureRun(new[] { EmberWeaponCatalog.Basic }, 3);
 
@@ -126,7 +126,7 @@ namespace Emberlight.Tests
             Assert.That(p.CoreWeaponId, Is.EqualTo(EmberWeaponCatalog.Meteor));
         }
 
-        // ── 通用词条落地（A16–A18）────────────────────────────────────────────────────────
+        // ── 通用词条落地────────────────────────────────────────────────────────
 
         [Test]
         public void Choose_AttackAppliesOnlyToTheTargetWeapon()
@@ -219,7 +219,7 @@ namespace Emberlight.Tests
             Assert.That(p.Shield, Is.EqualTo(1250f).Within(1e-6f), "钻石护盾不得被砍成青铜数值");
         }
 
-        // ── 选择合法性（A19 / A21 / A26）──────────────────────────────────────────────────
+        // ── 选择合法性──────────────────────────────────────────────────
 
         [Test]
         public void Choose_WithoutPendingOffer_IsRejected()
@@ -274,7 +274,7 @@ namespace Emberlight.Tests
             Assert.That(p.Choose(new EmberOffer(19, EmberRarity.Gold)), Is.False, "19 不是名册武器");
         }
 
-        // ── 专属与质变（A20）────────────────────────────────────────────────────────────
+        // ── 专属与质变────────────────────────────────────────────────────────────
 
         [Test]
         public void CanMetamorph_RequiresOwningTheWeaponButNoExclusive()
@@ -322,7 +322,7 @@ namespace Emberlight.Tests
             Assert.That(p.Choose(new EmberOffer(EmberWeaponCatalog.ExclBasic, EmberRarity.Gold)), Is.False);
         }
 
-        // ── 刷新（A21）──────────────────────────────────────────────────────────────────
+        // ── 刷新──────────────────────────────────────────────────────────────────
 
         [Test]
         public void TryRefresh_ConsumesExactlyTwoPerRun()
@@ -353,7 +353,7 @@ namespace Emberlight.Tests
             Assert.That(p.RefreshesRemaining, Is.EqualTo(RunProgress.FreeRefreshes), "失败的刷新不得扣次数");
         }
 
-        // ── 护盾吸收与计分（A22 / A23）──────────────────────────────────────────────────
+        // ── 护盾吸收与计分──────────────────────────────────────────────────
 
         [Test]
         public void AbsorbDamage_ConsumesShieldBeforeHealthAndReturnsTheOverflow()
@@ -405,16 +405,16 @@ namespace Emberlight.Tests
         // ── 候选数量公式 ──────────────────────────────────────────────────────────────────
 
         [Test]
-        public void OfferCountExpected_IsThreePlusEmptySlots()
+        public void ExpectedCount_IsThreePlusEmptySlots()
         {
             var p = NewRun(slots: 4); // 1 把已拥有 → 3 个空位
-            Assert.That(p.OfferCountExpected(), Is.EqualTo(6));
+            Assert.That(EmberChoicePool.ExpectedCount(p), Is.EqualTo(6));
         }
 
         [Test]
-        public void FullRoster_ReturnsSixDistinctWeapons()
+        public void RosterCopy_ReturnsSixDistinctWeapons()
         {
-            var roster = RunProgress.FullRoster();
+            var roster = EmberWeaponCatalog.RosterCopy();
             Assert.That(roster, Has.Length.EqualTo(6));
             Assert.That(roster.Distinct().Count(), Is.EqualTo(6));
         }

@@ -60,31 +60,14 @@ namespace Emberlight
             refresh = null;
         }
 
-        // 卡面文案规则归 EmberOfferPresentation。
-        public static string Preview(int id, EmberRarity rarity, RunProgress progress, int weaponId = -1)
-        {
-            return EmberOfferPresentation.Preview(id, rarity, progress, weaponId);
-        }
-
-        public static string RarityLabel(EmberOffer offer, RunProgress progress)
-        {
-            return EmberOfferPresentation.RarityLabel(offer, progress);
-        }
-
-        public void Show(EmberOffer[] offers, RunProgress progress, string[] names, string[] descriptions, Action<EmberOffer> select)
-        {
-            Show(offers, progress, names, descriptions, select, null);
-        }
-
         static readonly Unity.Profiling.ProfilerMarker ShowMarker = new Unity.Profiling.ProfilerMarker("Ember.UI.Upgrade.Show");
-        public void Show(EmberOffer[] offers, RunProgress progress, string[] names, string[] descriptions, Action<EmberOffer> select, Func<bool> onRefresh)
+        public void Show(EmberOffer[] offers, RunProgress progress, string[] names, string[] descriptions, Action<EmberOffer> select, Func<bool> onRefresh = null)
         {
             using (ShowMarker.Auto())
             {
                 Hide();
                 if (progress == null || offers == null || offers.Length == 0)
                     return;
-                choosing = false;
                 onSelect = select;
                 refresh = onRefresh;
                 string sub = "\u6ce2\u6b21\u5956\u52b1\u0020\u00b7\u0020\u9009\u4e00\u9879\u0020\u00b7\u0020\u5e78\u8fd0 " + Mathf.RoundToInt(progress.Luck) + "  \u00b7  \u5237\u65b0 " + progress.RefreshesRemaining;

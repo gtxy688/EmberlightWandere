@@ -3,12 +3,8 @@ using UnityEngine;
 namespace Emberlight
 {
     /// <summary>
-    /// 组合根（M0）：本作唯一的入口脚本，挂在主场景的常驻对象上。
-    ///
-    /// 它只做四件事——持有阶段与本局状态、装配各单元、驱动每帧顺序、把各单元的回调接起来。
-    /// 业务规则分别属于：生命结算 <see cref="EmberKeeperVitals"/>、选卡推进 <see cref="RunFlowController"/>、
-    /// 开局界面流程 <see cref="EmberMenuFlow"/>、战斗与波次 <see cref="EmberCombat"/>、构筑与卡池
-    /// <see cref="RunProgress"/>。**不要在这里重新堆业务规则。**
+    /// 场景组合根：装配模块、持有阶段、安排帧顺序并转译结果。
+    /// 数值与状态推进规则由生命、构筑、选卡和战斗模块计算。
     /// </summary>
     public sealed class EmberGame : MonoBehaviour, IEmberMenuHost, RunFlowController.Host, IEmberCombatHost, EmberInput.Presenter
     {
@@ -16,20 +12,16 @@ namespace Emberlight
         [SerializeField] EmberIntroView introRoot;
         [SerializeField] EmberArtSet artSet;
 
-        /// <summary>当前局长阶段；只有 Playing 阶段推进战斗与 HUD。</summary>
         public EmberRunPhase Phase { get; private set; }
 
-        /// <summary>本局数据；不在局内时为 null。生命结算经 <see cref="EmberRunState.Vitals"/> 访问。</summary>
+        /// <summary>Awake 创建并持续复用的本局容器；回营地时清空局内数据。</summary>
         public EmberRunState Run { get; private set; }
 
-        /// <summary>本局已进行的游戏内秒数。</summary>
         public float Elapsed { get { return Run.Elapsed; } }
 
-        /// <summary>本局构筑进度；未开局时为 null。</summary>
         public RunProgress Progress { get { return Run.Progress; } }
         public BuffManager Buffs { get { return Run.Buffs; } }
 
-        /// <summary>UI API：最近一次发到桌面上的候选。</summary>
         public EmberOffer[] CurrentOffers { get { return offered; } }
 
         EmberCombat combat;
@@ -77,7 +69,6 @@ namespace Emberlight
 
         void Start()
         {
-            // 移动端默认封顶 30 fps；这是 2D 精灵游戏，显式要 60 并关掉 VSync。
             QualitySettings.vSyncCount = 0;
             Application.targetFrameRate = 60;
             EmberAudio.Ensure();
@@ -143,7 +134,7 @@ namespace Emberlight
         }
 
         /// <summary>装配一局：建关卡配置与世界节点、重置构筑与生命、启动波次。</summary>
-        void StartRunWith(int[] weapons, int slots)
+        public void StartRun(int[] weapons, int slots)
         {
             if (ui == null || ui.BattleHud == null)
                 return;
@@ -179,7 +170,6 @@ namespace Emberlight
 
             var level = Run.Level;
             level.ApplyWorld();
-            // Begin 只激活槽位内的武器（由 OwnsWeapon 门控）。
             combat.Begin(Run.World, Run.Keeper, Run.Cam, Run.Effects, level, artSet.ShadePrefab);
             EmberKeeperMotion.Follow(Run);
             SetPlaying();
@@ -297,7 +287,7 @@ namespace Emberlight
         }
 
         /// <summary>收局：胜利由最终 Boss 死亡触发，失败由生命归零触发。</summary>
-        void End(bool won)
+        public void EndRun(bool won)
         {
             if (Phase == EmberRunPhase.Won || Phase == EmberRunPhase.Lost || Run.Progress == null)
                 return;
@@ -350,7 +340,7 @@ namespace Emberlight
             EmberAudio.Ensure().PlayHurt();
             hud.Push();
             if (Run.Vitals.CommitHealthChange())
-                End(false);
+                EndRun(false);
         }
 
         /// <summary>怪物治疗掉落：任意血量可拾取，溢出丢弃。</summary>
@@ -385,11 +375,6 @@ namespace Emberlight
             Run.Kills++;
         }
 
-        public void EndRun(bool won)
-        {
-            End(won);
-        }
-
         /// <summary>IEmberMenuHost：界面流程请求切换局长阶段。</summary>
         public void EnterMode(EmberRunPhase mode)
         {
@@ -403,10 +388,5 @@ namespace Emberlight
                 Run.World.gameObject.SetActive(false);
         }
 
-        /// <summary>IEmberMenuHost：起始武器选完，正式开一局。</summary>
-        public void StartRun(int[] weapons, int slots)
-        {
-            StartRunWith(weapons, slots);
-        }
     }
 }

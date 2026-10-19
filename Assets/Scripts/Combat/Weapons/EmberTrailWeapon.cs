@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace Emberlight
 {
-    /// <summary>轨迹。专属 \u5ef6\u71c3 间隔更短、燃地更强；蜕变 \u706b\u6d77 持续火环带持续伤害。</summary>
+    /// <summary>沿玩家路径留下燃地；质变火环与共享燃地分别结算接触伤害。</summary>
     public sealed class EmberTrailWeapon : EmberWeapon
     {
         float trailTimer;
@@ -25,8 +25,8 @@ namespace Emberlight
             if (ctx.Progress == null)
                 return;
             trailTimer -= dt;
-            bool ownsTrail = ctx.Progress != null && ctx.Progress.OwnsWeapon(RunProgress.WeaponTrail);
-            bool extend = ctx.Progress != null && ctx.Progress.TrailExtend;
+            bool ownsTrail = ctx.Progress.OwnsWeapon(RunProgress.WeaponTrail);
+            bool extend = ctx.Progress.TrailExtend;
             float interval = (extend ? EmberWeaponTuning.Trail.ExtendedInterval : EmberWeaponTuning.Trail.Interval) / (1f + ctx.Progress.WeaponAttackSpeed(RunProgress.WeaponTrail));
             if (ownsTrail && ctx.Progress.TrailPower > 0 && trailTimer <= 0)
             {
@@ -34,7 +34,7 @@ namespace Emberlight
                 ctx.SpawnBurnPatch?.Invoke(ctx.PlayerPos, extend ? 1.25f : 1f);
             }
 
-            if (ctx.Progress != null && ctx.Progress.TrailRing && ownsTrail)
+            if (ctx.Progress.TrailRing && ownsTrail)
             {
                 float ringR = EmberWeaponTuning.Trail.RingRadius;
                 float ringDps = EmberWeaponTuning.Trail.RingDps * ctx.Progress.DamageMul * (1f + ctx.Progress.WeaponMagnitude(RunProgress.WeaponTrail)) * (ctx.Progress.TrailPower > 0 ? ctx.Progress.TrailPower : EmberWeaponTuning.BurnGround.DefaultPower);

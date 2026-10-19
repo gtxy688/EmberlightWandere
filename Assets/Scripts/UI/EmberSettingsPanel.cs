@@ -21,8 +21,6 @@ namespace Emberlight
         [SerializeField] Image[] speedFaces;
         [SerializeField] TextMeshProUGUI[] speedLabels;
         bool listenersBound;
-        Action<float> musicDisplay, sfxDisplay;
-        Action refreshSpeed;
 
         static readonly Color BarBg = new Color(0.12f, 0.18f, 0.24f, 1f);
         static readonly Color Fill = new Color(0.95f, 0.70f, 0.34f, 1f);
@@ -35,13 +33,10 @@ namespace Emberlight
                 throw new InvalidOperationException("Settings prefab references are incomplete.");
             if (root != null && !listenersBound)
             {
-                musicDisplay = v => DisplayVolume(musicPercent, v);
-                sfxDisplay = v => DisplayVolume(sfxPercent, v);
-                musicSlider.onValueChanged.AddListener(v => { musicDisplay(v); EmberAudio.Ensure().MusicVolume = v; });
-                sfxSlider.onValueChanged.AddListener(v => { sfxDisplay(v); OnSfxChanged(v); });
+                musicSlider.onValueChanged.AddListener(v => { DisplayVolume(musicPercent, v); EmberAudio.Ensure().MusicVolume = v; });
+                sfxSlider.onValueChanged.AddListener(v => { DisplayVolume(sfxPercent, v); OnSfxChanged(v); });
                 closeLabel.GetComponentInParent<Button>(true).onClick.AddListener(Close);
                 campLabel.GetComponentInParent<Button>(true).onClick.AddListener(ReturnToCamp);
-                refreshSpeed = RefreshSpeed;
                 for (int i = 0; i < speedFaces.Length; i++)
                 {
                     int value = i + GameSpeed.MinMultiplier;
@@ -127,14 +122,12 @@ namespace Emberlight
                 campLabel.transform.parent.gameObject.SetActive(fromPause && returnToCamp != null);
                 musicSlider.SetValueWithoutNotify(audio.MusicVolume);
                 sfxSlider.SetValueWithoutNotify(audio.SfxVolume);
-                musicDisplay(audio.MusicVolume);
-                sfxDisplay(audio.SfxVolume);
-                refreshSpeed();
+                DisplayVolume(musicPercent, audio.MusicVolume);
+                DisplayVolume(sfxPercent, audio.SfxVolume);
+                RefreshSpeed();
                 root.transform.SetAsLastSibling();
                 root.SetActive(true);
-                return;
             }
-
         }
 
         void OnSfxChanged(float v)

@@ -1,4 +1,3 @@
-using System;
 using System.Linq;
 using NUnit.Framework;
 
@@ -67,8 +66,8 @@ namespace Emberlight.Tests
         [Test]
         public void Roster_HoldsExactlyTheSixSlotWeapons()
         {
-            Assert.That(EmberWeaponCatalog.Roster, Has.Length.EqualTo(6));
-            Assert.That(EmberWeaponCatalog.Roster, Is.EquivalentTo(new[]
+            Assert.That(EmberWeaponCatalog.RosterCopy(), Has.Length.EqualTo(6));
+            Assert.That(EmberWeaponCatalog.RosterCopy(), Is.EquivalentTo(new[]
             {
                 EmberWeaponCatalog.Basic, EmberWeaponCatalog.Orbit, EmberWeaponCatalog.Trail,
                 EmberWeaponCatalog.Pierce, EmberWeaponCatalog.Boom, EmberWeaponCatalog.Meteor
@@ -78,15 +77,15 @@ namespace Emberlight.Tests
         [Test]
         public void Roster_StartsWithFireballAtSlotZero()
         {
-            // 开局界面的第一个卡位、EmberCardIcons 的格 0、RosterNames[0] 都依赖这个顺序
+            // 开局菜单第一张武器卡固定为火球。
             Assert.That(EmberWeaponCatalog.RosterIdAt(0), Is.EqualTo(EmberWeaponCatalog.Basic));
         }
 
         [Test]
         public void Roster_ContainsNoDuplicates()
         {
-            Assert.That(EmberWeaponCatalog.Roster.Distinct().Count(),
-                Is.EqualTo(EmberWeaponCatalog.Roster.Length));
+            Assert.That(EmberWeaponCatalog.RosterCopy().Distinct().Count(),
+                Is.EqualTo(EmberWeaponCatalog.RosterCopy().Length));
         }
 
         [TestCase(-1)]
@@ -111,7 +110,7 @@ namespace Emberlight.Tests
         [Test]
         public void IsRosterWeapon_TrueOnlyForTheSixWeapons()
         {
-            foreach (var id in EmberWeaponCatalog.Roster)
+            foreach (var id in EmberWeaponCatalog.RosterCopy())
                 Assert.That(EmberWeaponCatalog.IsRosterWeapon(id), Is.True, $"{id} 应在名册内");
 
             foreach (var id in new[] { 0, 1, 2, 3, 4, 5, 9, 19, 20, 29, 30, 39, 99 })
@@ -159,7 +158,7 @@ namespace Emberlight.Tests
         [Test]
         public void EveryMetamorphAndExclusiveMapsToARosterWeapon()
         {
-            // 映射表与名册表是两份平行的数组，错位会让"质变火球"挂到环火上
+            // 每个专属与质变都必须有有效的名册归属。
             for (int id = 20; id <= 25; id++)
                 Assert.That(EmberWeaponCatalog.IsRosterWeapon(EmberWeaponCatalog.WeaponForMeta(id)), Is.True,
                     $"质变 {id} 映射到的武器不在名册里");

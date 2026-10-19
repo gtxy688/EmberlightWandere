@@ -1,12 +1,10 @@
 namespace Emberlight
 {
     /// <summary>
-    /// 只读的局长阶段来源。表现层（M7）只需回答「现在该不该播」，因此只暴露这一项最小接口，
-    /// 拿不到整个游戏对象，也不再依赖 M2 / M3 / M6 中的任何一个。
+    /// 只读阶段来源；战斗宿主继承此契约，表现模块使用 Initialize 注入的阶段委托。
     /// </summary>
     public interface IEmberRunPhaseSource
     {
-        /// <summary>当前局长阶段。</summary>
         EmberRunPhase Phase { get; }
     }
 }

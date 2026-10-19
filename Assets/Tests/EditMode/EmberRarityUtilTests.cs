@@ -5,21 +5,16 @@ using NUnit.Framework;
 namespace Emberlight.Tests
 {
     /// <summary>
-    /// 幸运 → 品质权重与通用词条数值（`requirements.md` §4.4 / §4.5）。
-    ///
-    /// 这是最容易被历史文档带偏的地方：权重表被下调过一次（旧的 60/28/10/2 已作废），
-    /// 攻速档位也曾与攻击力同档。所以这里断言的是**现行权威表**。
+    /// 幸运权重与通用升级增量，见 requirements.md §4.4 / §4.5。
     /// </summary>
     [TestFixture]
     public sealed class EmberRarityUtilTests
     {
-        // ── 品质权重表（A13）──────────────────────────────────────────────────────────────
+        // ── 品质权重表──────────────────────────────────────────────────────────────
 
         [Test]
         public void WeightsForLuck_AtZero_MatchesAuthoritativeTable()
         {
-            // requirements.md §4.5 权威值：72 / 22 / 5 / 1
-            // 旧表 60/28/10/2 已被 2026-09-13 的下调覆盖
             Assert.That(EmberRarityUtil.WeightsForLuck(0f), Is.EqualTo(new[] { 72, 22, 5, 1 }));
         }
 
@@ -47,12 +42,8 @@ namespace Emberlight.Tests
         [Test]
         public void WeightsForLuck_IntermediateValuesDriftFromHundredByAtMostTwo()
         {
-            // 已知偏差，不是本测试要修的东西：四个通道各自四舍五入后，中间幸运值的权重和
-            // 会漂到 101 或 102（例如 15 → 69/24/7/2 = 102，90 → 52/30/15/4 = 101）。
-            // RollWeighted 用 weights.Sum() 当分母，所以各档实际出率会有约 1–2% 的相对偏移。
-            //
-            // 本测试把这个偏差**钉在 ±2 以内**：一旦有人改动插值或取整方式导致漂移变大，
-            // 这里会红灯。要彻底消除漂移需要改产品行为（例如归一化到 100），属待裁定事项。
+            // 各档独立取整，权重和可偏离 100；RollWeighted 使用实际权重和作分母。
+            // 此处限制取整偏差，不改变既有抽取分布。
             int worst = 0;
             float worstAt = -1f;
             for (float luck = 0f; luck <= 120f; luck += 1f)
@@ -122,9 +113,7 @@ namespace Emberlight.Tests
         [Test]
         public void RollByLuck_AtZeroLuck_FavoursBronzeOverHighLuck()
         {
-            // 不做"前 N 次必须全是青铜"这种断言——幸运 0 时白银仍有 22% 权重，
-            // 抽到白银是正常结果，那种断言是统计学上错误的。
-            // 这里改为比较两个幸运档下的实际分布，用固定种子保证可复现。
+            // 用固定种子比较两档分布，避免把某个随机结果当作必然事件。
             int bronzeAtZero = CountBronze(0f, 4000, 2026);
             int bronzeAtMax = CountBronze(120f, 4000, 2026);
 
@@ -141,12 +130,11 @@ namespace Emberlight.Tests
             return bronze;
         }
 
-        // ── 通用词条数值表（A15）──────────────────────────────────────────────────────────
+        // ── 通用词条数值表──────────────────────────────────────────────────────────
 
         [Test]
         public void GenericAtkAs_MatchesRequirementTable()
         {
-            // 攻击力：青铜 +10% / 白银 +20% / 黄金 +30% / 钻石 +40%
             Assert.That(EmberRarityUtil.GenericAtkAs(EmberRarity.Bronze), Is.EqualTo(0.10f).Within(1e-6f));
             Assert.That(EmberRarityUtil.GenericAtkAs(EmberRarity.Silver), Is.EqualTo(0.20f).Within(1e-6f));
             Assert.That(EmberRarityUtil.GenericAtkAs(EmberRarity.Gold), Is.EqualTo(0.30f).Within(1e-6f));
@@ -156,7 +144,7 @@ namespace Emberlight.Tests
         [Test]
         public void GenericAttackSpeed_UsesItsOwnDiamondStep()
         {
-            // 攻速档位是 +10/20/30/50，钻石比攻击力高一档——曾与攻击力同档，属回归点
+            // 钻石攻速与攻击力使用不同档位。
             Assert.That(EmberRarityUtil.GenericAttackSpeed(EmberRarity.Bronze), Is.EqualTo(0.10f).Within(1e-6f));
             Assert.That(EmberRarityUtil.GenericAttackSpeed(EmberRarity.Silver), Is.EqualTo(0.20f).Within(1e-6f));
             Assert.That(EmberRarityUtil.GenericAttackSpeed(EmberRarity.Gold), Is.EqualTo(0.30f).Within(1e-6f));
@@ -188,7 +176,6 @@ namespace Emberlight.Tests
         [Test]
         public void ShieldAmount_MatchesRequirementTable()
         {
-            // requirements.md §4.4：250 / 500 / 750 / 1250（不是"除以 2"的旧口径）
             Assert.That(EmberRarityUtil.ShieldAmount(EmberRarity.Bronze), Is.EqualTo(250f).Within(1e-6f));
             Assert.That(EmberRarityUtil.ShieldAmount(EmberRarity.Silver), Is.EqualTo(500f).Within(1e-6f));
             Assert.That(EmberRarityUtil.ShieldAmount(EmberRarity.Gold), Is.EqualTo(750f).Within(1e-6f));

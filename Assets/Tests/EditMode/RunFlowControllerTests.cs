@@ -25,7 +25,7 @@ namespace Emberlight.Tests
         public void SetUp()
         {
             host = new TestHost();
-            host.Progress.ConfigureRun(RunProgress.WeaponBasic, 5);
+            host.Progress.ConfigureRun(new[] { RunProgress.WeaponBasic }, 5);
             flow = new RunFlowController(host, new Random(42));
         }
 

@@ -8,7 +8,6 @@ namespace Emberlight
         readonly List<Particle> active=new List<Particle>();
         readonly Stack<Particle> pool=new Stack<Particle>();
         System.Func<EmberRunPhase> phase;
-        public int ActiveCount {get{return active.Count;}}
         /// <summary>注入阶段闸门：粒子只在 Play 阶段推进，升级/暂停/结算时冻结。</summary>
         public void Initialize(System.Func<EmberRunPhase> phaseProvider){phase=phaseProvider;}
         public void Emit(Vector2 p,Vector2 velocity,float size,float life,Color color,bool ring=false,float growth=0)

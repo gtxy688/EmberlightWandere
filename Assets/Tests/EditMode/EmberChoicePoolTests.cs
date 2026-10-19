@@ -1,15 +1,11 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 
 namespace Emberlight.Tests
 {
     /// <summary>
-    /// 候选卡生成（`requirements.md` §4.3）。
-    ///
-    /// 这些是"玩家每一波看到什么牌"的规则，也是回归最贵的一块：出卡错了要打到中期才看得出来。
-    /// 全部为纯逻辑，不依赖帧推进。
+    /// 候选数量、唯一性、归属门控与随机序列，见 requirements.md §4.3。
     /// </summary>
     [TestFixture]
     public sealed class EmberChoicePoolTests
@@ -21,17 +17,12 @@ namespace Emberlight.Tests
             return p;
         }
 
-        /// <summary>
-        /// 造一个"必然走补位路径"的候选集。
-        /// 直接调 <see cref="EmberChoicePool.Build"/> 会消耗随机数，所以这里用固定种子，
-        /// 并只断言补位路径本身的保证（数量与非空）。
-        /// </summary>
         static EmberOffer[] Build(RunProgress p, int seed)
         {
             return EmberChoicePool.Build(p, new Random(seed));
         }
 
-        // ── 数量（A5 / A9）──────────────────────────────────────────────────────────────
+        // ── 数量──────────────────────────────────────────────────────────────
 
         [Test]
         public void Build_ReturnsThreeOffersWhenSlotsAreFull()
@@ -77,7 +68,7 @@ namespace Emberlight.Tests
             Assert.That(EmberChoicePool.ExpectedCount(null), Is.EqualTo(EmberChoicePool.BaseOfferCount));
         }
 
-        // ── 同屏唯一（A6 / A7）──────────────────────────────────────────────────────────
+        // ── 同屏唯一──────────────────────────────────────────────────────────
 
         [Test]
         public void Build_NeverRepeatsTheSameIdWeaponIdPair()
@@ -130,7 +121,7 @@ namespace Emberlight.Tests
             }
         }
 
-        // ── 新武器仅在槽未满时出现（A8 / A9）────────────────────────────────────────────
+        // ── 新武器仅在槽未满时出现────────────────────────────────────────────
 
         [Test]
         public void Build_ExcludesNewWeaponCardsWhenSlotsAreFull()
@@ -172,7 +163,7 @@ namespace Emberlight.Tests
             }
         }
 
-        // ── 专属与质变进池（A10）────────────────────────────────────────────────────────
+        // ── 专属与质变进池────────────────────────────────────────────────────────
 
         [Test]
         public void Build_ExcludesExclusivesAndMetamorphsForUnownedWeapons()
@@ -213,7 +204,7 @@ namespace Emberlight.Tests
             }
         }
 
-        // ── 旧通用不得回流（A11）────────────────────────────────────────────────────────
+        // ── 旧通用不得回流────────────────────────────────────────────────────────
 
         [Test]
         public void Build_NeverEmitsRetiredGenericIds()
@@ -227,12 +218,11 @@ namespace Emberlight.Tests
             }
         }
 
-        // ── 兜底（A12）──────────────────────────────────────────────────────────────────
+        // ── 候选有效性────────────────────────────────────────────────────────────
 
         [Test]
         public void Build_AlwaysReturnsAPickableHandEvenAtMaximumSlots()
         {
-            // 池子枯竭时也必须给牌，否则玩家会卡在选卡界面
             for (int seed = 0; seed < 60; seed++)
             {
                 var p = NewRun(slots: 5);

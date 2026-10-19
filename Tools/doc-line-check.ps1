@@ -20,8 +20,6 @@ $ProjectPath = (Resolve-Path -LiteralPath $ProjectPath).Path
 $docsRoot = Join-Path $ProjectPath $DocsPath
 if (-not (Test-Path -LiteralPath $docsRoot)) { Write-Host "No $DocsPath directory"; exit 2 }
 
-$lparen = [char]0xFF08
-$rparen = [char]0xFF09
 # `path.cs:NN` or `path.cs:NN-MM`, optionally followed by an identifier label in
 # either half-width or full-width brackets.
 $pattern = '`(?<file>[A-Za-z0-9_/\.\- ]+\.cs):(?<line>\d+)(?:[-\u2013](?<end>\d+))?`' +

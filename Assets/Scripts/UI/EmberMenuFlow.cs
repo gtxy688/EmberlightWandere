@@ -20,7 +20,6 @@ namespace Emberlight
         int selectedWaves = 25;
         EmberDifficulty selectedDifficulty = EmberDifficulty.Standard;
         int pendingSlots = 2;
-        int[] pendingRoster = new int[0];
 
         public int SelectedWaves { get { return selectedWaves; } }
         public EmberDifficulty SelectedDifficulty { get { return selectedDifficulty; } }
@@ -67,9 +66,7 @@ namespace Emberlight
             ui.BattleHud.Show(false);
             ui.StickBase.gameObject.SetActive(false);
             pendingSlots = 2;
-            pendingRoster = new int[0];
             host.EnterMode(EmberRunPhase.SelectLength);
-            // 开跑前先交代 Boss 节奏：每 10 波一个关底 Boss，最后一波是长夜守卫，避免最终波突然袭击。
             ui.Show(EmberCopy.RunSetupTitle,
                 EmberCopy.RunSetupBody,
                 EmberCopy.MenuChoicesWithBack,
@@ -80,7 +77,6 @@ namespace Emberlight
         {
             selectedWaves = waves;
             host.EnterMode(EmberRunPhase.SelectDifficulty);
-            // 每个难度独占一行：整句换行会把「精英」挤到单独一行，并把收尾的句号一起带走。
             ui.Show(EmberCopy.DifficultyTitle, EmberCopy.DifficultyBody(selectedWaves),
                 EmberCopy.DifficultyChoices,
                 new UnityEngine.Events.UnityAction[] { () => ChooseDifficulty(EmberDifficulty.Casual),
@@ -104,8 +100,7 @@ namespace Emberlight
 
         void OnRosterChosen(int[] weapons)
         {
-            pendingRoster = weapons ?? new[] { RunProgress.WeaponBasic };
-            host.StartRun(pendingRoster, pendingSlots);
+            host.StartRun(weapons ?? new[] { RunProgress.WeaponBasic }, pendingSlots);
         }
     }
 }

@@ -2,9 +2,7 @@ using UnityEngine;
 
 namespace Emberlight
 {
-    /// <summary>战斗模块（M3）对宿主的最小契约：战斗只通过本接口取纯逻辑参数，
-    /// 不直接依赖 <c>EmberGame</c>，故可脱离场景验证。
-    /// 表现层（M7）的阶段门控用 <see cref="IEmberRunPhaseSource"/> 即可。</summary>
+    /// <summary>战斗的宿主契约：读取阶段与构筑，并请求受伤、拾取和流程动作。</summary>
     public interface IEmberCombatHost : IEmberRunPhaseSource
     {
         /// <summary>本局已进行的游戏内秒数（敌人动画与武器节奏用）。</summary>

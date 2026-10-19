@@ -95,7 +95,7 @@ namespace Emberlight.Editor
         {
             if (EditorUtility.IsPersistent(source)) return source;
             if (source.texture == null || !EditorUtility.IsPersistent(source.texture))
-                throw new InvalidOperationException($"{key}: source texture is temporary. Run Emberlight/Bake runtime art first.");
+                throw new InvalidOperationException($"{key}: source texture is temporary. Restore the persistent textures in Assets/Resources/Art/Baked.");
 
             EnsureFolder(directory);
             string path = directory + "/" + key + ".asset";

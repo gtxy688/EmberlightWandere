@@ -4,26 +4,21 @@ using System.Collections.Generic;
 namespace Emberlight
 {
     /// <summary>
-    /// 候选卡生成（M2，`requirements.md` §4.3）。纯规则，**零 `UnityEngine` 引用**。
-    ///
-    /// 只从 <see cref="RunProgress"/> 读只读事实（拥有哪些武器、已拿哪些质变/专属、空位剩几个），
-    /// 不写任何状态——状态写入归 `RunProgress.Choose`。
-    ///
-    /// **随机数消耗顺序必须保持不变**：同一个 `System.Random` 种子要得到同一组候选。
-    /// 改动本类的抽卡顺序等于改动可复现性。
+    /// 只读构筑并生成候选；升级结算归 RunProgress。
+    /// 维护抽取顺序时须保留随机数消耗顺序，确保同种子牌局可复现。
     /// </summary>
     public static class EmberChoicePool
     {
         /// <summary>基础候选张数（不含空位补的"新武器"）。见 `requirements.md` §4.3。</summary>
         public const int BaseOfferCount = 3;
 
-        /// <summary>整次选卡把质变放入候选的概率（jack 口径：约 0.5%）。</summary>
+        /// <summary>整次选卡的质变入池门控概率。</summary>
         public const double MetamorphEntryChance = 0.005;
 
-        /// <summary>幸运对专属/质变进池权重的上限。</summary>
+        /// <summary>幸运对专属进池权重的上限。</summary>
         const int SpecialWeightCap = 5;
 
-        /// <summary>专属/质变进池权重的除数：`1 + Luck / 40`。</summary>
+        /// <summary>专属权重的幸运换算除数。</summary>
         const float SpecialWeightLuckDivisor = 40f;
 
         static void Shuffle(List<int> list, Random random)
@@ -37,16 +32,16 @@ namespace Emberlight
             }
         }
 
-        /// <summary>幸运越高，专属/质变进池权重越高（通用词条基准权重为 10）。</summary>
+        /// <summary>幸运影响专属权重；质变仍使用固定权重。</summary>
         public static int WeightForSpecial(float luck)
         {
-            int w = 1 + (int)(luck / SpecialWeightLuckDivisor); // jack: diamond felt too common
+            int w = 1 + (int)(luck / SpecialWeightLuckDivisor);
             if (w < 1) w = 1;
             if (w > SpecialWeightCap) w = SpecialWeightCap;
             return w;
         }
 
-        static EmberOffer MakeGenericOffer(int id, Random random, float luck, int weaponId = -1)
+        static EmberOffer MakeGenericOffer(int id, Random random, float luck, int weaponId)
         {
             return new EmberOffer(id, EmberRarityUtil.RollByLuck(random, luck), weaponId);
         }
@@ -91,7 +86,7 @@ namespace Emberlight
                 candW.Add(specialW);
             }
 
-            // 质变进池：整次选卡仅约 0.5% 概率放入候选（jack）
+            // 每次发牌只进行一次质变入池门控。
             if (random.NextDouble() < MetamorphEntryChance)
             {
                 for (int id = EmberWeaponCatalog.MetaBasic; id <= EmberWeaponCatalog.MetaMeteor; id++)
@@ -103,7 +98,7 @@ namespace Emberlight
                 }
             }
 
-            // 按权重抽，直到凑满基础 3 张或池子抽干；抽走的候选项立即移出（不重复进池）
+            // 三个不同的全局项始终在池内，基础候选不会不足；抽中项立即移出。
             while (base3.Count < BaseOfferCount && candIds.Count > 0)
             {
                 int total = 0;
@@ -129,49 +124,6 @@ namespace Emberlight
                     base3.Add(new EmberOffer(id, EmberRarity.Gold));       // 专属固定黄金
                 else
                     base3.Add(new EmberOffer(id, EmberRarity.Diamond));    // 质变固定钻石
-            }
-
-            // 池子凑不满 3 张时补位：先补已有武器的攻击力/攻速，再补全局项
-            if (base3.Count < BaseOfferCount)
-            {
-                var pad = new List<int>();
-                var padW = new List<int>();
-                for (int i = 0; i < EmberWeaponCatalog.RosterCount; i++)
-                {
-                    int wid = EmberWeaponCatalog.RosterIdAt(i);
-                    if (!progress.OwnsWeapon(wid)) continue;
-                    if (!usedKeys.Contains(OfferKey(EmberWeaponCatalog.StatAtk, wid))) { pad.Add(EmberWeaponCatalog.StatAtk); padW.Add(wid); }
-                    if (!usedKeys.Contains(OfferKey(EmberWeaponCatalog.StatAs, wid))) { pad.Add(EmberWeaponCatalog.StatAs); padW.Add(wid); }
-                }
-                int[] globals = { EmberWeaponCatalog.StatLuck, EmberWeaponCatalog.StatAmp, EmberWeaponCatalog.StatShield };
-                for (int i = 0; i < globals.Length; i++)
-                    if (!usedKeys.Contains(OfferKey(globals[i], -1))) { pad.Add(globals[i]); padW.Add(-1); }
-
-                var order = new List<int>();
-                for (int i = 0; i < pad.Count; i++) order.Add(i);
-                Shuffle(order, random);
-                for (int oi = 0; oi < order.Count && base3.Count < BaseOfferCount; oi++)
-                {
-                    int i = order[oi];
-                    if (!usedKeys.Add(OfferKey(pad[i], padW[i]))) continue;
-                    base3.Add(MakeGenericOffer(pad[i], random, progress.Luck, padW[i]));
-                }
-            }
-
-            // 最后兜底：只补"已有武器·攻击力"，保证玩家永远有牌可选
-            while (base3.Count < BaseOfferCount)
-            {
-                int wid = progress.CoreWeaponId;
-                if (!progress.OwnsWeapon(wid))
-                {
-                    for (int i = 0; i < EmberWeaponCatalog.RosterCount; i++)
-                    {
-                        int r = EmberWeaponCatalog.RosterIdAt(i);
-                        if (progress.OwnsWeapon(r)) { wid = r; break; }
-                    }
-                }
-                usedKeys.Add(OfferKey(EmberWeaponCatalog.StatAtk, wid));
-                base3.Add(MakeGenericOffer(EmberWeaponCatalog.StatAtk, random, progress.Luck, wid));
             }
 
             // 额外张：未拥有的武器 = 空位数（不占基础 3 张的额度）
