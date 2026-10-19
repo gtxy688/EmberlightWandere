@@ -12,6 +12,8 @@ namespace Emberlight
         readonly TextMeshProUGUI healthText, shieldText, waveText, clock, bossText, encounterLabel;
         readonly GameObject bossRoot, encounterRoot;
         readonly EmberBuffHud buffs;
+        readonly Color shieldTextColor;
+        const float EmptyShieldOpacity = .45f;
         bool hasStats;
         float lastHealth, lastMaxHealth, lastShield;
         int lastSecond, lastKills, lastOwned, lastSlots, lastLuck;
@@ -27,6 +29,7 @@ namespace Emberlight
             bossFill = view.BossFill;
             healthText = view.HealthText;
             shieldText = view.ShieldText;
+            shieldTextColor = shieldText.color;
             waveText = view.WaveText;
             clock = view.Clock;
             bossText = view.BossText;
@@ -40,7 +43,7 @@ namespace Emberlight
             encounterRoot.SetActive(false);
         }
 
-        public void Set(float hp, float max, RunProgress progress, float seconds, int kills, int wave, int waveRemaining, int waveQuota)
+        public void Set(float hp, float max, RunProgress progress, float seconds, int kills, int waveRemaining, int waveQuota)
         {
             float shieldValue = progress != null ? progress.Shield : 0;
             float capacity = progress != null ? progress.ShieldCapacity : 0;
@@ -50,6 +53,7 @@ namespace Emberlight
             if (!hasStats || shieldValue != lastShield)
             {
                 shieldText.text = "护盾 " + shieldValue.ToString("0");
+                shieldText.color = ShieldTint(shieldTextColor, shieldValue > 0);
                 lastShield = shieldValue;
             }
             if (!hasStats || hp != lastHealth || max != lastMaxHealth)
@@ -73,6 +77,13 @@ namespace Emberlight
                 lastLuck = luck;
             }
             hasStats = true;
+        }
+
+        static Color ShieldTint(Color active, bool hasShield)
+        {
+            if (hasShield) return active;
+            float gray = active.grayscale;
+            return new Color(gray, gray, gray, active.a * EmptyShieldOpacity);
         }
 
         /// <summary>波次文字的唯一写入点。</summary>

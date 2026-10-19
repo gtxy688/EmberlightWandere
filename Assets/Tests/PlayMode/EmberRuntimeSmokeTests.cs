@@ -60,7 +60,7 @@ namespace Emberlight.Tests
             return host.GetComponentsInChildren<Button>().Where(b => b.name.StartsWith("Blessing card ")).ElementAt(index);
         }
 
-        static void ClickLabel(EmberGame game, string label)
+        static void ClickLabel(string label)
         {
             var button = UiHost().GetComponentsInChildren<Button>().Single(b => b.interactable &&
                 b.GetComponentsInChildren<TextMeshProUGUI>().Any(t => t.text == label));
@@ -76,13 +76,13 @@ namespace Emberlight.Tests
 
         static IEnumerator EnterRun(EmberGame game, Transform uiHost, int starter = 13)
         {
-            ClickLabel(game, EmberCopy.MenuChoices[0]);
+            ClickLabel(EmberCopy.MenuChoices[0]);
             Assert.That(game.Phase, Is.EqualTo(EmberRunPhase.SelectLength));
-            ClickLabel(game, EmberCopy.MenuChoicesWithBack[0]);
+            ClickLabel(EmberCopy.MenuChoicesWithBack[0]);
             Assert.That(game.Phase, Is.EqualTo(EmberRunPhase.SelectDifficulty));
-            ClickLabel(game, EmberCopy.DifficultyChoices[1]);
+            ClickLabel(EmberCopy.DifficultyChoices[1]);
             Assert.That(game.Phase, Is.EqualTo(EmberRunPhase.SelectSlots));
-            ClickLabel(game, "确认");
+            ClickLabel("确认");
             Assert.That(game.Phase, Is.EqualTo(EmberRunPhase.SelectRoster));
             ButtonNamed(uiHost, "Roster " + starter).onClick.Invoke();
             yield return null;
@@ -199,7 +199,7 @@ namespace Emberlight.Tests
             float elapsed = game.Elapsed;
             yield return new WaitForSecondsRealtime(.15f);
             Assert.That(game.Elapsed, Is.EqualTo(elapsed));
-            ClickLabel(game, "继续战斗");
+            ClickLabel("继续战斗");
             Assert.That(game.Phase, Is.EqualTo(EmberRunPhase.Playing));
             var firstProgress = game.Progress;
             var firstWorld = game.Run.World;
@@ -208,7 +208,7 @@ namespace Emberlight.Tests
             game.HurtPlayer(100000);
             Assert.That(game.Phase, Is.EqualTo(EmberRunPhase.Lost));
             CheckTextMeshes(uiHost);
-            ClickLabel(game, EmberCopy.ReturnChoice);
+            ClickLabel(EmberCopy.ReturnChoice);
             Assert.That(game.Phase, Is.EqualTo(EmberRunPhase.Menu));
             Assert.That(game.Run.IsActive, Is.False);
 
@@ -279,7 +279,7 @@ namespace Emberlight.Tests
             Assert.That(strip.gameObject.activeInHierarchy, Is.False);
             Assert.That(ActiveBuffNotices(uiHost), Is.Empty);
             Assert.That(game.TryAddBuff(EmberBuffCatalog.Slow), Is.False);
-            ClickLabel(game, "继续战斗");
+            ClickLabel("继续战斗");
             game.OnWaveCleared(1);
             remaining = game.Buffs.Active[0].Remaining;
             yield return new WaitForSecondsRealtime(.25f);
@@ -304,7 +304,7 @@ namespace Emberlight.Tests
             yield return WaitFor(() => ActiveBuffNotices(uiHost).Length == 0, 2, "The floating notice did not dismiss itself.");
             game.Run.Vitals.Tick(1);
             game.HurtPlayer(100000);
-            ClickLabel(game, EmberCopy.ReturnChoice);
+            ClickLabel(EmberCopy.ReturnChoice);
             Assert.That(game.Buffs.Active, Is.Empty);
             yield return EnterRun(game, uiHost);
             Assert.That(game.Buffs.Active, Is.Empty);

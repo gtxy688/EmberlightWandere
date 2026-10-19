@@ -128,13 +128,13 @@ namespace Emberlight.Tests
             var hud = new EmberHud(view.Hud, null);
             hud.Show(true);
             var progress = new RunProgress();
-            hud.Set(80, 100, progress, 1.01f, 3, 1, 10, 12);
+            hud.Set(80, 100, progress, 1.01f, 3, 10, 12);
             hud.Stage(1, 25, "标准", "渐入长夜");
             int dirtied = 0;
             view.Hud.WaveText.RegisterDirtyVerticesCallback(() => dirtied++);
             for (int i = 0; i < 20; i++)
             {
-                hud.Set(80, 100, progress, 1.02f, 3, 1, 10, 12);
+                hud.Set(80, 100, progress, 1.02f, 3, 10, 12);
                 hud.Stage(1, 25, "标准", "渐入长夜");
             }
             Assert.That(dirtied, Is.Zero);
@@ -149,14 +149,14 @@ namespace Emberlight.Tests
             var hud = new EmberHud(view.Hud, null);
             hud.Show(true);
             var progress = new RunProgress();
-            hud.Set(80, 100, progress, 1.01f, 3, 1, 10, 12);
+            hud.Set(80, 100, progress, 1.01f, 3, 10, 12);
             string clock = view.Hud.Clock.text;
-            hud.Set(80, 100, progress, 1.99f, 3, 1, 10, 12);
+            hud.Set(80, 100, progress, 1.99f, 3, 10, 12);
             Assert.That(view.Hud.Clock.text, Is.EqualTo(clock));
-            hud.Set(70, 100, progress, 2.01f, 4, 1, 9, 12);
+            hud.Set(70, 100, progress, 2.01f, 4, 9, 12);
             Assert.That(view.Hud.Clock.text, Does.StartWith("00:02").And.Contain("击杀 4"));
             Assert.That(view.Hud.HealthText.text, Does.Contain("70 / 100"));
-            Assert.DoesNotThrow(() => hud.Set(70, 100, null, 2.01f, 4, 1, 9, 12));
+            Assert.DoesNotThrow(() => hud.Set(70, 100, null, 2.01f, 4, 9, 12));
             Assert.That(view.Hud.Clock.text, Does.Not.Contain("武器"));
             hud.Stage(2, 25, "标准", "第二波");
             Assert.That(view.Hud.WaveText.text, Does.Contain("2/25"));

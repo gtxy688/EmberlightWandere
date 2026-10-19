@@ -28,7 +28,7 @@ namespace Emberlight
             int remaining = combat != null ? combat.WaveRemaining : 0;
             int quota = combat != null ? combat.WaveQuota : 0;
 
-            hud.Set(run.Health, run.MaxHealth, run.Progress, run.Elapsed, run.Kills, wave, remaining, quota);
+            hud.Set(run.Health, run.MaxHealth, run.Progress, run.Elapsed, run.Kills, remaining, quota);
             hud.Buffs(run.Buffs.Active);
             if (run.Keeper != null) hud.PositionBuffFeedback(run.Cam, run.Keeper.position);
             int total = level != null ? level.BossWave : 0;

@@ -60,6 +60,7 @@ namespace Emberlight.Editor
                 var font = EmberFonts.CreateChinese(); // 与启动一致，走 ValidateBaked 闸门。
                 ConfigureMenu(view, font);
                 ConfigureHud(view);
+                EmberShieldHudSetup.Configure(view.Hud);
                 ConfigureUpgrade(view);
                 ConfigureSettings(view);
                 ConfigureGods(view, font);
@@ -161,13 +162,18 @@ namespace Emberlight.Editor
             var boss = At<Transform>(view.Safe, "Boss HUD");
             var encounter = At<Transform>(hud, "Encounter banner");
             var labels = DirectTexts(hud);
-            var buffs = EmberBuffHudSetup.Configure(hud, labels[0].font);
+            // 日常重绑沿用语义引用；标签移入条形控件后不再占据原来的直接子节点序号。
+            var previous = view.Hud;
+            var clock = previous?.Clock ?? labels[0];
+            var shieldText = previous?.ShieldText ?? labels[1];
+            var waveText = previous?.WaveText ?? labels[2];
+            var buffs = EmberBuffHudSetup.Configure(hud, clock.font);
             view.Hud = new EmberUiRoot.HudReferences
             {
                 Root = hud.gameObject, BossRoot = boss.gameObject, EncounterRoot = encounter.gameObject,
                 Health = At<Image>(hud, "Life track/Life fill"), Shield = At<Image>(hud, "Shield track/Shield fill"),
                 WaveFill = At<Image>(hud, "Wave track/Wave fill"), BossFill = At<Image>(boss, "Boss life track/Boss life fill"),
-                HealthText = DirectTexts(At<Transform>(hud, "Life track"))[0], Clock = labels[0], ShieldText = labels[1], WaveText = labels[2],
+                HealthText = DirectTexts(At<Transform>(hud, "Life track"))[0], Clock = clock, ShieldText = shieldText, WaveText = waveText,
                 BossText = DirectTexts(boss)[0], EncounterLabel = DirectTexts(encounter)[0], Pause = At<Button>(hud, "Pause"),
                 Buffs = buffs
             };
