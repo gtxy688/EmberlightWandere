@@ -2,7 +2,7 @@
 
 > 本文件是**模块边界、依赖关系和任务路由的唯一索引**。
 > 模块清单与任务索引只在本文件维护一份，其他文档不得复制。
-> 最后核对：2026-10-15
+> 最后核对：2026-10-19
 
 ## 技术与目标环境
 
@@ -104,7 +104,7 @@ M2.RunFlowController ──► Host 契约 ──► M0  选卡规则不持有 E
 | 自动攻击 / 自动选敌 / 武器 Tick | M4 | `04-weapon-system.md` → `03-combat-waves.md` |
 | 火球 / 环火 / 燃地 / 穿透火矢 / 回旋烬蝶 / 天降火雨 | M4 | `04-weapon-system.md` |
 | 武器数值 / EmberWeaponTuning / EmberWeaponFactory / 注册 / DPS 档位 / 超模 / 平衡 | M4 | `04-weapon-system.md` |
-| 共享燃地 / EmberBurnGround | M4 | `04-weapon-system.md` |
+| 共享燃地 / EmberBurnGround / 火区替换分配 / 燃地压力测试 / EmberCombatPerformanceTests | M4 + M3 | `04-weapon-system.md` → `03-combat-waves.md` |
 | 穿透静止开火 / 静止阈值 / 狙击手感 | M4 | `04-weapon-system.md` |
 | 敌人行为 / 射手 / 烬胎分裂 / 铁灯卫 / 引线虫 | M5 | `05-enemy-system.md` |
 | 灼热 / 疾风 / 重生词缀 | M5 | `05-enemy-system.md` |
@@ -112,18 +112,19 @@ M2.RunFlowController ──► Host 契约 ──► M0  选卡规则不持有 E
 | 无脚 / 悬浮 / 怪物皮肤 / EnemySkinSetup / Build Enemy Skins / 独立盾图 | M5 + M7 | `05-enemy-system.md` → `07-art-presentation.md` |
 | 主菜单 / 开局流程 / 选难度 / 选槽位 / 选武器 | M6 | `06-ui-flow.md` |
 | HUD / 文字刷新缓存 / 血条 / 波次横幅 / 暂停 / 设置页 / 音量滑条 / UI 复用 / 旧 UI 创建清理 / UIRoot 运行时引用 / Connect UIRoot Runtime | M6 + M0 | `06-ui-flow.md` → `00-composition-root.md` |
+| 护盾 UI / 独立护盾条 / 归零置灰 / Update Shield HUD / EmberShieldHudSetup | M6 + M7 | `06-ui-flow.md` → `07-art-presentation.md` |
 | Buff 拾取提示 / 效果说明 / 持续时间提示 / Buff 倒计时 / 图标计时环 / 角色浮字 / EmberBuffHud / EmberBuffPresentation | M6 + M10 | `06-ui-flow.md` → `10-buff-system.md` |
 | HUD 推送点 / 安全区适配 / 摇杆输入 / 相机跟随 | M6 + M0 | `00-composition-root.md` → `06-ui-flow.md` |
 | 卡面排版 / EmberOfferPresentation / EmberUiFactory / 徽章 / 图标映射 / 滚动选卡 / 卡高 / 行步长 | M6 + M7 | `06-ui-flow.md` |
 | 卡牌描述 / 卡片说明 / 选择前后预览 / 攻速说明 / 延烧文案 | M6 + M2 | `06-ui-flow.md` → `02-run-progression.md` |
 | 简笔画素材 / 图集 / 程序化精灵 / 粒子 | M7 | `07-art-presentation.md` |
-| 原版角色精修 / 衣褶 / 兜帽部件 / EmberCharacterArt / Bake Classic Character Parts | M7 + M5 | `07-art-presentation.md` → `05-enemy-system.md` |
-| A 方案 / 清爽卡通 / CleanToonSample / EmberCleanToonSetup / Use Clean Toon Characters | M7 + M5 | `07-art-presentation.md` → `05-enemy-system.md` |
+| 原版角色精修 / 衣褶 / 兜帽部件 / EmberCharacterArt | M7 + M5 | `07-art-presentation.md` → `05-enemy-system.md` |
+| A 方案 / 清爽卡通 / CleanToonSample | M7 + M5 | `07-art-presentation.md` → `05-enemy-system.md` |
 | 玩家两帧 / Idle / Move / IsMoving / flipX / Player_Idle / Player_Move / EmberPlayerSpriteSetup / Build Player Sprite Animations | M7 | `07-art-presentation.md` |
-| 手绘样板 / 美术替换 / 恢复原版角色 / Use Main Branch Characters / EmberArtSet / KeeperPrefab / ShadePrefab / CourtyardPrefab / HandPaintedSample / 遗迹地面 / 场景装饰 / Build Hand Painted Sample | M7 + M5 | `07-art-presentation.md` → `05-enemy-system.md` |
-| 玩家走路 / 行走动画 / 分件关节 / 提灯摆动 / 透明序列帧 / KeeperWalk / EmberKeeperRig / Export Keeper Walk Frames | M7 | `07-art-presentation.md` |
-| 2.5D / 3D 角色 / 低模 / 立体庭院 / 蒙皮 / 膝盖 / IK / SkinnedMeshRenderer / LowPolyCourtyard / EmberLowPolyGait / Open Low Poly Courtyard | M7 | `07-art-presentation.md` 的「低模 2.5D 独立小样」 |
-| 紧凑 HUD / 手绘边框 / HUD 九宫格 / EmberArtSampleHudSetup | M6 + M7 | `06-ui-flow.md` → `07-art-presentation.md` |
+| 手绘样板 / 美术替换 / 恢复原版角色 / EmberArtSet / KeeperPrefab / ShadePrefab / CourtyardPrefab / HandPaintedSample / 遗迹地面 / 场景装饰 | M7 + M5 | `07-art-presentation.md` → `05-enemy-system.md` |
+| 玩家走路 / 行走动画 / 分件关节 / 提灯摆动 / 透明序列帧 / KeeperWalk / EmberKeeperRig | M7 | `07-art-presentation.md` |
+| 2.5D / 3D 角色 / 低模 / 立体庭院 / 蒙皮 / 膝盖 / IK / SkinnedMeshRenderer / LowPolyCourtyard / EmberLowPolyGait | M7 | `07-art-presentation.md` 的「低模 2.5D 独立小样」 |
+| 紧凑 HUD / 手绘边框 / HUD 九宫格 | M6 + M7 | `06-ui-flow.md` → `07-art-presentation.md` |
 | 掉落物美术 / 拾取物图标 / 药瓶 / 火种护符 / 风羽 / EmberPickupArt | M7 + M5 | `07-art-presentation.md` → `05-enemy-system.md` |
 | UIRoot / Prefab 图片丢失 / Editor 图片绑定 / Repair UIRoot Images | M7 + M6 | `07-art-presentation.md` → `06-ui-flow.md` |
 | 加载页 / IntroRoot / 加载页预制体 | M6 + M7 | `06-ui-flow.md` → `07-art-presentation.md` |
@@ -131,16 +132,17 @@ M2.RunFlowController ──► Host 契约 ──► M0  选卡规则不持有 E
 | 音效 / BGM / 音量 / 初始音量 / 播放节流 / 音效素材 | M8 | `08-audio.md` |
 | 音效素材授权 / CC0 来源 | 参考资料 | `../reference/audio-credits.md` |
 | Android 打包 / APK / keystore / PlayerSettings / 包依赖 / 本地工具清理 | M9 | `09-build-platform.md` |
-| 性能 / 对象池 / 粒子上限 / 帧率 | M9 + M7 | `09-build-platform.md` |
+| 性能 / 对象池 / GC.Alloc / 取池闭包 / 燃地 CPU / 粒子上限 / 帧率 | M3 + M4 + M9 | `03-combat-waves.md` → `04-weapon-system.md` → `09-build-platform.md` |
 | 项目总览 / 模块依赖 / 任务归属 | 总览 | `00-overview.md` |
-| 源码学习 / 通读 / 精读 / 学习笔记 / 阅读地图 | 学习方法（非架构契约） | `../学习笔记/通用源码学习方案.md` |
+| 源码学习 / 通读 / 精读 / 学习笔记 / 阅读地图 | 学习方法与阅读进度（非架构契约） | [源码阅读地图](../项目复习/00-源码阅读地图.md) → [通用源码学习方案](../项目复习/学习辅助/01-通用源码学习方案.md) |
 | 数值口径 / 参数归属 / 表现默认值 / 产品行为 / 单局规则边界 / 不做什么 | 需求 | `../requirements.md` |
 | 工程源码交付 / 打包工程 / 导入验证 | M9 | `09-build-platform.md` → `../../README.md` |
 | 测试运行 / run-tests / PlayMode 冒烟 | 开发工具 | `../../README.md` |
-| 样板录屏 / 美术截图 / EmberArtSampleCapture / EmberBossSwarmSmokeTests / 怪物渲染检查 | 开发工具 | `../实现说明.md` 的「自动化自检与打包交付」 |
-| UI 复用检查工具 / RuntimeUiChecks | 开发工具 | `../../Tools/UiReuse/README.md` |
+| 样板录屏 / 美术截图 / EmberArtSampleCapture / EmberBossSwarmSmokeTests / 怪物渲染检查 | 开发工具 | [运行说明](../../README.md)、[截图与录制辅助](../../Assets/Tests/PlayMode/EmberArtSampleCapture.cs)、[渲染检查](../../Assets/Tests/PlayMode/EmberEnemyRenderingTests.cs) |
+| UI 控件复用 / 回调替换 / 取消选择 | M6 + 测试 | `06-ui-flow.md` → `../../Assets/Tests/PlayMode/EmberRuntimeSmokeTests.cs` |
 | 离线编译校验 / 不启动 Unity 验证改动 | 工具 | `../../Tools/compile-check.ps1` |
-| 设计取舍说明 / 阅卷入口 | 交付 | `../技术分析.md` → `../../README.md` |
+| 源码清理 / 冗余代码 / 冗余注释 / 接口归属 / 重复实现 | 维护方法 | [开发约定](../../AGENTS-dev.md)的「改动约定」；具体契约按本索引定位模块 |
+| 技术思路 / 设计取舍 / 内部开发说明 | 开发参考 | `../技术分析.md` → `../实现说明.md` |
 | 历史决策 / 踩坑记录 / 重构过程 | 归档（只读） | `../archive/` |
 
 映射不唯一时不要猜测：列出候选模块和影响，请用户裁定后再改。

@@ -60,19 +60,19 @@
 2026-10-18，用户从 A / B / C 造型对比中选择 A。以对比图的 A 栏为风格参照，使用内置 imagegen 分别生成玩家与普通敌人的完整透明图，保留折叠布兜帽、简洁轮廓、宽衣褶和少量色阶：玩家为蓝绿斗篷、暖色眼睛、圆铜扣与铜提灯，普通怪为灰紫斗篷与红眼。未从第三方游戏截图提取素材。
 
 - 原图：`Assets/Art/CleanToonSample/Textures/keeper-v1.png`、`shade-v1.png`，各为 1199×1312 RGBA，原始透明通道和留白完整保留，没有程序抠图、重绘或缩放 PNG。
-- 装配：`Assets/Editor/EmberCleanToonSetup.cs` 配置 Unity 导入设置并创建缺失 Prefab；`Assets/Art/CleanToonSample/Prefabs` 保存玩家与普通怪模板。切换只更新既有美术集的角色引用，不改地图、UI 或 Buff。
+- 装配：`Assets/Art/CleanToonSample/Prefabs` 保存玩家与普通怪模板，由 `Assets/Art/HandPaintedSample/ArtSet.asset` 引用。角色模板、地图、UI 和 Buff 分别保存引用。
 - 动作：这两张旧静态图不是行走序列帧；旧玩家浮动方案保存在 KeeperStatic 中。当前玩家使用上文的两帧动作，怪物使用无脚皮肤与既有躯干动画。
 - 交付：保留 CleanToonSample 全目录、`.meta`、Editor 工具与既有运行代码；游戏运行不依赖 imagegen 或外部图片路径。
 
 ## 原版角色精修部件
 
-`Assets/Resources/Art/Characters/classic-character-parts.png` 由 `Assets/Editor/EmberCharacterArtBake.cs` 的二维轮廓、衣褶与明暗绘制配方生成，属于代码原生美术，不是新生成的手绘整张角色。四格分别为斗篷、兜帽、衣摆和灯壳；以灰度与透明通道保存，供玩家和各类敌人共用，再乘原有兵种色。
+`Assets/Resources/Art/Characters/classic-character-parts.png` 最初由代码绘制的二维轮廓、衣褶与明暗配方生成。四格分别为斗篷、兜帽、衣摆和灯壳；以灰度与透明通道保存，供玩家和各类敌人共用，再乘原有兵种色。
 
-运行时取图在 `Assets/Scripts/Visuals/EmberCharacterArt.cs`，不重绘像素。修改配方后使用 `Emberlight/Art/Bake Classic Character Parts` 重烘；切片身份由 Unity Editor API 保留，原有四张图集不受影响。交付时保留 PNG、`.meta` 与生成器源码，不依赖外部绘图软件或图片生成服务。
+运行时取图在 `Assets/Scripts/Visuals/EmberCharacterArt.cs`，直接读取已保存的 PNG 与 `.meta` 切片。美术调整直接编辑图片和 Sprite Editor 中的切片。
 
 ## 低模 2.5D 独立小样
 
-`Assets/Art/LowPolySample` 只保留作独立实验，当前未采用该外观。模型和材质由本工程 Editor 源码生成：`EmberLowPolyMeshBuilder` 构建几何与法线，`EmberLowPolySampleSetup` 保存材质、蒙皮骨架、Mesh、Prefab 和独立场景。它们是实际三维资源，运行时不依赖生成过程或外部建模软件，也没有使用新生成的二维角色贴图。
+`Assets/Art/LowPolySample` 只保留作独立实验，当前未采用该外观。模型和材质最初由项目内的编辑器工具生成，材质、蒙皮骨架、Mesh、Prefab 和独立场景均已保存为资源；运行时直接使用这些三维资源。
 
 空间方向参考用户提供的 [B 站视频前段](https://www.bilibili.com/video/BV1rgY76NEKn/)：斜俯视、立体地台、低模树石和统一阴影。场景保留项目的暗夜提灯主题。没有从视频提取模型、角色图或贴图；作者视频中角色的底层实现尚未确认。
 

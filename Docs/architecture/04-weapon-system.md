@@ -17,7 +17,7 @@
 
 | 被依赖模块 | 只使用的公开契约 | 用途 | 缺失时的行为 |
 |------------|------------------|------|--------------|
-| M2 | `Progress.OwnsWeapon` / `HasMetamorph` / `WeaponMagnitude` / `WeaponAttackSpeed` / `WeaponCount` / `DamageMul` / `Orbits` / `TrailPower` / `PierceLimit` / `MeteorExtra` / `BoomExtraTrips` / `BoomExtraLegHit` / `TrailExtend` / `TrailRing` | 全部数值与形态门控 | `Progress` 为 null 时不得崩溃 |
+| M2 | `Progress.OwnsWeapon` / `HasMetamorph` / `WeaponMagnitude` / `WeaponAttackSpeed` / `DamageMul` / `Orbits` / `TrailPower` / `PierceLimit` / `MeteorExtra` / `BoomExtraTrips` / `BoomExtraLegHit` / `TrailExtend` / `TrailRing` | 全部数值与形态门控 | `Progress` 为 null 时不得崩溃 |
 | M3 | `EmberWeaponContext` 的委托与方法 | 选敌、伤害、拦截、燃地、可见性 | 委托由 M3 保证全部赋值 |
 | M7 / M3 | `ctx.Effects` / `ctx.Pool` | M7 粒子与 M3 对象池 | 粒子满时跳过发射；对象池未命中则创建视图 |
 | M8（经 M3 装配） | `ctx.PlaySound(EmberWeaponSound)` | 开火/接触/落地音效 | 回调缺失只跳过反馈，不创建音频单例 |
@@ -94,9 +94,11 @@ public abstract class EmberWeapon
 - **延烧**（专属 32）：铺火更频繁、燃地伤害提高，单块火区寿命不变；**火海**（质变 22）：身周持续火圈。参数见需求 §4.9，卡片描述与该行为一致。
 - 同屏火区达到容量时替换最旧火区，容量归属 `EmberWeaponTuning.BurnGround`，见需求 §4.9。
 
+共享燃地的逻辑记录在过期、容量替换后复用，活动与空闲记录总量不超过火区容量。`Reset` 仅清逻辑并断开旧视图引用，场景与池仍负责回收节点。Tick 缓存本帧构筑参数和各火区的位置、伤害，先按轴向范围排除，再做原圆形距离判断；仍按火区、敌人反向遍历，逐次读取敌人位置，到期帧先伤害再回池。
+
 **穿透火矢（10）**
 - **仅当玩家基本静止时才开火**（`ctx.PlayerStanding`，判定参数见 [需求 §4.8](../requirements.md#48-静止判定)）；移动中不进入射击，已飞出的箭继续飞。冷却照常推进。
-- 朝最近可见敌直线穿透，逐层消耗穿透次数。
+- 每次发射一支主箭，朝最近可见敌直线穿透，逐层消耗穿透次数；没有独立的扇形箭数状态。
 - **贯穿**（专属 33）：增加穿透上限，增量见需求 §4.6。
 - **穿杨**（质变 23）：命中后生成弱化分裂箭且保持静音；伤害倍率见需求 §4.6。
 
@@ -133,5 +135,6 @@ public abstract class EmberWeapon
 
 - **直接影响模块**：M3（伤害投递与 context）、M2（读取加成）、M6（基础武器名与说明读 Catalog，其余卡面文案读 EmberCopy）、M7（弹体外观）、M8（开火音效接线点）。
 - 共享效果改动影响其他武器产火、无 Trail 所有权时结算、容量替换、到期回池和跨局清理；参数变更还影响 M2 应用与 M6 预览。
+- 燃地性能与行为回归在 `Assets/Tests/EditMode/EmberCombatPerformanceTests.cs`：检查复用后的分配、严格半径边界、重叠伤害顺序及寿命/强度复位。`Ember.BurnGround.Tick` 用于运行时定位局部 CPU 开销。
 - **必须复验的契约**：伤害乘区公式、`OwnsWeapon` 门控、专属/质变形态替换、穿透静止门控、同怪环火满伤规则。
 - **回归触发条件**：任何 `EmberWeaponContext` 字段变更、`RunProgress` 加成接口变更、`EmberPool` key 变更。

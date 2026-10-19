@@ -26,7 +26,7 @@
 ## 设计与数据流
 
 ```text
-EmberGame.StartRunWith()
+EmberGame.StartRun(weapons, slots)
    └─ LevelConfig.Create(difficulty, waves)   ← 唯一工厂
          ├─ BossWave        ← 征程长度归一化
          ├─ HealthMultiplier / DamageMultiplier / CountMultiplier
@@ -50,7 +50,7 @@ EmberCombat 每帧 / 每波查询同一 config 实例：
 
 ### 难度构造
 
-- 触发条件：`EmberGame.StartRunWith` 收到菜单流程提交的武器与槽位，并读取所选难度和征程长度。
+- 触发条件：`EmberGame.StartRun` 收到菜单流程提交的武器与槽位，并读取所选难度和征程长度。
 - 处理顺序：先定 `BossWave`，再按难度写五个倍率，最后用血量倍率算 `BossHp`。
 - 成功结果：返回一个倍率齐备的 `LevelConfig`。
 - 失败与边界：`difficulty` 不在枚举内时回落 `Standard`；`waves` 非 50 一律按 25 处理。倍率值见需求 §3.3，标准难度仅显式覆盖血量倍率，其余使用默认值。

@@ -52,8 +52,8 @@ EmberGame: 选槽位 N + 单选 1 把起始武器
 
 - 触发条件：玩家在开局四步流程中确认了槽位与起始武器。
 - 处理顺序：钳制 `slots` → 遍历传入武器 → 去重 → 超过槽位则截断 → 记录 `CoreWeaponId`。
-- 成功结果：数组重载可授予多个互不重复的有效武器，数量不超过槽位；正式开局 UI 只提交一把，因此产品流程中 `OwnedWeaponCount == 1`。护盾、幸运等本局累计值清空，武器基线与免费刷新次数按配置初始化。
-- 失败与边界：数组中的非法 id 与重复项被跳过；没有任何有效武器时兜底火球。单武器重载将非法 id 直接归一化为火球。产品的单选开局约束由菜单流程保证，不是数组 API 的容量保证。
+- 成功结果：数组入口可授予多个互不重复的有效武器，数量不超过槽位；正式开局 UI 只提交一把，因此产品流程中 `OwnedWeaponCount == 1`。护盾、幸运等本局累计值清空，武器基线与免费刷新次数按配置初始化。
+- 失败与边界：数组中的非法 id 与重复项被跳过；没有任何有效武器时兜底火球。产品的单选开局约束由菜单流程保证，不是数组 API 的容量保证。
 
 ### 选卡池生成（`Choices`）
 
@@ -64,7 +64,8 @@ EmberGame: 选槽位 N + 单选 1 把起始武器
    - 专属（30–35）与质变（20–25）：**仅当已拥有对应武器**时进池。质变另有整次发牌门控；已取得的专属/质变不再进池，**无专属前置条件**。
    - 幸运提升专属候选权重，通用和质变权重及质变门控参数见需求 §4.6；通过门控不保证抽出质变卡。
 2. **额外张**：槽未满时追加**未拥有武器**，数量 = `EmptySlots`。
-3. **兜底**：基础张数不足 3 时用尚未出现的通用补齐，**保证总能选**。
+
+幸运、增幅、护盾三个不同的全局项始终以正权重入池，因此基础候选不会不足；无需第二套补位或重复卡兜底分支。
 
 - 通用词条的品质由 `RollByLuck(rng, Luck)` 决定，权重表见 `../requirements.md` §4.5。
 - 专属固定黄金、质变固定钻石，**不参与 roll**。
@@ -104,20 +105,18 @@ EmberGame: 选槽位 N + 单选 1 把起始武器
 
 ## 对外契约
 
-`EmberWeaponCatalog.Find(id)` 返回不可变武器定义；名册、专属与质变归属读同一张表。`Roster` / `RosterCopy` 返回数组副本，外部修改不影响内部数据。`EmberWeaponTuning` 的升级增量同时供构筑应用与卡牌预览读取。修改共享参数时需同时核对构筑落地和卡面预览。
+`EmberWeaponCatalog.Find(id)` 返回不可变武器定义；名册、专属与质变归属读同一张表。`RosterCopy` 是名册副本入口，外部修改不影响内部数据。`EmberWeaponTuning` 的升级增量同时供构筑应用与卡牌预览读取。修改共享参数时需同时核对构筑落地和卡面预览。
 
 
 | 名称 | 类型 | 输入 | 输出或事件 | 错误/生命周期保证 |
 |------|------|------|------------|-------------------|
 | `RunProgress(int[], int)` | 构造函数 | 起始武器、槽位上限 | 已初始化的构筑 | 构造时只初始化一次；无参构造保留默认开局 |
 | `ConfigureRun(int[], int)` | 方法 | 起始武器数组、槽位上限 | 重置全部状态 | 钳制槽位到 1–5；空集兜底火球 |
-| `ConfigureRun(int, int)` | 方法 | 核心武器 id、槽位 | 同上 | 非名册 id 降级为火球（兼容重载） |
 | `OwnsWeapon(int)` | 查询 | 武器 id | `bool` | 武器 Tick 的第一道门 |
 | `HasMetamorph(int)` | 查询 | 武器 id | `bool` | 武器形态切换门 |
 | `CanMetamorph(int)` | 查询 | 质变 id | `bool` | 拥有对应武器且本局尚未取得该质变；无专属前置 |
 | `CanExclusive(int)` | 查询 | 专属 id | `bool` | 拥有对应武器且本局尚未取得该专属 |
 | `WeaponMagnitude` / `WeaponAttackSpeed` | 查询 | 武器 id | `float` | 该武器的攻击力/攻速加成 |
-| `WeaponCount(int)` | 查询 | 武器 id | `int` | 当前仅穿透火矢使用（扇形箭数） |
 | `DamageMul` | 属性 | — | `float` | `1 + DamageAmp`，6 把武器全部相乘 |
 | `Luck` / `Shield` / `ShieldCapacity` / `Orbits` / `TrailPower` | 属性 | — | 各类型 | 当前生效的构筑属性 |
 | `WeaponSlots` / `CoreWeaponId` / `OwnedWeaponCount` / `EmptySlots` / `RefreshesRemaining` | 属性 | — | `int` | HUD 与选卡 UI 的数据源 |
@@ -138,7 +137,7 @@ EmberGame: 选槽位 N + 单选 1 把起始武器
 
 ### 查询入口
 
-`FullRoster()` 返回名册副本，`OfferCountExpected()` 转发卡池候选数计算；武器归属和形态分别查询 `OwnsWeapon`、`HasMetamorph`、`HasExclusive`。
+名册与候选张数分别直接查询 `EmberWeaponCatalog.RosterCopy()`、`EmberChoicePool.ExpectedCount(progress)`；武器归属和形态分别查询 `OwnsWeapon`、`HasMetamorph`、`HasExclusive`。
 
 ## 模块内的职责划分
 
@@ -147,7 +146,7 @@ EmberGame: 选槽位 N + 单选 1 把起始武器
 | 单元 | 文件 | 职责 | 零 `UnityEngine` |
 |------|------|------|------------------|
 | `EmberWeaponCatalog` | `Core/EmberWeaponCatalog.cs` | **Id 空间与武器名册的唯一出处**：0–4 通用 / 10–15 武器 / 20–25 质变 / 30–35 专属；`WeaponForMeta` / `WeaponForExcl` / `IsRosterWeapon` | ✅ |
-| `EmberChoicePool` | `Core/EmberChoicePool.cs` | **候选卡生成**：基础 3 张 + 空位补新武器、权重抽卡、同屏唯一键、补位与兜底 | ✅ |
+| `EmberChoicePool` | `Core/EmberChoicePool.cs` | **候选卡生成**：基础 3 张 + 空位补新武器、权重抽卡、同屏唯一键 | ✅ |
 | `RunProgress` | `Core/RunProgress.cs` | **只负责构筑状态怎么变**：槽位与归属、通用属性、品质 roll 落地、`Choose` / `TryRefresh` / `AbsorbDamage` / 计分 | ✅ |
 | `RunFlowController` | `Core/RunFlowController.cs` | 清波选卡次数、补偿序列、刷新与候选校验；通过 Host 请求呈现和恢复战斗 | ✅ |
 | `EmberRarityUtil` | `Core/EmberRarity.cs` | 品质权重与通用词条数值表 | ✅（见下） |
@@ -156,8 +155,7 @@ EmberGame: 选槽位 N + 单选 1 把起始武器
 想验证"满槽不出新武器""同屏唯一键是 `(Id, WeaponId)`"必须先摆好整套构筑状态。拆开后 `EmberChoicePool.Build(progress, random)`
 只读 `RunProgress` 的公开只读事实，可直接单测。
 
-**注意：随机数消耗顺序是行为的一部分。** `EmberChoicePool.Build` 里每次 `random.Next*` 的**顺序与次数必须与拆分前逐字一致**，
-否则同一个种子发出来的手牌会变，jack 无法复现问题。改这个文件前先读它的类注释。
+**随机数消耗顺序是行为的一部分。** 等价清理须保持可达路径中 `random.Next*` 的顺序与次数，确保同种子手牌仍可复现。
 
 ### 配色为什么返回 `float[3]` 而不是 `Color`
 
@@ -168,7 +166,7 @@ EmberGame: 选槽位 N + 单选 1 把起始武器
 
 ## Unity 装配
 
-- **无场景对象、无 Prefab、无 ScriptableObject**。`RunProgress` 由组合根（`EmberGame.StartRunWith`）在开局时直接用所选武器和槽位构造，并由 `EmberRunState.Progress` 持有；无参构造仍提供默认火球构筑。
+- **无场景对象、无 Prefab、无 ScriptableObject**。`RunProgress` 由组合根（`EmberGame.StartRun`）在开局时直接用所选武器和槽位构造，并由 `EmberRunState.Progress` 持有；无参构造仍提供默认火球构筑。
 - 回营地时 `Progress` 被置为 `null`，因此**所有消费方必须容忍 null**（`EmberCombat.Tick` 注入前先判）。
 - `RunFlowController` 由组合根在 `Awake` 构造，开局和回营地调用 `Reset`；展示与恢复战斗通过 Host 回调请求。
 - `EmberRarity` 为枚举，`EmberRarityUtil` 为静态查表，无实例生命周期。

@@ -44,16 +44,11 @@ Emberlight → Android 菜单
 
 字体烘制和资源导入工具随工程保留。字体优先加载经 ValidateBaked 校验的静态图集，失败时动态回落；具体机制见 M7。
 
-### 构建期烘焙（只做美术）
+### 预生成图元与导入
 
-| 菜单项 | 作用 |
-|--------|------|
-| `Bake runtime art` | 把 5 个程序化图元写成 `Resources/Art/Baked/*.png` |
-| `Measure runtime art cost` | 汇报这些图元原本每局一次的光栅化开销 |
+`Assets/Resources/Art/Baked` 中的现有 PNG 是持久资源，运行时优先加载，缺失时程序化回落。当前没有通用图元重烘菜单；修复 UI 图片引用时需保留或恢复这些实际纹理。角色部件与动画各有专用 Editor 工具，入口见 M7。
 
-烘焙结束会解码 PNG 与现场重新光栅化的结果逐像素比对（`maxDelta` 必须为 0），防止两处像素数学漂移。
-
-预生成图片用于支持直接编辑形状，并减少首次使用时的光栅化工作。
+四张图集的导入钩子共用 `EmberSpriteSheetImport.Configure`；路径过滤保留在各导入器，切片身份和平台覆写仍由 `.meta` 保存。
 
 ### 字体策略与包体
 
@@ -98,7 +93,7 @@ Emberlight → Android 菜单
 | `EmberAndroidBuild.BuildLocalApk` | 静态方法 | — | APK | debug keystore；不启用开发调试功能 |
 | `EmberAndroidBuild.BuildSignedApk` | 静态方法 | 环境变量 | APK | 缺变量即停止；不改动持久签名设置 |
 | `EmberAndroidBuild.Prepare` | 静态方法 | — | — | 预检 SDK/NDK/JDK/主场景/字体并应用 Release 配置 |
-| `EmberFontBake` | 静态方法 | — | 图集资产 + 渲染校验 | 生成 M7 运行时**优先使用**的预烘静态图集；校验不通过时运行时回落动态图集 |
+| `EmberFontBake` | 静态方法 | — | 图集资产 + 重载、字形与网格检查 | 生成 M7 运行时**优先使用**的预烘静态图集；校验不通过时运行时回落动态图集；实际画面另行进局检查 |
 | 4 个 `AssetPostprocessor` | 编辑器钩子 | 导入事件 | — | 见 M7 |
 
 ## Unity 装配

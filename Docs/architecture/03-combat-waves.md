@@ -138,9 +138,13 @@ Loading → Menu → SelectLength → SelectDifficulty → SelectSlots → Selec
 
 Boss 波例外：Boss 死亡优先结束本波，未展开的分裂请求作废；普通波仍按上述顺序先补子体再判清波。
 
+母体当前由 `SplitBehavior.OnDeath` 与死亡结算的 `NoteSplitPoint` 各登记一次落点，每路按 `LevelConfig.SplitCount` 展开。jack 已确认暂时保留两路及实际总量，见需求 §3.7；不要把删掉一路当作等价清理。
+
 ### 对象池（`EmberPool`）
 
 按字符串 key 复用：`fire`（玩家弹体）/ `burn`（燃地）/ `warn`（预警）/ `shade` / `boss` / `dark-bolt`（暗弹）/ `healing-drop`。归还时必须还原姿态与角色标识，避免附着到复用的躯体上。
+
+`RentFire`、`RentShape` 与 `RentEnemy` 先取缓存，未命中才直接创建，不在命中路径构造捕获委托。敌人染色使用复用的渲染器 List，保留包含非激活部件的扫描和原染色规则；其他敌人初始化仍由名册与表现模块负责。
 
 敌人模板包含 Boss 皮肤时，`boss` 池也从同一 Prefab 建立视图，池键仍独立；没有 Boss 皮肤则沿用程序化 Boss。整体皮肤的 Boss 不再叠加旧冠饰与提灯，但保留原招式状态机。
 
@@ -207,6 +211,7 @@ Boss 波例外：Boss 死亡优先结束本波，未展开的分裂请求作废�
 - **直接影响模块**：M4（经 context）、M5（行为与表现）、M6（HUD/流程）、M7（粒子与池）、M8（音效触发点）。
 - **必须复验的契约**：`OnWaveCleared` 的发牌时机、`SelectUpgrade` 防伪、`HurtPlayer` 的倍率与护盾顺序、死亡→分裂→清波的处理顺序、暗弹拦截。
 - 屏外落点改动需复验完整视口/地图交集、遭遇请求点迁移和生成失败后的配额重试；Boss 与分裂特殊落点不纳入普通杂兵落点规则。
+- 对象池改动需复验姿态、颜色、子节点激活与模板恢复，以及首次创建、缓存命中和销毁后的重建；分配回归入口为 `Assets/Tests/EditMode/EmberCombatPerformanceTests.cs`。
 - Boss 群战需复验首次伴随兵、定时补缺、容量限制、退场无额外奖励、取消分裂和阶段/最终结算，覆盖入口为 `Assets/Tests/EditMode/EmberBossSupportTests.cs` 与 `Assets/Tests/PlayMode/EmberBossSwarmSmokeTests.cs`。
 - Boss 负面 Buff 需复验各档位命中、预警期/躲避/无敌帧/致死不施加、刷新不叠层、护盾命中与 Boss 死亡清理，入口为 `Assets/Tests/PlayMode/EmberBossDebuffTests.cs` 与 `Assets/Tests/PlayMode/EmberBossBuffAndCardSmokeTests.cs`。
 

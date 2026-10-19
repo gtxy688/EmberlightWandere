@@ -19,7 +19,7 @@
 
 | 被依赖模块 | 只使用的公开契约 | 用途 | 缺失时的行为 |
 |------------|------------------|------|--------------|
-| M2 | `RunProgress`（作为方法参数）：`Luck` / `CoreWeaponId` / `RefreshesRemaining` / `EmptySlots` / `WeaponMagnitude` / `WeaponAttackSpeed` / `DamageAmp` / `OwnsWeapon`；id 常量 | 卡面数值预览、HUD 幸运与槽位 | 参数为空则该块不绘制 |
+| M2 | `RunProgress`（作为方法参数）：`Luck` / `CoreWeaponId` / `RefreshesRemaining` / `EmptySlots` / `WeaponMagnitude` / `WeaponAttackSpeed` / `DamageAmp` / `OwnsWeapon` / `Shield` / `ShieldCapacity`；id 常量 | 卡面数值预览、HUD 幸运、槽位与护盾 | 参数为空时省略构筑统计、护盾归零 |
 | M3 | 战斗的波次、剩余敌人、Boss 与遭遇文本 | HUD 战斗块 | 无战斗时跳过 Boss 更新 |
 | M10 | `BuffManager.Active`、`Buff.Config` / `Remaining`、施加的新增 / 刷新结果 | 效果说明、剩余时间与短提示 | 列表为空时隐藏效果区 |
 | M0 状态容器 | `EmberRunState` 的 `Health` / `MaxHealth` / `Elapsed` / `Kills`，护盾从 `Progress` 查询 | HUD 基础状态 | 缺少状态或构筑时跳过推送 |
@@ -70,7 +70,7 @@ HUD 缓存上次显示的生命、护盾、秒数、击杀、武器/槽位/幸�
 - 菜单复用按钮并替换当前动作；槽位与武器确认读取最新业务回调，隐藏后不能重复提交。
 - 设置以 SetValueWithoutNotify 同步音量，重置二次确认，并替换业务回调。
 - 隐藏取消选中动画，避免旧选项提交。
-- HUD 保持常驻：顶部统计和右上暂停，中部生命与细护盾条，下部波次文字及细金色进度条。
+- HUD 保持常驻：顶部统计和右上暂停，中部生命与独立护盾条，下部波次文字及细金色进度条。
 - 回归范围：主菜单设置、战斗暂停、连续升级、刷新；字体闸门和切片配置不变。
 
 ### 升级选卡面板
@@ -85,10 +85,12 @@ HUD 缓存上次显示的生命、护盾、秒数、击杀、武器/槽位/幸�
 
 ### HUD
 
-- 战斗栏使用手绘九宫格面板，布局集中为统计、生命、波次与护盾三行；生命 / 护盾 / 波次仍为真实填充条，文字和暂停按钮不烘入图片。菜单及其他面板仍沿用既有风格。
+- 战斗栏使用手绘九宫格面板，统计、生命、护盾、波次各自分行，整体高度不变；生命 / 护盾 / 波次仍为真实填充条，文字和暂停按钮不烘入图片。菜单及其他面板仍沿用既有风格。
+- 生命条下方的护盾条使用蓝色填充，条内居中显示数值。`EmberHud.Set` 只读 `Shield / ShieldCapacity` 显示剩余量与本局累计获得量的比例，不改变承伤或叠加规则；归零将文字转灰降透明度，获得护盾恢复构造时缓存的 Prefab 配色。表现默认值见需求 §7。
 - 显示 `武器 已有/N` 与幸运值。
 - 顶栏删除与击杀信息重复的余烬展示；文字自适应避免越界。
-- `EmberArtSampleHudSetup.Configure` 首次绑定手绘面板时迁移顶部布局和横幅/Boss 位置；重复配置同一面板时保留手动排版。布局默认值统一见需求 §7，运行时绑定不覆盖。
+- 顶部手绘面板、横幅和 Boss 条的位置保存在 `Assets/UI/UIRoot.prefab`。布局默认值统一见需求 §7，运行时绑定不覆盖。
+- `EmberShieldHudSetup.Configure` 在 Editor 内迁移既有护盾条与数值，移除旧护盾图标及其预留空间；迁移后只重绑引用，保留人工排版。HUD 重绑优先复用序列化文字引用，避免数值移入护盾条后因直接子节点顺序变化而错绑。
 - 遭遇事件触发时显示顶部短时横幅（「遭遇 · 精英小队」/「遭遇 · 围杀圈」），暂停时不推进。
 - 战斗状态栏在暂停、结算、升级时隐藏。
 - Buff 图标横排在顶部 HUD 下方，Boss 与遭遇横幅各有独立位置。每个槽位按配置 Id 绑定图标、径向 Filled 环和秒数；到期隐藏，布局组收起空位。新增 Buff 须给 Prefab 增加同 Id 的槽位与美术，未绑定的 Id 明确报告配置错误。
@@ -117,7 +119,7 @@ HUD 缓存上次显示的生命、护盾、秒数、击杀、武器/槽位/幸�
 |------|------|------|------|------|
 | `EmberUiRoot` | MonoBehaviour | 序列化控件引用 | 菜单、HUD、面板视图 | 只持有视图；ValidateReferences 检查必需引用 |
 | `EmberMenuUi.Bind` | 方法 | EmberUiRoot、已校验字体、暂停回调 | UI 根与面板 | 使用现有控件、注册交互；不重建布局；必要时补 EventSystem |
-| `EmberHud.Set(...)` | 方法 | 生命、护盾、波次、`RunProgress` 等 | — | `RunProgress` 为空时不绘制该块 |
+| `EmberHud.Set(hp, max, progress, seconds, kills, waveRemaining, waveQuota)` | 方法 | 生命、构筑、计时、击杀与波次计数 | — | 只读构筑；护盾随剩余比例填充、归零置灰，空构筑显示空护盾；波次编号与文字由 `Stage` 单独写入 |
 | `EmberHud.Buffs` / `NotifyBuff` / `PositionBuffFeedback` / `TickFeedback` | 方法 | 只读列表 / 配置与刷新标记 / 相机与角色位置 / 非缩放时间 | 转发给图标与浮字组件 | 剩余时间来自 Buff；浮字与效果计时分离，不修改玩法数据 |
 | `EmberBuffHud` | MonoBehaviour | 已装配的图标与浮字引用 | 径向环、秒数、角色浮字 | 缺引用或槽位 Id 不合法时报错，不动态补建；秒数缓存、环持续更新；隐藏清空反馈 |
 | `EmberUiFactory`（Editor） | 静态工厂 | 尺寸与父节点 | Prefab 控件 | 只在编辑器准备资产；Runtime 不引用 |
@@ -134,6 +136,8 @@ HUD 缓存上次显示的生命、护盾、秒数、击杀、武器/槽位/幸�
 
 修改文案后按 M7 的流程检查编译后字形覆盖并重新烘制静态图集。`EmberOfferPresentation.Build` 将候选与只读构筑转成标题、说明、数字预览与徽章；数字读取共享参数，面板只绑定展示结果。
 
+卡面预览与徽章直接调用 `EmberOfferPresentation`；`EmberUpgradePanel` 不再提供同义转发入口。`Show` 的刷新回调为可选参数，保留单一展示入口；设置面板直接刷新音量与倍速文字，不缓存只包装方法调用的委托。
+
 描述明确触发方式、作用对象和强化结果。攻击力/攻速标题带武器名；攻速说明区分环火旋转、燃地铺设与其他武器的攻击间隔。通用卡预览展示当前值与选择后值，幸运按构筑上限钳制；专属和质变说明对应实际行为，预览查询共享调参常量，不改变玩法。延烧的间隔同时计入当前燃地攻速；日冕的伤害标明基础值，避免被理解为叠加构筑后的最终伤害。完整与紧凑卡面均需检查字形和文本溢出。
 
 ## Unity 装配
@@ -143,6 +147,7 @@ HUD 缓存上次显示的生命、护盾、秒数、击杀、武器/槽位/幸�
 - `Emberlight/UI/Connect UIRoot Runtime` 使用 Editor API 配置两套 Prefab 的引用与持久图片，首次生成加载页，关联当前主场景并标记待保存。已有 IntroRoot 不重新创建控件、覆盖锚点或字号；日常改布局无需重跑菜单。
 - 布局与静态图片归 Prefab；运行时更新文字、交互状态、按候选数量排卡与安全区。EmberUiFactory 与开局选择页补建归 Editor，Runtime 只绑定序列化控件；缺失引用明确报错。
 - `Update Buff HUD` 经 `EmberBuffHudSetup` 首次迁移旧文字面板，生成 `Battle HUD/Buff icons` 与安全区下的 `Buff floating`，并错开 Boss / 遭遇横幅；重复运行绑定原组件，保留已有布局。图标和环引用持久 Sprite，不引用设计示意图。
+- `Emberlight/UI/Update Shield HUD` 只更新 UIRoot 的引用和护盾布局，不重烘字体或改主场景。`Connect UIRoot Runtime` 也包含同一迁移。日常在 Prefab 编辑护盾条和数值即可，运行时不补建。
 - 当前布局以竖屏为目标，PlayerSettings 锁定 Portrait（见 M9）。
 - 面板的生命周期由 `EmberMenuUi` 统一持有；暂停与设置是浮层而非独立场景。
 - `EmberUiRoot`、`EmberGodsSelectPanel`、`EmberSettingsPanel` 与 `EmberUpgradePanel` 为 `MonoBehaviour`；EmberMenuUi 与 EmberHud 为普通类。
@@ -155,3 +160,4 @@ HUD 缓存上次显示的生命、护盾、秒数、击杀、武器/槽位/幸�
 - **直接影响模块**：M2（卡面读取构筑数据）、M3（HUD 读取战斗状态）、M7（精灵供给）、M8（交互音）。
 - **必须复验的契约**：开局四步的顺序与单选约束、候选卡数量与滚动阈值、`unscaledDeltaTime` 使用、返回营地的二次确认、字体预热覆盖。
 - UI 创建边界需复验缺失引用报错、Editor 配置工具与场景 Prefab 复用；HUD 缓存需复验秒/数值变化及时显示及波次文案不重复写入。
+- 护盾需复验获得、吸收、溢出扣血、耗尽置灰、再次获得恢复，以及暂停恢复与重开清零；调整数值层级后重绑仍保留语义引用与人工布局。相关用例为 `Assets/Tests/EditMode/EmberShieldHudTests.cs` 与 `Assets/Tests/PlayMode/EmberShieldHudSmokeTests.cs`，实际排版需在游戏背景中检查。

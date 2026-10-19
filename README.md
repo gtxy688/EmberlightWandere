@@ -24,7 +24,7 @@ Unity 2D 俯视角生存原型，保留熄灯与暗影主题。玩家移动躲�
 | `Assets/Scripts/Visuals/`、`Assets/Scripts/Audio/` | 表现与音频 |
 | `Assets/Editor/`、`Assets/Tests/`、`Tools/` | 编辑器工具、自动化测试、检查与打包脚本 |
 
-简短说明：[技术分析](Docs/技术分析.md)、[实现说明](Docs/实现说明.md)。需求与数值权威为 [requirements.md](Docs/requirements.md)；维护路由见 [架构索引](Docs/architecture/00-overview.md)。素材来源见 `Docs/reference/`。
+内部开发文档：[技术分析](Docs/技术分析.md)记录设计思路与取舍，[实现说明](Docs/实现说明.md)用于查调用链、改功能和找工具。需求与数值看 [requirements.md](Docs/requirements.md)，模块入口看 [架构索引](Docs/architecture/00-overview.md)，素材来源在 `Docs/reference/`。
 
 ## 开发检查
 

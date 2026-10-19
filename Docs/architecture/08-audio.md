@@ -16,7 +16,7 @@
 
 | 被依赖模块 | 只使用的公开契约 | 用途 | 缺失时的行为 |
 |------------|------------------|------|--------------|
-| Resources | `Resources.Load("Audio/...")` | clip 加载 | **缺失静默跳过**，只警告一次 |
+| Resources | `Resources.Load("Audio/...")` | clip 加载 | 加载失败时警告并跳过播放；后续重试仍可能警告 |
 | M3/M4/M5/M6 | 调用方各自触发 `Play*` | 接线点 | — |
 
 **无玩法依赖**：本模块不知道难度、波次或武器数值，只接收播放指令。生命反馈由组合根按结算结果调用；武器只报告 `EmberWeaponSound`，由 M3 适配，不创建音频单例。
@@ -61,8 +61,8 @@ Assets/Resources/Audio/
 
 | 触发点 | 调用 | 节流参数项 |
 |--------|------|------|
-| 主菜单显示 | `PlayMusic(menu)` | — |
-| 进入战斗 / 加载页 | `PlayMusic(combat)` / 营地 BGM | — |
+| 主菜单 / 加载页 | `PlayMenuMusic()` | — |
+| 进入战斗 | `PlayCombatMusic()` | — |
 | UI 按钮 / 选卡确认 / 卡面打开 | `PlayUiClick` / `PlayUiConfirm` / `PlayCardOpen` / `PlayCardPick` | — |
 | 火球发射 | `PlayWeaponFireball()` | 常规发射与命中音；独立计时器 |
 | 穿透火矢发射（**仅主箭**，分裂箭静音） | `PlayWeaponPierceArrow()` | 常规发射与命中音；独立计时器 |
@@ -93,8 +93,8 @@ Assets/Resources/Audio/
 |------|------|------|------|------|
 | `EmberAudio` 单例 | `MonoBehaviour` | — | — | `DontDestroyOnLoad`；`Ensure()` 幂等 |
 | `MusicVolume` / `SfxVolume` | 属性（0–1） | 值 | — | set 立即生效并持久化 |
-| `PlayMusic(Music)` | 方法 | 曲目 | — | clip 缺失静默 |
-| `PlaySfx(...)` / `PlayWeapon*` / `PlayHit` / `PlayHurt` / `PlayPickupHeal` | 方法 | — | — | 节流按上表执行；武器专属 clip 缺失时尝试通用回退，最终缺失则跳过 |
+| `PlayMusic(AudioClip)` / `PlayMenuMusic` / `PlayCombatMusic` | 方法 | clip / 对应曲目入口 | — | 无 clip 时停止 BGM |
+| `PlaySfx(AudioClip, float gain = 1)` / `PlayWeapon*` / `PlayHit` / `PlayHurt` / `PlayPickupHeal` | 方法 | clip 与可选增益 / 对应音效入口 | — | 共用 2D AudioSource；节流按上表执行；武器专属 clip 缺失时尝试通用回退，最终缺失则跳过 |
 | `PlayUiClick` / `PlayUiConfirm` / `PlayCardOpen` / `PlayCardPick` | 方法 | — | — | — |
 | Prefs 键 | 常量 | — | — | `ember_vol_music` / `ember_vol_sfx` |
 
@@ -102,6 +102,7 @@ Assets/Resources/Audio/
 
 - `EmberAudio` 是 `MonoBehaviour` 单例，`Ensure` 惰性创建，使用 `DontDestroyOnLoad`；不随单局或组合根销毁自动回收。
 - 两个 `AudioSource` 由代码创建，**不依赖场景预置**。
+- 卡面打开沿用 `PlayCardPick` 的音效，不加载未使用的 `card_open`；现存原素材与授权说明保留。
 - 缺 `AudioListener` 时自动挂到 `Camera.main`。
 - 资源全部走 `Resources.Load`，**不进 Addressables**；因此音频资源变更只需重新导入，无需改场景。
 - 新音频资源的导入设置必须为 `3D: 0` + `preloadAudioData: 1`。

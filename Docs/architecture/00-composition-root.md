@@ -10,7 +10,7 @@
   - 在 `Start` / `Awake` 中**装配**各单元，在 `Update` 中确定**每帧调用顺序**；
   - 把各单元的回调接到一起（`IEmberMenuHost` / `RunFlowController.Host` / `IEmberCombatHost` / `EmberInput.Presenter`）；
   - 场景级副作用：帧率设置、相机创建与配置、世界节点与灯芯的创建/销毁；
-  - **把各单元的"结果"翻译成呈现与流程动作**：受伤结果 → 音效 + HUD 刷新 + 收局判定（`HurtPlayer`）、拾取结果 → 音效 + HUD（`PickHealingDrop`）、结算页文案拼装（`End`）、暂停/恢复时的面板开关（`Pause` / `SetPlaying` / `ReturnToCamp`）。
+  - **把各单元的"结果"翻译成呈现与流程动作**：受伤结果 → 音效 + HUD 刷新 + 收局判定（`HurtPlayer`）、拾取结果 → 音效 + HUD（`PickHealingDrop`）、结算页文案拼装（`EndRun`）、暂停/恢复时的面板开关（`Pause` / `SetPlaying` / `ReturnToCamp`）。
 - **本模块不负责**：
   - 伤害与护盾结算 → `EmberKeeperVitals`
   - 选卡次数与补偿推进 → `RunFlowController`
@@ -24,7 +24,7 @@
 
 判断标准：新增逻辑如果需要"在某个条件下**算出数值**"或"在某个条件下**推进状态/阶段**"，它就不属于本模块，应落到 M1–M8；如果它只是把别人算好的结果**转成一个 UI 调用、一次音效或一次阶段切换请求**，那它属于本模块，搬走反而会把组合根拆散。
 
-> ⚠️ 不要把这条读成"组合根里不许出现任何字符串或 if"。`End()` 拼结算文案、`HurtPlayer()` 在扣血后决定放什么音效，都是**合法的转译**——它们不产生新的产品规则，只是把已有结果送到 M6/M8。真正要拒绝的是"顺手把倍率、概率、上限也算在这里"。
+> ⚠️ 不要把这条读成"组合根里不许出现任何字符串或 if"。`EndRun()` 拼结算文案、`HurtPlayer()` 在扣血后决定放什么音效，都是**合法的转译**——它们不产生新的产品规则，只是把已有结果送到 M6/M8。真正要拒绝的是"顺手把倍率、概率、上限也算在这里"。
 
 ## 依赖
 
@@ -40,7 +40,7 @@
 
 ## 设计与数据流
 
-`Awake` 创建本局状态容器、选卡流程与输入单元；`Start` 装配战斗、菜单与场景视图。`RunProgress`、关卡配置与世界对象在 `StartRunWith` 开局时创建；构筑构造时直接接收武器与槽位，只初始化一次。视图绑定顺序与场景引用见下文「Unity 装配」。
+`Awake` 创建本局状态容器、选卡流程与输入单元；`Start` 装配战斗、菜单与场景视图。`StartRun` 直接实现开局装配，`EndRun` 直接实现收局转译，不再经私有同义入口转发。构筑构造时接收武器与槽位，只初始化一次。视图绑定顺序与场景引用见下文「Unity 装配」。
 
 ```text
 EmberGame (MonoBehaviour, 组合根)
@@ -88,7 +88,7 @@ Elapsed += dt  →  Vitals.Tick(dt)  →  input.Tick()
 | `EmberMenuFlow` | `IEmberMenuHost.EnterMode` | Menu / SelectLength / SelectDifficulty / SelectSlots / SelectRoster |
 | `RunFlowController` | `Host.OnUpgradeOffered` | Upgrade |
 | `RunFlowController` | `Host.OnUpgradeSequenceFinished` | Playing（经 `SetPlaying`） |
-| 生命结算调用方 | `HurtPlayer` → `CommitHealthChange` → `End` | Lost |
+| 生命结算调用方 | `HurtPlayer` → `CommitHealthChange` → `EndRun` | Lost |
 | `EmberCombat` | `IEmberCombatHost.EndRun` | Won / Lost |
 
 ### 结果转译
@@ -131,7 +131,8 @@ Elapsed += dt  →  Vitals.Tick(dt)  →  input.Tick()
 | `RunFlowController.OnWaveCleared` | 方法 | 已清波次 | — | 非 Playing 或未开局时不动 |
 | `RunFlowController.Choose` | 方法 | 候选卡 | `bool` | 卡不在当前候选内返回 false；补偿选卡**不连锁** |
 | `IEmberCombatHost` | 接口 | — | 见 `03-combat-waves.md` | **实现方不需要是 `EmberGame`** |
-| `EmberInput` | 类 | `Presenter` | `Stick` / `IsDragging` | 不持有 `EmberGame` |
+| `EmberGame.StartRun` / `EndRun` | 方法 | 起始武器与槽位 / 胜负 | 装配新局 / 展示结算 | 分别实现菜单与战斗宿主入口 |
+| `EmberInput` | 类 | `Presenter` | `Stick`，以及摇杆与暂停回调 | 拖动状态内部维护，不持有 `EmberGame` |
 
 ## 影响与回归范围
 
